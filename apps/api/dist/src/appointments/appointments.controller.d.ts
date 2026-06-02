@@ -1,0 +1,148 @@
+import { AppointmentsService } from './appointments.service';
+export declare class AppointmentsController {
+    private readonly appointmentsService;
+    constructor(appointmentsService: AppointmentsService);
+    create(data: any, req: any): Promise<{
+        id: string;
+        status: import("@prisma/client").$Enums.AppointmentStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        createdBy: string | null;
+        updatedBy: string | null;
+        deletedAt: Date | null;
+        deletedBy: string | null;
+        deleteReason: string | null;
+        organizationId: string;
+        branchId: string;
+        notes: string | null;
+        patientId: string;
+        doctorId: string;
+        appointmentType: string | null;
+        appointmentSource: string | null;
+        scheduledStart: Date;
+        scheduledEnd: Date;
+    }>;
+    findAll(req: any, date?: string): Promise<({
+        patient: {
+            id: string;
+            phone: string | null;
+            firstName: string;
+            lastName: string;
+        };
+        doctor: {
+            id: string;
+            firstName: string;
+            lastName: string;
+        };
+    } & {
+        id: string;
+        status: import("@prisma/client").$Enums.AppointmentStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        createdBy: string | null;
+        updatedBy: string | null;
+        deletedAt: Date | null;
+        deletedBy: string | null;
+        deleteReason: string | null;
+        organizationId: string;
+        branchId: string;
+        notes: string | null;
+        patientId: string;
+        doctorId: string;
+        appointmentType: string | null;
+        appointmentSource: string | null;
+        scheduledStart: Date;
+        scheduledEnd: Date;
+    })[]>;
+    findOne(id: string): Promise<{
+        patient: {
+            id: string;
+            email: string | null;
+            phone: string | null;
+            status: import("@prisma/client").$Enums.RecordStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            updatedBy: string | null;
+            deletedAt: Date | null;
+            deletedBy: string | null;
+            deleteReason: string | null;
+            organizationId: string;
+            firstName: string;
+            lastName: string;
+            branchId: string;
+            patientCode: string | null;
+            middleName: string | null;
+            gender: string | null;
+            dateOfBirth: Date | null;
+            bloodGroup: string | null;
+            maritalStatus: string | null;
+            occupation: string | null;
+            abhaNumber: string | null;
+        };
+        doctor: {
+            id: string;
+            firstName: string;
+            lastName: string;
+        };
+    } & {
+        id: string;
+        status: import("@prisma/client").$Enums.AppointmentStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        createdBy: string | null;
+        updatedBy: string | null;
+        deletedAt: Date | null;
+        deletedBy: string | null;
+        deleteReason: string | null;
+        organizationId: string;
+        branchId: string;
+        notes: string | null;
+        patientId: string;
+        doctorId: string;
+        appointmentType: string | null;
+        appointmentSource: string | null;
+        scheduledStart: Date;
+        scheduledEnd: Date;
+    }>;
+    update(id: string, data: any, req: any): Promise<{
+        id: string;
+        status: import("@prisma/client").$Enums.AppointmentStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        createdBy: string | null;
+        updatedBy: string | null;
+        deletedAt: Date | null;
+        deletedBy: string | null;
+        deleteReason: string | null;
+        organizationId: string;
+        branchId: string;
+        notes: string | null;
+        patientId: string;
+        doctorId: string;
+        appointmentType: string | null;
+        appointmentSource: string | null;
+        scheduledStart: Date;
+        scheduledEnd: Date;
+    }>;
+    remove(id: string): Promise<{
+        id: string;
+        status: import("@prisma/client").$Enums.AppointmentStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        createdBy: string | null;
+        updatedBy: string | null;
+        deletedAt: Date | null;
+        deletedBy: string | null;
+        deleteReason: string | null;
+        organizationId: string;
+        branchId: string;
+        notes: string | null;
+        patientId: string;
+        doctorId: string;
+        appointmentType: string | null;
+        appointmentSource: string | null;
+        scheduledStart: Date;
+        scheduledEnd: Date;
+    }>;
+}

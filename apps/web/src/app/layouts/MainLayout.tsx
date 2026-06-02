@@ -1,11 +1,12 @@
 import React from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Calendar, Clock, 
   Stethoscope, FileText, FileBadge, Activity, 
   CreditCard, MessageSquare, Star, BarChart3, 
-  CheckSquare, Settings 
+  CheckSquare, Settings, LogOut, Palette, ShieldAlert
 } from 'lucide-react';
+import { useAuthStore } from '../store/auth.store';
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -18,14 +19,34 @@ const navItems = [
   { name: 'Follow-Ups', path: '/follow-ups', icon: Activity },
   { name: 'Billing', path: '/billing', icon: CreditCard },
   { name: 'Communication', path: '/communication', icon: MessageSquare },
+  { name: 'Feedback', path: '/reviews/feedback', icon: Star },
   { name: 'Reviews', path: '/reviews', icon: Star },
   { name: 'Analytics', path: '/analytics', icon: BarChart3 },
   { name: 'Tasks', path: '/tasks', icon: CheckSquare },
+  { name: 'Branding', path: '/settings/branding', icon: Palette },
+  { name: 'QA Dashboard', path: '/analytics/qa', icon: ShieldAlert },
   { name: 'Settings', path: '/settings', icon: Settings },
 ];
 
 export const MainLayout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/auth/login');
+  };
+
+  const getInitials = () => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`;
+    }
+    if (user?.email) {
+      return user.email[0].toUpperCase();
+    }
+    return 'U';
+  };
 
   return (
     <div className="flex h-screen bg-[#0B0F14] text-white">
@@ -65,9 +86,17 @@ export const MainLayout = () => {
         <header className="h-16 bg-white border-b flex items-center px-6 justify-between">
           <div className="font-semibold">Healthcare Operating System</div>
           <div className="flex items-center gap-4">
+            <div className="text-sm font-medium">{user?.firstName} {user?.lastName}</div>
             <div className="w-8 h-8 bg-[#2563EB] rounded-full text-white flex items-center justify-center font-bold">
-              D
+              {getInitials()}
             </div>
+            <button 
+              onClick={handleLogout}
+              className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+              title="Logout"
+            >
+              <LogOut size={18} />
+            </button>
           </div>
         </header>
         

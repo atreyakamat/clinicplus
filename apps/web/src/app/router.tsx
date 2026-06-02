@@ -18,6 +18,26 @@ import { AnalyticsPage } from '../pages/analytics';
 import { TasksPage } from '../pages/tasks';
 import { SettingsPage } from '../pages/settings';
 
+import { ProtectedRoute } from './layouts/ProtectedRoute';
+
+import { PatientFormPage } from '../pages/patients/PatientFormPage';
+import { PatientProfilePage } from '../pages/patients/PatientProfilePage';
+
+import { AppointmentFormPage } from '../pages/appointments/AppointmentFormPage';
+
+import { ConsultationWorkspace } from '../pages/consultations/ConsultationWorkspace';
+
+import { PrescriptionForm } from '../pages/prescriptions/PrescriptionForm';
+import { PrescriptionDetailPage } from '../pages/prescriptions/PrescriptionDetailPage';
+
+import { InvoiceDetailPage } from '../pages/billing/InvoiceDetailPage';
+
+import { FeedbackPage } from '../pages/reviews/FeedbackPage';
+
+import { BrandingSettings } from '../pages/settings/BrandingSettings';
+
+import { QADashboard } from '../pages/analytics/QADashboard';
+
 export const router = createBrowserRouter([
   {
     path: '/auth/login',
@@ -25,21 +45,33 @@ export const router = createBrowserRouter([
   },
   {
     path: '/',
-    element: <MainLayout />,
+    element: <ProtectedRoute />,
     children: [
       { index: true, element: <DashboardPage /> },
-      { path: 'patients/*', element: <PatientsPage /> },
-      { path: 'appointments/*', element: <AppointmentsPage /> },
-      { path: 'queue/*', element: <QueuePage /> },
-      { path: 'consultations/*', element: <ConsultationsPage /> },
-      { path: 'prescriptions/*', element: <PrescriptionsPage /> },
+      { path: 'patients', element: <PatientsPage /> },
+      { path: 'patients/new', element: <PatientFormPage /> },
+      { path: 'patients/:id', element: <PatientProfilePage /> },
+      { path: 'patients/:id/edit', element: <PatientFormPage /> },
+      { path: 'appointments', element: <AppointmentsPage /> },
+      { path: 'appointments/new', element: <AppointmentFormPage /> },
+      { path: 'appointments/:id', element: <div className="p-6">Appointment Detail placeholder</div> },
+      { path: 'queue', element: <QueuePage /> },
+      { path: 'consultations/:id', element: <ConsultationWorkspace /> },
+      { path: 'consultations', element: <ConsultationsPage /> },
+      { path: 'prescriptions/new', element: <PrescriptionForm /> },
+      { path: 'prescriptions/:id', element: <PrescriptionDetailPage /> },
+      { path: 'prescriptions', element: <PrescriptionsPage /> },
+      { path: 'billing/:id', element: <InvoiceDetailPage /> },
+      { path: 'billing', element: <BillingPage /> },
       { path: 'documents/*', element: <DocumentsPage /> },
       { path: 'follow-ups/*', element: <FollowUpsPage /> },
-      { path: 'billing/*', element: <BillingPage /> },
       { path: 'communication/*', element: <CommunicationPage /> },
+      { path: 'reviews/feedback', element: <FeedbackPage /> },
       { path: 'reviews/*', element: <ReviewsPage /> },
+      { path: 'analytics/qa', element: <QADashboard /> },
       { path: 'analytics/*', element: <AnalyticsPage /> },
       { path: 'tasks/*', element: <TasksPage /> },
+      { path: 'settings/branding', element: <BrandingSettings /> },
       { path: 'settings/*', element: <SettingsPage /> },
     ],
   },

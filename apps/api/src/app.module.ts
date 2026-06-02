@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { BranchesModule } from './branches/branches.module';
 import { DepartmentsModule } from './departments/departments.module';
@@ -21,9 +22,10 @@ import { PaymentsModule } from './payments/payments.module';
 import { MessagesModule } from './messages/messages.module';
 import { TasksModule } from './tasks/tasks.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { FeedbackModule } from './feedback/feedback.module';
 
 @Module({
-  imports: [OrganizationsModule, BranchesModule, DepartmentsModule, UsersModule, RolesModule, PermissionsModule, PatientsModule, AppointmentsModule, QueuesModule, ConsultationsModule, DiagnosesModule, VitalsModule, PrescriptionsModule, DocumentsModule, FollowUpsModule, InvoicesModule, PaymentsModule, MessagesModule, TasksModule, AnalyticsModule],
+  imports: [AuthModule, OrganizationsModule, BranchesModule, DepartmentsModule, UsersModule, RolesModule, PermissionsModule, PatientsModule, AppointmentsModule, QueuesModule, ConsultationsModule, DiagnosesModule, VitalsModule, PrescriptionsModule, DocumentsModule, FollowUpsModule, InvoicesModule, PaymentsModule, MessagesModule, TasksModule, AnalyticsModule, FeedbackModule],
   controllers: [AppController],
   providers: [AppService],
 })

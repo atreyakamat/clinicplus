@@ -99,14 +99,21 @@ enum TemplateChannel {
 }
 
 model Organization {
-  id                 String              @id @default(uuid()) @db.Uuid
-  name               String
-  legalName          String?             @map("legal_name")
-  slug               String              @unique
-  logoUrl            String?             @map("logo_url")
-  website            String?
-  email              String?
-  phone              String?
+  id             String  @id @default(uuid()) @db.Uuid
+  name           String
+  legalName      String? @map("legal_name")
+  slug           String  @unique
+  logoUrl        String? @map("logo_url")
+  website        String?
+  email          String?
+  phone          String?
+  // Branding Fields
+  primaryColor   String? @default("#1FA971") @map("primary_color")
+  secondaryColor String? @default("#2563EB") @map("secondary_color")
+  letterheadUrl  String? @map("letterhead_url")
+  footerText     String? @map("footer_text")
+  watermarkUrl   String? @map("watermark_url")
+
   subscriptionPlan   SubscriptionPlan?   @map("subscription_plan")
   subscriptionStatus SubscriptionStatus  @default(TRIAL) @map("subscription_status")
   status             RecordStatus        @default(ACTIVE)
@@ -139,6 +146,7 @@ model Organization {
   messages           Message[]
   reviews            Review[]
   referrals          Referral[]
+  feedbacks          Feedback[]
 
   @@map("organizations")
 }
@@ -233,6 +241,7 @@ model User {
   medicalDocuments    MedicalDocument[]    @relation("DocumentUploader")
   tasksAssigned       Task[]               @relation("TaskAssignee")
   taskComments        TaskComment[]
+  feedbacks           Feedback[]
 
   @@unique([organizationId, email])
   @@index([organizationId, branchId])
@@ -1119,4 +1128,22 @@ model AuditLog {
 
   @@index([organizationId])
   @@map("audit_logs")
+}
+
+model Feedback {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  category       String
+  subject        String
+  content        String       @db.Text
+  priority       String       @default("MEDIUM")
+  status         String       @default("OPEN")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@map("feedbacks")
 }
