@@ -1,0 +1,32 @@
+{
+  "name": "clinicplus",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "npm run test -w apps/api",
+    "dev": "npm run dev -w apps/web",
+    "dev:api": "npm run start:dev -w apps/api",
+    "build": "npm run build -w apps/web && npm run build -w apps/api",
+    "lint": "npm run lint -w apps/web && npm run lint -w apps/api"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/atreyakamat/clinicplus.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/atreyakamat/clinicplus/issues"
+  },
+  "homepage": "https://github.com/atreyakamat/clinicplus#readme",
+  "private": "true",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

@@ -1,0 +1,1122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum SubscriptionPlan {
+  STARTER
+  GROWTH
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  CHECKED_IN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum QueueEntryStatus {
+  WAITING
+  CALLED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ConsultationStatus {
+  DRAFT
+  COMPLETED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  VOID
+  OVERDUE
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MessageChannel {
+  WHATSAPP
+  SMS
+  EMAIL
+  PUSH
+  IN_APP
+}
+
+enum MessageDirection {
+  OUTBOUND
+  INBOUND
+}
+
+enum TemplateChannel {
+  WHATSAPP
+  SMS
+  EMAIL
+}
+
+model Organization {
+  id                 String              @id @default(uuid()) @db.Uuid
+  name               String
+  legalName          String?             @map("legal_name")
+  slug               String              @unique
+  logoUrl            String?             @map("logo_url")
+  website            String?
+  email              String?
+  phone              String?
+  subscriptionPlan   SubscriptionPlan?   @map("subscription_plan")
+  subscriptionStatus SubscriptionStatus  @default(TRIAL) @map("subscription_status")
+  status             RecordStatus        @default(ACTIVE)
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  createdBy          String?             @map("created_by") @db.Uuid
+  updatedBy          String?             @map("updated_by") @db.Uuid
+  deletedAt          DateTime?           @map("deleted_at")
+  deletedBy          String?             @map("deleted_by") @db.Uuid
+  deleteReason       String?             @map("delete_reason")
+  branches           Branch[]
+  departments        Department[]
+  users              User[]
+  roles              Role[]
+  permissions        Permission[]
+  templates          Template[]
+  campaigns          Campaign[]
+  workflowTemplates  WorkflowTemplate[]
+  auditLogs          AuditLog[]
+  analyticsEvents    AnalyticsEvent[]
+  dashboardSnapshots DashboardSnapshot[]
+  doctorMetrics      DoctorMetric[]
+  tasks              Task[]
+  invoices           Invoice[]
+  patients           Patient[]
+  appointments       Appointment[]
+  consultations      Consultation[]
+  prescriptions      Prescription[]
+  medicalDocuments   MedicalDocument[]
+  messages           Message[]
+  reviews            Review[]
+  referrals          Referral[]
+
+  @@map("organizations")
+}
+
+model Branch {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  name           String
+  code           String?
+  address        String?
+  city           String?
+  state          String?
+  country        String?
+  postalCode     String?       @map("postal_code")
+  phone          String?
+  email          String?
+  timezone       String?
+  status         RecordStatus  @default(ACTIVE)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  createdBy      String?       @map("created_by") @db.Uuid
+  updatedBy      String?       @map("updated_by") @db.Uuid
+  deletedAt      DateTime?     @map("deleted_at")
+  deletedBy      String?       @map("deleted_by") @db.Uuid
+  deleteReason   String?       @map("delete_reason")
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  departments    Department[]
+  users          User[]
+  patients       Patient[]
+  appointments   Appointment[]
+  queues         Queue[]
+  tasks          Task[]
+  invoices       Invoice[]
+
+  @@index([organizationId])
+  @@map("branches")
+}
+
+model Department {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  branchId       String       @map("branch_id") @db.Uuid
+  name           String
+  description    String?
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  createdBy      String?      @map("created_by") @db.Uuid
+  updatedBy      String?      @map("updated_by") @db.Uuid
+  deletedAt      DateTime?    @map("deleted_at")
+  deletedBy      String?      @map("deleted_by") @db.Uuid
+  deleteReason   String?      @map("delete_reason")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  branch         Branch       @relation(fields: [branchId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("departments")
+}
+
+model User {
+  id                  String               @id @default(uuid()) @db.Uuid
+  organizationId      String               @map("organization_id") @db.Uuid
+  branchId            String               @map("branch_id") @db.Uuid
+  firstName           String               @map("first_name")
+  lastName            String               @map("last_name")
+  email               String
+  phone               String?
+  avatarUrl           String?              @map("avatar_url")
+  passwordHash        String?              @map("password_hash")
+  lastLoginAt         DateTime?            @map("last_login_at")
+  status              RecordStatus         @default(ACTIVE)
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  createdBy           String?              @map("created_by") @db.Uuid
+  updatedBy           String?              @map("updated_by") @db.Uuid
+  deletedAt           DateTime?            @map("deleted_at")
+  deletedBy           String?              @map("deleted_by") @db.Uuid
+  deleteReason        String?              @map("delete_reason")
+  organization        Organization         @relation(fields: [organizationId], references: [id])
+  branch              Branch               @relation(fields: [branchId], references: [id])
+  roles               UserRole[]
+  sessions            UserSession[]
+  doctorAppointments  Appointment[]        @relation("AppointmentDoctor")
+  doctorConsultations Consultation[]       @relation("ConsultationDoctor")
+  doctorPrescriptions Prescription[]       @relation("PrescriptionDoctor")
+  doctorAvailability  DoctorAvailability[] @relation("DoctorAvailabilityDoctor")
+  appointmentSlots    AppointmentSlot[]    @relation("AppointmentSlotDoctor")
+  waitingListEntries  WaitingList[]        @relation("WaitingListDoctor")
+  followUps           FollowUp[]           @relation("FollowUpDoctor")
+  reviews             Review[]             @relation("ReviewDoctor")
+  doctorMetrics       DoctorMetric[]       @relation("MetricDoctor")
+  medicalDocuments    MedicalDocument[]    @relation("DocumentUploader")
+  tasksAssigned       Task[]               @relation("TaskAssignee")
+  taskComments        TaskComment[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId, branchId])
+  @@map("users")
+}
+
+model Role {
+  id              String           @id @default(uuid()) @db.Uuid
+  organizationId  String           @map("organization_id") @db.Uuid
+  branchId        String?          @map("branch_id") @db.Uuid
+  name            String
+  description     String?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  createdBy       String?          @map("created_by") @db.Uuid
+  updatedBy       String?          @map("updated_by") @db.Uuid
+  deletedAt       DateTime?        @map("deleted_at")
+  deletedBy       String?          @map("deleted_by") @db.Uuid
+  deleteReason    String?          @map("delete_reason")
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@unique([organizationId, name, branchId])
+  @@index([organizationId])
+  @@map("roles")
+}
+
+model Permission {
+  id              String           @id @default(uuid()) @db.Uuid
+  organizationId  String?          @map("organization_id") @db.Uuid
+  branchId        String?          @map("branch_id") @db.Uuid
+  module          String
+  action          String
+  description     String?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  rolePermissions RolePermission[]
+  organization    Organization?    @relation(fields: [organizationId], references: [id])
+
+  @@unique([module, action, organizationId])
+  @@index([organizationId])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id             String     @id @default(uuid()) @db.Uuid
+  organizationId String     @map("organization_id") @db.Uuid
+  branchId       String?    @map("branch_id") @db.Uuid
+  roleId         String     @map("role_id") @db.Uuid
+  permissionId   String     @map("permission_id") @db.Uuid
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  role           Role       @relation(fields: [roleId], references: [id])
+  permission     Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@index([organizationId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  roleId         String   @map("role_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  user           User     @relation(fields: [userId], references: [id])
+  role           Role     @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId])
+  @@index([organizationId, branchId])
+  @@map("user_roles")
+}
+
+model UserSession {
+  id               String       @id @default(uuid()) @db.Uuid
+  organizationId   String       @map("organization_id") @db.Uuid
+  branchId         String       @map("branch_id") @db.Uuid
+  userId           String       @map("user_id") @db.Uuid
+  deviceName       String?      @map("device_name")
+  ipAddress        String?      @map("ip_address")
+  loginAt          DateTime     @default(now()) @map("login_at")
+  logoutAt         DateTime?    @map("logout_at")
+  status           RecordStatus @default(ACTIVE)
+  refreshTokenHash String?      @map("refresh_token_hash")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+  user             User         @relation(fields: [userId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("user_sessions")
+}
+
+model Patient {
+  id                   String                    @id @default(uuid()) @db.Uuid
+  organizationId       String                    @map("organization_id") @db.Uuid
+  branchId             String                    @map("branch_id") @db.Uuid
+  patientCode          String?                   @map("patient_code")
+  firstName            String                    @map("first_name")
+  middleName           String?                   @map("middle_name")
+  lastName             String                    @map("last_name")
+  gender               String?
+  dateOfBirth          DateTime?                 @map("date_of_birth")
+  phone                String?
+  email                String?
+  bloodGroup           String?                   @map("blood_group")
+  maritalStatus        String?                   @map("marital_status")
+  occupation           String?
+  abhaNumber           String?                   @map("abha_number")
+  status               RecordStatus              @default(ACTIVE)
+  createdAt            DateTime                  @default(now()) @map("created_at")
+  updatedAt            DateTime                  @updatedAt @map("updated_at")
+  createdBy            String?                   @map("created_by") @db.Uuid
+  updatedBy            String?                   @map("updated_by") @db.Uuid
+  deletedAt            DateTime?                 @map("deleted_at")
+  deletedBy            String?                   @map("deleted_by") @db.Uuid
+  deleteReason         String?                   @map("delete_reason")
+  organization         Organization              @relation(fields: [organizationId], references: [id])
+  branch               Branch                    @relation(fields: [branchId], references: [id])
+  addresses            PatientAddress[]
+  emergencyContacts    PatientEmergencyContact[]
+  familyMembers        PatientFamilyMember[]
+  relatedFamilyMembers PatientFamilyMember[]     @relation("RelatedPatient")
+  tags                 PatientTag[]
+  notes                PatientNote[]
+  appointments         Appointment[]
+  consultations        Consultation[]
+  prescriptions        Prescription[]
+  documents            MedicalDocument[]
+  followUps            FollowUp[]
+  invoices             Invoice[]
+  messages             Message[]
+  reviews              Review[]
+  referrals            Referral[]
+  allergies            Allergy[]
+  medicalConditions    MedicalCondition[]
+  waitingLists         WaitingList[]
+  labReports           LabReport[]
+  imagingReports       ImagingReport[]
+  tasks                Task[]
+
+  @@index([organizationId, branchId])
+  @@map("patients")
+}
+
+model PatientAddress {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  patientId      String   @map("patient_id") @db.Uuid
+  addressType    String?  @map("address_type")
+  addressLine1   String?  @map("address_line_1")
+  addressLine2   String?  @map("address_line_2")
+  city           String?
+  state          String?
+  country        String?
+  postalCode     String?  @map("postal_code")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  patient        Patient  @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("patient_addresses")
+}
+
+model PatientEmergencyContact {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  patientId      String   @map("patient_id") @db.Uuid
+  name           String
+  relationship   String?
+  phone          String?
+  email          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  patient        Patient  @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("patient_emergency_contacts")
+}
+
+model PatientFamilyMember {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  branchId         String   @map("branch_id") @db.Uuid
+  patientId        String   @map("patient_id") @db.Uuid
+  relatedPatientId String   @map("related_patient_id") @db.Uuid
+  relationship     String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  patient          Patient  @relation(fields: [patientId], references: [id])
+  relatedPatient   Patient  @relation("RelatedPatient", fields: [relatedPatientId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("patient_family_members")
+}
+
+model PatientTag {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  patientId      String   @map("patient_id") @db.Uuid
+  tagName        String   @map("tag_name")
+  tagColor       String?  @map("tag_color")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  patient        Patient  @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("patient_tags")
+}
+
+model PatientNote {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  branchId       String    @map("branch_id") @db.Uuid
+  patientId      String    @map("patient_id") @db.Uuid
+  createdBy      String?   @map("created_by") @db.Uuid
+  note           String
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+  patient        Patient   @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("patient_notes")
+}
+
+model Appointment {
+  id                String            @id @default(uuid()) @db.Uuid
+  organizationId    String            @map("organization_id") @db.Uuid
+  branchId          String            @map("branch_id") @db.Uuid
+  patientId         String            @map("patient_id") @db.Uuid
+  doctorId          String            @map("doctor_id") @db.Uuid
+  appointmentType   String?           @map("appointment_type")
+  appointmentSource String?           @map("appointment_source")
+  scheduledStart    DateTime          @map("scheduled_start")
+  scheduledEnd      DateTime          @map("scheduled_end")
+  status            AppointmentStatus @default(SCHEDULED)
+  notes             String?
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  createdBy         String?           @map("created_by") @db.Uuid
+  updatedBy         String?           @map("updated_by") @db.Uuid
+  deletedAt         DateTime?         @map("deleted_at")
+  deletedBy         String?           @map("deleted_by") @db.Uuid
+  deleteReason      String?           @map("delete_reason")
+  organization      Organization      @relation(fields: [organizationId], references: [id])
+  branch            Branch            @relation(fields: [branchId], references: [id])
+  patient           Patient           @relation(fields: [patientId], references: [id])
+  doctor            User              @relation("AppointmentDoctor", fields: [doctorId], references: [id])
+  queueEntries      QueueEntry[]
+  consultations     Consultation[]
+
+  @@index([organizationId, branchId])
+  @@index([patientId])
+  @@map("appointments")
+}
+
+model DoctorAvailability {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  doctorId       String   @map("doctor_id") @db.Uuid
+  dayOfWeek      Int      @map("day_of_week")
+  startTime      String   @map("start_time")
+  endTime        String   @map("end_time")
+  slotDuration   Int      @map("slot_duration")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  doctor         User     @relation("DoctorAvailabilityDoctor", fields: [doctorId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("doctor_availability")
+}
+
+model AppointmentSlot {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  doctorId       String   @map("doctor_id") @db.Uuid
+  slotStart      DateTime @map("slot_start")
+  slotEnd        DateTime @map("slot_end")
+  slotStatus     String   @map("slot_status")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  doctor         User     @relation("AppointmentSlotDoctor", fields: [doctorId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("appointment_slots")
+}
+
+model WaitingList {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  branchId       String    @map("branch_id") @db.Uuid
+  patientId      String    @map("patient_id") @db.Uuid
+  doctorId       String    @map("doctor_id") @db.Uuid
+  preferredDate  DateTime? @map("preferred_date")
+  status         String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  patient        Patient   @relation(fields: [patientId], references: [id])
+  doctor         User      @relation("WaitingListDoctor", fields: [doctorId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("waiting_lists")
+}
+
+model Queue {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  branchId       String       @map("branch_id") @db.Uuid
+  name           String
+  description    String?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  branch         Branch       @relation(fields: [branchId], references: [id])
+  entries        QueueEntry[]
+
+  @@index([organizationId, branchId])
+  @@map("queues")
+}
+
+model QueueEntry {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  branchId       String           @map("branch_id") @db.Uuid
+  queueId        String           @map("queue_id") @db.Uuid
+  appointmentId  String           @map("appointment_id") @db.Uuid
+  tokenNumber    Int              @map("token_number")
+  checkInTime    DateTime?        @map("check_in_time")
+  calledTime     DateTime?        @map("called_time")
+  completedTime  DateTime?        @map("completed_time")
+  status         QueueEntryStatus @default(WAITING)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  queue          Queue            @relation(fields: [queueId], references: [id])
+  appointment    Appointment      @relation(fields: [appointmentId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("queue_entries")
+}
+
+model Consultation {
+  id                      String             @id @default(uuid()) @db.Uuid
+  organizationId          String             @map("organization_id") @db.Uuid
+  branchId                String             @map("branch_id") @db.Uuid
+  patientId               String             @map("patient_id") @db.Uuid
+  doctorId                String             @map("doctor_id") @db.Uuid
+  appointmentId           String?            @map("appointment_id") @db.Uuid
+  chiefComplaint          String?            @map("chief_complaint")
+  historyOfPresentIllness String?            @map("history_of_present_illness")
+  clinicalAssessment      String?            @map("clinical_assessment")
+  treatmentPlan           String?            @map("treatment_plan")
+  consultationDate        DateTime           @default(now()) @map("consultation_date")
+  status                  ConsultationStatus @default(DRAFT)
+  createdAt               DateTime           @default(now()) @map("created_at")
+  updatedAt               DateTime           @updatedAt @map("updated_at")
+  createdBy               String?            @map("created_by") @db.Uuid
+  updatedBy               String?            @map("updated_by") @db.Uuid
+  deletedAt               DateTime?          @map("deleted_at")
+  deletedBy               String?            @map("deleted_by") @db.Uuid
+  deleteReason            String?            @map("delete_reason")
+  patient                 Patient            @relation(fields: [patientId], references: [id])
+  doctor                  User               @relation("ConsultationDoctor", fields: [doctorId], references: [id])
+  appointment             Appointment?       @relation(fields: [appointmentId], references: [id])
+  diagnoses               Diagnosis[]
+  vitals                  Vital[]
+  prescriptions           Prescription[]
+  labReports              LabReport[]
+  imagingReports          ImagingReport[]
+  followUps               FollowUp[]
+  organization            Organization       @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@index([patientId])
+  @@map("consultations")
+}
+
+model Diagnosis {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  branchId       String       @map("branch_id") @db.Uuid
+  consultationId String       @map("consultation_id") @db.Uuid
+  icdCode        String?      @map("icd_code")
+  diagnosisName  String       @map("diagnosis_name")
+  severity       String?
+  notes          String?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  consultation   Consultation @relation(fields: [consultationId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("diagnoses")
+}
+
+model Vital {
+  id                     String       @id @default(uuid()) @db.Uuid
+  organizationId         String       @map("organization_id") @db.Uuid
+  branchId               String       @map("branch_id") @db.Uuid
+  consultationId         String       @map("consultation_id") @db.Uuid
+  height                 Float?
+  weight                 Float?
+  temperature            Float?
+  pulse                  Int?
+  respiratoryRate        Int?         @map("respiratory_rate")
+  bloodPressureSystolic  Int?         @map("blood_pressure_systolic")
+  bloodPressureDiastolic Int?         @map("blood_pressure_diastolic")
+  spo2                   Int?
+  createdAt              DateTime     @default(now()) @map("created_at")
+  updatedAt              DateTime     @updatedAt @map("updated_at")
+  consultation           Consultation @relation(fields: [consultationId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("vitals")
+}
+
+model Allergy {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  patientId      String   @map("patient_id") @db.Uuid
+  allergyName    String   @map("allergy_name")
+  severity       String?
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  patient        Patient  @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("allergies")
+}
+
+model MedicalCondition {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  branchId       String    @map("branch_id") @db.Uuid
+  patientId      String    @map("patient_id") @db.Uuid
+  conditionName  String    @map("condition_name")
+  diagnosedDate  DateTime? @map("diagnosed_date")
+  status         String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  patient        Patient   @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("medical_conditions")
+}
+
+model Prescription {
+  id             String             @id @default(uuid()) @db.Uuid
+  organizationId String             @map("organization_id") @db.Uuid
+  branchId       String             @map("branch_id") @db.Uuid
+  patientId      String             @map("patient_id") @db.Uuid
+  doctorId       String             @map("doctor_id") @db.Uuid
+  consultationId String?            @map("consultation_id") @db.Uuid
+  issuedAt       DateTime           @default(now()) @map("issued_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+  patient        Patient            @relation(fields: [patientId], references: [id])
+  doctor         User               @relation("PrescriptionDoctor", fields: [doctorId], references: [id])
+  consultation   Consultation?      @relation(fields: [consultationId], references: [id])
+  items          PrescriptionItem[]
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@index([patientId])
+  @@map("prescriptions")
+}
+
+model PrescriptionItem {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  branchId       String       @map("branch_id") @db.Uuid
+  prescriptionId String       @map("prescription_id") @db.Uuid
+  medicineName   String       @map("medicine_name")
+  dosage         String?
+  frequency      String?
+  duration       String?
+  instructions   String?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("prescription_items")
+}
+
+model MedicalDocument {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  branchId       String          @map("branch_id") @db.Uuid
+  patientId      String          @map("patient_id") @db.Uuid
+  uploadedBy     String          @map("uploaded_by") @db.Uuid
+  documentType   String          @map("document_type")
+  title          String
+  fileUrl        String          @map("file_url")
+  mimeType       String?         @map("mime_type")
+  fileSize       Int?            @map("file_size")
+  uploadedAt     DateTime        @default(now()) @map("uploaded_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  patient        Patient         @relation(fields: [patientId], references: [id])
+  uploader       User            @relation("DocumentUploader", fields: [uploadedBy], references: [id])
+  labReports     LabReport[]
+  imagingReports ImagingReport[]
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("medical_documents")
+}
+
+model LabReport {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  branchId       String          @map("branch_id") @db.Uuid
+  patientId      String          @map("patient_id") @db.Uuid
+  consultationId String?         @map("consultation_id") @db.Uuid
+  documentId     String          @map("document_id") @db.Uuid
+  reportDate     DateTime        @default(now()) @map("report_date")
+  status         String?
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  patient        Patient         @relation(fields: [patientId], references: [id])
+  consultation   Consultation?   @relation(fields: [consultationId], references: [id])
+  document       MedicalDocument @relation(fields: [documentId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("lab_reports")
+}
+
+model ImagingReport {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  branchId       String          @map("branch_id") @db.Uuid
+  patientId      String          @map("patient_id") @db.Uuid
+  consultationId String?         @map("consultation_id") @db.Uuid
+  documentId     String          @map("document_id") @db.Uuid
+  reportDate     DateTime        @default(now()) @map("report_date")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  patient        Patient         @relation(fields: [patientId], references: [id])
+  consultation   Consultation?   @relation(fields: [consultationId], references: [id])
+  document       MedicalDocument @relation(fields: [documentId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("imaging_reports")
+}
+
+model FollowUp {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  branchId       String            @map("branch_id") @db.Uuid
+  patientId      String            @map("patient_id") @db.Uuid
+  doctorId       String            @map("doctor_id") @db.Uuid
+  consultationId String?           @map("consultation_id") @db.Uuid
+  scheduledDate  DateTime          @map("scheduled_date")
+  status         String?
+  notes          String?
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  patient        Patient           @relation(fields: [patientId], references: [id])
+  doctor         User              @relation("FollowUpDoctor", fields: [doctorId], references: [id])
+  consultation   Consultation?     @relation(fields: [consultationId], references: [id])
+  outcomes       FollowUpOutcome[]
+
+  @@index([organizationId, branchId])
+  @@map("follow_ups")
+}
+
+model FollowUpOutcome {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  followUpId     String   @map("follow_up_id") @db.Uuid
+  outcomeType    String   @map("outcome_type")
+  remarks        String?
+  recordedAt     DateTime @default(now()) @map("recorded_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  followUp       FollowUp @relation(fields: [followUpId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("follow_up_outcomes")
+}
+
+model Invoice {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  branchId       String        @map("branch_id") @db.Uuid
+  patientId      String        @map("patient_id") @db.Uuid
+  invoiceNumber  String        @map("invoice_number")
+  subtotal       Decimal       @default(0) @db.Decimal(12, 2)
+  discount       Decimal       @default(0) @db.Decimal(12, 2)
+  tax            Decimal       @default(0) @db.Decimal(12, 2)
+  total          Decimal       @default(0) @db.Decimal(12, 2)
+  status         InvoiceStatus @default(DRAFT)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  createdBy      String?       @map("created_by") @db.Uuid
+  updatedBy      String?       @map("updated_by") @db.Uuid
+  deletedAt      DateTime?     @map("deleted_at")
+  deletedBy      String?       @map("deleted_by") @db.Uuid
+  deleteReason   String?       @map("delete_reason")
+  patient        Patient       @relation(fields: [patientId], references: [id])
+  items          InvoiceItem[]
+  payments       Payment[]
+  refunds        Refund[]
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  branch         Branch        @relation(fields: [branchId], references: [id])
+
+  @@unique([organizationId, invoiceNumber])
+  @@index([organizationId, branchId])
+  @@index([patientId])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  invoiceId      String   @map("invoice_id") @db.Uuid
+  itemName       String   @map("item_name")
+  quantity       Int      @default(1)
+  unitPrice      Decimal  @default(0) @map("unit_price") @db.Decimal(12, 2)
+  amount         Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("invoice_items")
+}
+
+model Payment {
+  id                   String        @id @default(uuid()) @db.Uuid
+  organizationId       String        @map("organization_id") @db.Uuid
+  branchId             String        @map("branch_id") @db.Uuid
+  invoiceId            String        @map("invoice_id") @db.Uuid
+  amount               Decimal       @default(0) @db.Decimal(12, 2)
+  paymentMethod        String        @map("payment_method")
+  transactionReference String?       @map("transaction_reference")
+  paymentStatus        PaymentStatus @default(PENDING) @map("payment_status")
+  paidAt               DateTime?     @map("paid_at")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+  invoice              Invoice       @relation(fields: [invoiceId], references: [id])
+  refunds              Refund[]
+
+  @@index([organizationId, branchId])
+  @@map("payments")
+}
+
+model Refund {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  branchId       String    @map("branch_id") @db.Uuid
+  paymentId      String    @map("payment_id") @db.Uuid
+  amount         Decimal   @default(0) @db.Decimal(12, 2)
+  reason         String?
+  status         String?
+  processedAt    DateTime? @map("processed_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  payment        Payment   @relation(fields: [paymentId], references: [id])
+  invoice        Invoice?  @relation(fields: [invoiceId], references: [id])
+  invoiceId      String?   @db.Uuid
+
+  @@index([organizationId, branchId])
+  @@map("refunds")
+}
+
+model Message {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  branchId       String           @map("branch_id") @db.Uuid
+  patientId      String           @map("patient_id") @db.Uuid
+  channel        MessageChannel
+  direction      MessageDirection
+  messageBody    String           @map("message_body")
+  deliveryStatus String?          @map("delivery_status")
+  sentAt         DateTime         @default(now()) @map("sent_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  patient        Patient          @relation(fields: [patientId], references: [id])
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("messages")
+}
+
+model Template {
+  id              String          @id @default(uuid()) @db.Uuid
+  organizationId  String          @map("organization_id") @db.Uuid
+  branchId        String?         @map("branch_id") @db.Uuid
+  name            String
+  channel         TemplateChannel
+  templateContent String          @map("template_content")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  organization    Organization    @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("templates")
+}
+
+model Campaign {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  branchId       String?         @map("branch_id") @db.Uuid
+  name           String
+  channel        TemplateChannel
+  status         String?
+  startedAt      DateTime?       @map("started_at")
+  endedAt        DateTime?       @map("ended_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("campaigns")
+}
+
+model Review {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  branchId       String       @map("branch_id") @db.Uuid
+  patientId      String       @map("patient_id") @db.Uuid
+  doctorId       String       @map("doctor_id") @db.Uuid
+  rating         Int
+  reviewText     String?      @map("review_text")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  patient        Patient      @relation(fields: [patientId], references: [id])
+  doctor         User         @relation("ReviewDoctor", fields: [doctorId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("reviews")
+}
+
+model Referral {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  branchId       String       @map("branch_id") @db.Uuid
+  patientId      String       @map("patient_id") @db.Uuid
+  source         String?
+  campaignName   String?      @map("campaign_name")
+  status         String?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  patient        Patient      @relation(fields: [patientId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("referrals")
+}
+
+model AnalyticsEvent {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  branchId       String       @map("branch_id") @db.Uuid
+  eventName      String       @map("event_name")
+  entityType     String?      @map("entity_type")
+  entityId       String?      @map("entity_id")
+  payload        Json?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("analytics_events")
+}
+
+model DoctorMetric {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  branchId       String       @map("branch_id") @db.Uuid
+  doctorId       String       @map("doctor_id") @db.Uuid
+  metricName     String       @map("metric_name")
+  metricValue    Decimal      @default(0) @map("metric_value") @db.Decimal(12, 2)
+  recordedAt     DateTime     @default(now()) @map("recorded_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  doctor         User         @relation("MetricDoctor", fields: [doctorId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("doctor_metrics")
+}
+
+model DashboardSnapshot {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  branchId       String       @map("branch_id") @db.Uuid
+  dashboardType  String       @map("dashboard_type")
+  snapshotJson   Json         @map("snapshot_json")
+  generatedAt    DateTime     @default(now()) @map("generated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("dashboard_snapshots")
+}
+
+model Task {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  branchId       String        @map("branch_id") @db.Uuid
+  title          String
+  description    String?
+  assignedTo     String?       @map("assigned_to") @db.Uuid
+  patientId      String?       @map("patient_id") @db.Uuid
+  priority       TaskPriority  @default(MEDIUM)
+  status         TaskStatus    @default(OPEN)
+  dueDate        DateTime?     @map("due_date")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  createdBy      String?       @map("created_by") @db.Uuid
+  updatedBy      String?       @map("updated_by") @db.Uuid
+  deletedAt      DateTime?     @map("deleted_at")
+  deletedBy      String?       @map("deleted_by") @db.Uuid
+  deleteReason   String?       @map("delete_reason")
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  branch         Branch        @relation(fields: [branchId], references: [id])
+  assignee       User?         @relation("TaskAssignee", fields: [assignedTo], references: [id])
+  patient        Patient?      @relation(fields: [patientId], references: [id])
+  comments       TaskComment[]
+
+  @@index([organizationId, branchId])
+  @@map("tasks")
+}
+
+model TaskComment {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  taskId         String   @map("task_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  comment        String
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  task           Task     @relation(fields: [taskId], references: [id])
+  user           User     @relation(fields: [userId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@map("task_comments")
+}
+
+model WorkflowTemplate {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  branchId       String?      @map("branch_id") @db.Uuid
+  name           String
+  description    String?
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  createdBy      String?      @map("created_by") @db.Uuid
+  updatedBy      String?      @map("updated_by") @db.Uuid
+  deletedAt      DateTime?    @map("deleted_at")
+  deletedBy      String?      @map("deleted_by") @db.Uuid
+  deleteReason   String?      @map("delete_reason")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("workflow_templates")
+}
+
+model AuditLog {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  branchId       String?      @map("branch_id") @db.Uuid
+  actorId        String?      @map("actor_id") @db.Uuid
+  action         String
+  entityType     String?      @map("entity_type")
+  entityId       String?      @map("entity_id")
+  beforeData     Json?        @map("before_data")
+  afterData      Json?        @map("after_data")
+  ipAddress      String?      @map("ip_address")
+  userAgent      String?      @map("user_agent")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("audit_logs")
+}

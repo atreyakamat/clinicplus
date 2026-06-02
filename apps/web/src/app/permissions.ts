@@ -1,0 +1,17 @@
+export const Permissions = {
+  dashboardView: 'analytics:view',
+  patientsView: 'patients:view',
+  appointmentsView: 'appointments:view',
+  queueView: 'queue:view',
+  consultationsView: 'consultations:view',
+  prescriptionsView: 'prescriptions:view',
+  documentsView: 'documents:view',
+  followUpsView: 'followups:view',
+  billingView: 'billing:view',
+  communicationsView: 'communications:view',
+  reviewsView: 'reviews:view',
+  analyticsView: 'analytics:view',
+  tasksView: 'tasks:view',
+  settingsManage: 'settings:manage',
+  auditView: 'audit:view',
+} as const
