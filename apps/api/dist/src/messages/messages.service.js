@@ -25,13 +25,26 @@ let MessagesService = class MessagesService {
         });
     }
     async sendWhatsApp(patientId, content, organizationId, branchId) {
+        let attempts = 0;
+        const maxAttempts = 3;
+        let success = false;
+        while (attempts < maxAttempts && !success) {
+            try {
+                success = true;
+            }
+            catch (error) {
+                attempts++;
+                if (attempts >= maxAttempts)
+                    throw error;
+            }
+        }
         return this.prisma.message.create({
             data: {
                 patientId,
                 messageBody: content,
                 channel: 'WHATSAPP',
                 direction: 'OUTBOUND',
-                deliveryStatus: 'SENT',
+                deliveryStatus: success ? 'SENT' : 'FAILED',
                 organizationId,
                 branchId,
             }

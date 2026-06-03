@@ -14,15 +14,27 @@ export class MessagesService {
   }
 
   async sendWhatsApp(patientId: string, content: string, organizationId: string, branchId: string) {
-    // In a real app, integrate with WhatsApp Business API (Twilio/Gupshup)
-    // For now, record the message in DB
+    let attempts = 0;
+    const maxAttempts = 3;
+    let success = false;
+
+    while (attempts < maxAttempts && !success) {
+      try {
+        // In a real app: await this.whatsappProvider.send(...)
+        success = true;
+      } catch (error) {
+        attempts++;
+        if (attempts >= maxAttempts) throw error;
+      }
+    }
+
     return this.prisma.message.create({
       data: {
         patientId,
         messageBody: content,
         channel: 'WHATSAPP',
         direction: 'OUTBOUND',
-        deliveryStatus: 'SENT',
+        deliveryStatus: success ? 'SENT' : 'FAILED',
         organizationId,
         branchId,
       }

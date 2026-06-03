@@ -22,6 +22,7 @@ export declare class AppointmentsController {
         scheduledStart: Date;
         scheduledEnd: Date;
     }>;
+    exportCsv(req: any, res: any): Promise<any>;
     findAll(req: any, date?: string): Promise<({
         patient: {
             id: string;

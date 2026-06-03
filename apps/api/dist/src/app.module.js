@@ -8,6 +8,8 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
+const config_1 = require("@nestjs/config");
+const core_1 = require("@nestjs/core");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
 const auth_module_1 = require("./auth/auth.module");
@@ -32,14 +34,49 @@ const messages_module_1 = require("./messages/messages.module");
 const tasks_module_1 = require("./tasks/tasks.module");
 const analytics_module_1 = require("./analytics/analytics.module");
 const feedback_module_1 = require("./feedback/feedback.module");
+const prisma_module_1 = require("./prisma/prisma.module");
+const audit_service_1 = require("./common/services/audit.service");
+const audit_interceptor_1 = require("./common/interceptors/audit.interceptor");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
-        imports: [auth_module_1.AuthModule, organizations_module_1.OrganizationsModule, branches_module_1.BranchesModule, departments_module_1.DepartmentsModule, users_module_1.UsersModule, roles_module_1.RolesModule, permissions_module_1.PermissionsModule, patients_module_1.PatientsModule, appointments_module_1.AppointmentsModule, queues_module_1.QueuesModule, consultations_module_1.ConsultationsModule, diagnoses_module_1.DiagnosesModule, vitals_module_1.VitalsModule, prescriptions_module_1.PrescriptionsModule, documents_module_1.DocumentsModule, follow_ups_module_1.FollowUpsModule, invoices_module_1.InvoicesModule, payments_module_1.PaymentsModule, messages_module_1.MessagesModule, tasks_module_1.TasksModule, analytics_module_1.AnalyticsModule, feedback_module_1.FeedbackModule],
+        imports: [
+            config_1.ConfigModule.forRoot({ isGlobal: true }),
+            prisma_module_1.PrismaModule,
+            auth_module_1.AuthModule,
+            organizations_module_1.OrganizationsModule,
+            branches_module_1.BranchesModule,
+            departments_module_1.DepartmentsModule,
+            users_module_1.UsersModule,
+            roles_module_1.RolesModule,
+            permissions_module_1.PermissionsModule,
+            patients_module_1.PatientsModule,
+            appointments_module_1.AppointmentsModule,
+            queues_module_1.QueuesModule,
+            consultations_module_1.ConsultationsModule,
+            diagnoses_module_1.DiagnosesModule,
+            vitals_module_1.VitalsModule,
+            prescriptions_module_1.PrescriptionsModule,
+            documents_module_1.DocumentsModule,
+            follow_ups_module_1.FollowUpsModule,
+            invoices_module_1.InvoicesModule,
+            payments_module_1.PaymentsModule,
+            messages_module_1.MessagesModule,
+            tasks_module_1.TasksModule,
+            analytics_module_1.AnalyticsModule,
+            feedback_module_1.FeedbackModule
+        ],
         controllers: [app_controller_1.AppController],
-        providers: [app_service_1.AppService],
+        providers: [
+            app_service_1.AppService,
+            audit_service_1.AuditService,
+            {
+                provide: core_1.APP_INTERCEPTOR,
+                useClass: audit_interceptor_1.AuditInterceptor,
+            },
+        ],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map

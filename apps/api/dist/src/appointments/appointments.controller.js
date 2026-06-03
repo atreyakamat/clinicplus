@@ -16,6 +16,7 @@ exports.AppointmentsController = void 0;
 const common_1 = require("@nestjs/common");
 const appointments_service_1 = require("./appointments.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const sync_1 = require("csv-stringify/sync");
 let AppointmentsController = class AppointmentsController {
     appointmentsService;
     constructor(appointmentsService) {
@@ -26,6 +27,25 @@ let AppointmentsController = class AppointmentsController {
         data.branchId = req.user.branchId;
         data.createdBy = req.user.id;
         return this.appointmentsService.create(data);
+    }
+    async exportCsv(req, res) {
+        const appointments = await this.appointmentsService.findAll(req.user.organizationId, req.user.branchId);
+        const csvData = (0, sync_1.stringify)(appointments, {
+            header: true,
+            columns: [
+                { key: 'scheduledStart', header: 'Start Time' },
+                { key: 'scheduledEnd', header: 'End Time' },
+                { key: 'status', header: 'Status' },
+                { key: 'patient.firstName', header: 'Patient First Name' },
+                { key: 'patient.lastName', header: 'Patient Last Name' },
+                { key: 'doctor.lastName', header: 'Doctor' },
+            ],
+        });
+        res.set({
+            'Content-Type': 'text/csv',
+            'Content-Disposition': `attachment; filename="appointments-${new Date().toISOString().split('T')[0]}.csv"`,
+        });
+        return res.send(csvData);
     }
     findAll(req, date) {
         return this.appointmentsService.findAll(req.user.organizationId, req.user.branchId, date);
@@ -50,6 +70,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], AppointmentsController.prototype, "create", null);
+__decorate([
+    (0, common_1.Get)('export/csv'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AppointmentsController.prototype, "exportCsv", null);
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Request)()),

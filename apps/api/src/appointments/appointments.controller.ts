@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, Request, Res } from '@nestjs/common';
 import { AppointmentsService } from './appointments.service';
 import { Prisma } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { stringify } from 'csv-stringify/sync';
 
 @Controller('api/v1/appointments')
 @UseGuards(JwtAuthGuard)
@@ -14,6 +15,30 @@ export class AppointmentsController {
     data.branchId = req.user.branchId;
     data.createdBy = req.user.id;
     return this.appointmentsService.create(data);
+  }
+
+  @Get('export/csv')
+  async exportCsv(@Request() req, @Res() res) {
+    const appointments = await this.appointmentsService.findAll(req.user.organizationId, req.user.branchId);
+    
+    const csvData = stringify(appointments, {
+      header: true,
+      columns: [
+        { key: 'scheduledStart', header: 'Start Time' },
+        { key: 'scheduledEnd', header: 'End Time' },
+        { key: 'status', header: 'Status' },
+        { key: 'patient.firstName', header: 'Patient First Name' },
+        { key: 'patient.lastName', header: 'Patient Last Name' },
+        { key: 'doctor.lastName', header: 'Doctor' },
+      ],
+    });
+
+    res.set({
+      'Content-Type': 'text/csv',
+      'Content-Disposition': `attachment; filename="appointments-${new Date().toISOString().split('T')[0]}.csv"`,
+    });
+
+    return res.send(csvData);
   }
 
   @Get()

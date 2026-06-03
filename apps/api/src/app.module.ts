@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -23,10 +25,45 @@ import { MessagesModule } from './messages/messages.module';
 import { TasksModule } from './tasks/tasks.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { FeedbackModule } from './feedback/feedback.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { AuditService } from './common/services/audit.service';
+import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 
 @Module({
-  imports: [AuthModule, OrganizationsModule, BranchesModule, DepartmentsModule, UsersModule, RolesModule, PermissionsModule, PatientsModule, AppointmentsModule, QueuesModule, ConsultationsModule, DiagnosesModule, VitalsModule, PrescriptionsModule, DocumentsModule, FollowUpsModule, InvoicesModule, PaymentsModule, MessagesModule, TasksModule, AnalyticsModule, FeedbackModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    AuthModule, 
+    OrganizationsModule, 
+    BranchesModule, 
+    DepartmentsModule, 
+    UsersModule, 
+    RolesModule, 
+    PermissionsModule, 
+    PatientsModule, 
+    AppointmentsModule, 
+    QueuesModule, 
+    ConsultationsModule, 
+    DiagnosesModule, 
+    VitalsModule, 
+    PrescriptionsModule, 
+    DocumentsModule, 
+    FollowUpsModule, 
+    InvoicesModule, 
+    PaymentsModule, 
+    MessagesModule, 
+    TasksModule, 
+    AnalyticsModule, 
+    FeedbackModule
+  ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    AuditService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
+    },
+  ],
 })
 export class AppModule {}

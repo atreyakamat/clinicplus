@@ -47,7 +47,14 @@ async function main() {
     ].map(org => prisma.organization.upsert({
         where: { slug: org.slug },
         update: {},
-        create: { ...org, subscriptionPlan: 'ENTERPRISE', subscriptionStatus: 'ACTIVE' }
+        create: {
+            ...org,
+            subscriptionPlan: 'ENTERPRISE',
+            subscriptionStatus: 'ACTIVE',
+            primaryColor: '#1FA971',
+            secondaryColor: '#2563EB',
+            footerText: 'Powered by ClinicOS - Advanced Healthcare OS'
+        }
     })));
     const branches = await Promise.all(orgs.map(org => prisma.branch.create({
         data: { name: `${org.name} Main Branch`, organizationId: org.id, address: faker_1.faker.location.streetAddress() }
@@ -76,7 +83,6 @@ async function main() {
     console.log('📥 Seeding 1000 Patients...');
     const patientBatches = 10;
     const patientsPerBatch = 100;
-    let allPatients = [];
     for (let i = 0; i < patientBatches; i++) {
         const branch = faker_1.faker.helpers.arrayElement(branches);
         const doctor = doctors.find(d => d.organizationId === branch.organizationId);
@@ -220,7 +226,7 @@ async function main() {
             }
         });
     }
-    console.log('🔄 Seeding Tasks, Reviews, Referrals...');
+    console.log('🔄 Seeding Tasks, Reviews, Referrals, Follow-ups...');
     await prisma.followUp.createMany({
         data: Array.from({ length: 1000 }).map(() => {
             const p = faker_1.faker.helpers.arrayElement(dbPatients);
@@ -246,6 +252,32 @@ async function main() {
             };
         })
     });
+    for (let i = 0; i < 100; i++) {
+        const patient = faker_1.faker.helpers.arrayElement(dbPatients);
+        const doctor = doctors.find(d => d.organizationId === patient.organizationId);
+        await prisma.review.create({
+            data: {
+                organizationId: patient.organizationId,
+                branchId: patient.branchId,
+                patientId: patient.id,
+                doctorId: doctor.id,
+                rating: faker_1.faker.number.int({ min: 4, max: 5 }),
+                reviewText: faker_1.faker.lorem.sentence()
+            }
+        });
+    }
+    for (let i = 0; i < 50; i++) {
+        const patient = faker_1.faker.helpers.arrayElement(dbPatients);
+        await prisma.referral.create({
+            data: {
+                organizationId: patient.organizationId,
+                branchId: patient.branchId,
+                patientId: patient.id,
+                source: faker_1.faker.helpers.arrayElement(['Google', 'Facebook', 'Friend', 'Newspaper']),
+                status: 'CONVERTED'
+            }
+        });
+    }
     console.log('🌟 MASTER SEEDING COMPLETE!');
 }
 main()
