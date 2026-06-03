@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 export declare class AppointmentsService {
     private prisma;
     constructor(prisma: PrismaService);
-    create(data: Prisma.AppointmentUncheckedCreateInput): Promise<{
+    create(data: Prisma.AppointmentUncheckedCreateInput, organizationId: string, branchId: string, createdBy: string): Promise<{
         id: string;
         status: import("@prisma/client").$Enums.AppointmentStatus;
         createdAt: Date;
@@ -55,7 +55,7 @@ export declare class AppointmentsService {
         scheduledStart: Date;
         scheduledEnd: Date;
     })[]>;
-    findOne(id: string): Promise<{
+    findOne(id: string, organizationId: string, branchId: string): Promise<{
         patient: {
             id: string;
             email: string | null;

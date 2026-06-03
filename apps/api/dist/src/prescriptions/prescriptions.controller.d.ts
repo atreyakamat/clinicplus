@@ -32,7 +32,7 @@ export declare class PrescriptionsController {
         consultationId: string | null;
     }>;
     download(id: string, req: any, res: any): Promise<void>;
-    findAllByPatient(patientId: string): Promise<({
+    findAllByPatient(patientId: string, req: any): Promise<({
         doctor: {
             firstName: string;
             lastName: string;
@@ -61,7 +61,7 @@ export declare class PrescriptionsController {
         issuedAt: Date;
         consultationId: string | null;
     })[]>;
-    findOne(id: string): Promise<{
+    findOne(id: string, req: any): Promise<{
         patient: {
             id: string;
             email: string | null;

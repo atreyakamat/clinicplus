@@ -29,8 +29,8 @@ let FeedbackController = class FeedbackController {
     findAll(req) {
         return this.feedbackService.findAll(req.user.organizationId);
     }
-    updateStatus(id, status) {
-        return this.feedbackService.updateStatus(id, status);
+    updateStatus(id, status, req) {
+        return this.feedbackService.updateStatus(id, status, req.user.organizationId);
     }
 };
 exports.FeedbackController = FeedbackController;
@@ -53,8 +53,9 @@ __decorate([
     (0, common_1.Patch)(':id/status'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)('status')),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, Object]),
     __metadata("design:returntype", void 0)
 ], FeedbackController.prototype, "updateStatus", null);
 exports.FeedbackController = FeedbackController = __decorate([

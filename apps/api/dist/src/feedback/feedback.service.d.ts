@@ -9,10 +9,10 @@ export declare class FeedbackService {
         updatedAt: Date;
         organizationId: string;
         userId: string;
+        priority: string;
         category: string;
         subject: string;
         content: string;
-        priority: string;
     }>;
     findAll(organizationId: string): Promise<({
         user: {
@@ -26,21 +26,21 @@ export declare class FeedbackService {
         updatedAt: Date;
         organizationId: string;
         userId: string;
+        priority: string;
         category: string;
         subject: string;
         content: string;
-        priority: string;
     })[]>;
-    updateStatus(id: string, status: string): Promise<{
+    updateStatus(id: string, status: string, organizationId: string): Promise<{
         id: string;
         status: string;
         createdAt: Date;
         updatedAt: Date;
         organizationId: string;
         userId: string;
+        priority: string;
         category: string;
         subject: string;
         content: string;
-        priority: string;
     }>;
 }

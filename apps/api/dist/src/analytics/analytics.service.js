@@ -17,15 +17,15 @@ let AnalyticsService = class AnalyticsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async getDoctorDashboard(doctorId, organizationId) {
+    async getDoctorDashboard(doctorId, organizationId, branchId) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const [totalAppointments, todayAppointments, totalPatients, totalRevenue] = await Promise.all([
-            this.prisma.appointment.count({ where: { doctorId } }),
-            this.prisma.appointment.count({ where: { doctorId, scheduledStart: { gte: today } } }),
-            this.prisma.patient.count({ where: { organizationId } }),
+            this.prisma.appointment.count({ where: { doctorId, organizationId, branchId } }),
+            this.prisma.appointment.count({ where: { doctorId, organizationId, branchId, scheduledStart: { gte: today } } }),
+            this.prisma.patient.count({ where: { organizationId, branchId } }),
             this.prisma.payment.aggregate({
-                where: { organizationId, paymentStatus: 'PAID' },
+                where: { organizationId, branchId, paymentStatus: 'PAID' },
                 _sum: { amount: true }
             }),
         ]);
@@ -39,7 +39,7 @@ let AnalyticsService = class AnalyticsService {
             const nextDay = new Date(date);
             nextDay.setDate(nextDay.getDate() + 1);
             const count = await this.prisma.appointment.count({
-                where: { doctorId, scheduledStart: { gte: date, lt: nextDay } }
+                where: { doctorId, organizationId, branchId, scheduledStart: { gte: date, lt: nextDay } }
             });
             return {
                 date: date.toLocaleDateString('en-US', { weekday: 'short' }),

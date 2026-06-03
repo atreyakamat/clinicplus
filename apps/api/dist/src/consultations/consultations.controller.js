@@ -28,18 +28,18 @@ let ConsultationsController = class ConsultationsController {
         data.createdBy = req.user.id;
         return this.consultationsService.create(data);
     }
-    findAllByPatient(patientId) {
-        return this.consultationsService.findAllByPatient(patientId);
+    findAllByPatient(patientId, req) {
+        return this.consultationsService.findAllByPatient(patientId, req.user.organizationId);
     }
-    findOne(id) {
-        return this.consultationsService.findOne(id);
+    findOne(id, req) {
+        return this.consultationsService.findOne(id, req.user.organizationId, req.user.branchId);
     }
     update(id, data, req) {
         data.updatedBy = req.user.id;
-        return this.consultationsService.update(id, data);
+        return this.consultationsService.update(id, data, req.user.organizationId, req.user.branchId);
     }
-    complete(id) {
-        return this.consultationsService.complete(id);
+    complete(id, req) {
+        return this.consultationsService.complete(id, req.user.organizationId, req.user.branchId);
     }
 };
 exports.ConsultationsController = ConsultationsController;
@@ -54,15 +54,17 @@ __decorate([
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('patientId')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], ConsultationsController.prototype, "findAllByPatient", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], ConsultationsController.prototype, "findOne", null);
 __decorate([
@@ -77,8 +79,9 @@ __decorate([
 __decorate([
     (0, common_1.Post)(':id/complete'),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], ConsultationsController.prototype, "complete", null);
 exports.ConsultationsController = ConsultationsController = __decorate([

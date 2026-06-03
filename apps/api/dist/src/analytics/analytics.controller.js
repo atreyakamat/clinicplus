@@ -22,7 +22,7 @@ let AnalyticsController = class AnalyticsController {
         this.analyticsService = analyticsService;
     }
     getDoctorDashboard(req) {
-        return this.analyticsService.getDoctorDashboard(req.user.id, req.user.organizationId);
+        return this.analyticsService.getDoctorDashboard(req.user.id, req.user.organizationId, req.user.branchId);
     }
 };
 exports.AnalyticsController = AnalyticsController;

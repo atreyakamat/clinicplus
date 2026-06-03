@@ -76,7 +76,7 @@ export declare class InvoicesController {
         tax: import("@prisma/client/runtime/library").Decimal;
         total: import("@prisma/client/runtime/library").Decimal;
     })[]>;
-    findOne(id: string): Promise<{
+    findOne(id: string, req: any): Promise<{
         patient: {
             id: string;
             email: string | null;

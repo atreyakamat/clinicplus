@@ -24,7 +24,7 @@ export declare class ConsultationsService {
         consultationDate: Date;
         appointmentId: string | null;
     }>;
-    findAllByPatient(patientId: string): Promise<({
+    findAllByPatient(patientId: string, organizationId: string): Promise<({
         doctor: {
             firstName: string;
             lastName: string;
@@ -78,7 +78,7 @@ export declare class ConsultationsService {
         consultationDate: Date;
         appointmentId: string | null;
     })[]>;
-    findOne(id: string): Promise<{
+    findOne(id: string, organizationId: string, branchId: string): Promise<{
         prescriptions: ({
             items: {
                 id: string;
@@ -195,7 +195,7 @@ export declare class ConsultationsService {
         consultationDate: Date;
         appointmentId: string | null;
     }>;
-    update(id: string, data: any): Promise<{
+    update(id: string, data: any, organizationId: string, branchId: string): Promise<{
         id: string;
         status: import("@prisma/client").$Enums.ConsultationStatus;
         createdAt: Date;
@@ -216,7 +216,7 @@ export declare class ConsultationsService {
         consultationDate: Date;
         appointmentId: string | null;
     }>;
-    complete(id: string): Promise<{
+    complete(id: string, organizationId: string, branchId: string): Promise<{
         id: string;
         status: import("@prisma/client").$Enums.ConsultationStatus;
         createdAt: Date;

@@ -23,7 +23,7 @@ export declare class ConsultationsController {
         consultationDate: Date;
         appointmentId: string | null;
     }>;
-    findAllByPatient(patientId: string): Promise<({
+    findAllByPatient(patientId: string, req: any): Promise<({
         doctor: {
             firstName: string;
             lastName: string;
@@ -77,7 +77,7 @@ export declare class ConsultationsController {
         consultationDate: Date;
         appointmentId: string | null;
     })[]>;
-    findOne(id: string): Promise<{
+    findOne(id: string, req: any): Promise<{
         prescriptions: ({
             items: {
                 id: string;
@@ -215,7 +215,7 @@ export declare class ConsultationsController {
         consultationDate: Date;
         appointmentId: string | null;
     }>;
-    complete(id: string): Promise<{
+    complete(id: string, req: any): Promise<{
         id: string;
         status: import("@prisma/client").$Enums.ConsultationStatus;
         createdAt: Date;

@@ -16,6 +16,8 @@ exports.QueuesController = void 0;
 const common_1 = require("@nestjs/common");
 const queues_service_1 = require("./queues.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const roles_guard_1 = require("../auth/guards/roles.guard");
+const permissions_guard_1 = require("../auth/guards/permissions.guard");
 let QueuesController = class QueuesController {
     queuesService;
     constructor(queuesService) {
@@ -57,7 +59,7 @@ __decorate([
 ], QueuesController.prototype, "updateStatus", null);
 exports.QueuesController = QueuesController = __decorate([
     (0, common_1.Controller)('api/v1/queues'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard, permissions_guard_1.PermissionsGuard),
     __metadata("design:paramtypes", [queues_service_1.QueuesService])
 ], QueuesController);
 //# sourceMappingURL=queues.controller.js.map

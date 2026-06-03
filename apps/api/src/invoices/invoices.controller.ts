@@ -1,11 +1,15 @@
 import { Controller, Get, Post, Body, Param, UseGuards, Request, Res } from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Permissions } from '../auth/decorators/permissions.decorator';
 import { PdfService } from '../common/services/pdf.service';
 import { OrganizationsService } from '../organizations/organizations.service';
 
 @Controller('api/v1/invoices')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class InvoicesController {
   constructor(
     private readonly invoicesService: InvoicesService,
@@ -14,6 +18,8 @@ export class InvoicesController {
   ) {}
 
   @Post()
+  @Roles('super-admin', 'organization-owner', 'clinic-admin', 'doctor', 'receptionist', 'accountant')
+  @Permissions('invoices:create')
   create(@Body() data: any, @Request() req) {
     return this.invoicesService.create(data, req.user.organizationId, req.user.branchId, req.user.id);
   }

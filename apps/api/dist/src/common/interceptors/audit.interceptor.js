@@ -21,16 +21,29 @@ let AuditInterceptor = class AuditInterceptor {
     intercept(context, next) {
         const request = context.switchToHttp().getRequest();
         const { user, method, url, body } = request;
-        if (!user)
-            return next.handle();
         return next.handle().pipe((0, operators_1.tap)((data) => {
+            if (url.includes('/auth/login') && method === 'POST') {
+                this.auditService.log({
+                    organizationId: data?.user?.organizationId || 'SYSTEM',
+                    userId: data?.user?.id || 'ANONYMOUS',
+                    action: 'LOGIN',
+                    resource: 'auth',
+                    resourceId: data?.user?.id,
+                    newData: { email: body.email },
+                    ipAddress: request.ip,
+                    userAgent: request.get('user-agent'),
+                });
+                return;
+            }
+            if (!user)
+                return;
             if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
                 this.auditService.log({
                     organizationId: user.organizationId,
                     userId: user.id,
                     action: method,
                     resource: url.split('/')[3] || 'unknown',
-                    resourceId: data?.id,
+                    resourceId: data?.id || body?.id || url.split('/')[4],
                     newData: body,
                     ipAddress: request.ip,
                     userAgent: request.get('user-agent'),

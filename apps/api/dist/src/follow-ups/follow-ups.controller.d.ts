@@ -49,7 +49,7 @@ export declare class FollowUpsController {
         consultationId: string | null;
         scheduledDate: Date;
     })[]>;
-    updateStatus(id: string, status: string): Promise<{
+    updateStatus(id: string, status: string, req: any): Promise<{
         id: string;
         status: string | null;
         createdAt: Date;

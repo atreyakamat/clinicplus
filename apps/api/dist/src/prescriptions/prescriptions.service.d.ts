@@ -27,7 +27,7 @@ export declare class PrescriptionsService {
         issuedAt: Date;
         consultationId: string | null;
     }>;
-    findAllByPatient(patientId: string): Promise<({
+    findAllByPatient(patientId: string, organizationId: string): Promise<({
         doctor: {
             firstName: string;
             lastName: string;
@@ -56,7 +56,7 @@ export declare class PrescriptionsService {
         issuedAt: Date;
         consultationId: string | null;
     })[]>;
-    findOne(id: string): Promise<{
+    findOne(id: string, organizationId: string, branchId: string): Promise<{
         patient: {
             id: string;
             email: string | null;

@@ -27,15 +27,15 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { TimelineModule } from './timeline/timeline.module';
 import { PrismaModule } from './prisma/prisma.module';
-import { AuditService } from './common/services/audit.service';
+import { AuditModule } from './common/services/audit.module';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { TimelineInterceptor } from './common/interceptors/timeline.interceptor';
-import { TimelineService } from './timeline/timeline.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    AuditModule,
     AuthModule, 
     OrganizationsModule, 
     BranchesModule, 
@@ -63,8 +63,6 @@ import { TimelineService } from './timeline/timeline.service';
   controllers: [AppController],
   providers: [
     AppService,
-    AuditService,
-    TimelineService,
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditInterceptor,

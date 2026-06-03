@@ -1,9 +1,13 @@
 import { Controller, Get, Post, Body, Patch, Param, Request, UseGuards } from '@nestjs/common';
 import { QueuesService } from './queues.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Permissions } from '../auth/decorators/permissions.decorator';
 
 @Controller('api/v1/queues')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class QueuesController {
   constructor(private readonly queuesService: QueuesService) {}
 

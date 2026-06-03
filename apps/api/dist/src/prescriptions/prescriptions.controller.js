@@ -34,7 +34,7 @@ let PrescriptionsController = class PrescriptionsController {
         return this.prescriptionsService.create(data);
     }
     async download(id, req, res) {
-        const rx = await this.prescriptionsService.findOne(id);
+        const rx = await this.prescriptionsService.findOne(id, req.user.organizationId, req.user.branchId);
         const org = await this.organizationsService.findOne(req.user.organizationId);
         const buffer = await this.pdfService.generatePrescriptionPdf(rx, org);
         res.set({
@@ -44,11 +44,11 @@ let PrescriptionsController = class PrescriptionsController {
         });
         res.end(buffer);
     }
-    findAllByPatient(patientId) {
-        return this.prescriptionsService.findAllByPatient(patientId);
+    findAllByPatient(patientId, req) {
+        return this.prescriptionsService.findAllByPatient(patientId, req.user.organizationId);
     }
-    findOne(id) {
-        return this.prescriptionsService.findOne(id);
+    findOne(id, req) {
+        return this.prescriptionsService.findOne(id, req.user.organizationId, req.user.branchId);
     }
 };
 exports.PrescriptionsController = PrescriptionsController;
@@ -72,15 +72,17 @@ __decorate([
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('patientId')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], PrescriptionsController.prototype, "findAllByPatient", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], PrescriptionsController.prototype, "findOne", null);
 exports.PrescriptionsController = PrescriptionsController = __decorate([

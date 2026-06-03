@@ -30,13 +30,13 @@ let FollowUpsController = class FollowUpsController {
     findAll(req) {
         return this.followUpsService.findAll(req.user.organizationId, req.user.branchId);
     }
-    updateStatus(id, status) {
-        return this.followUpsService.updateStatus(id, status);
+    updateStatus(id, status, req) {
+        return this.followUpsService.updateStatus(id, status, req.user.organizationId);
     }
     addOutcome(id, data, req) {
         data.organizationId = req.user.organizationId;
         data.branchId = req.user.branchId;
-        return this.followUpsService.addOutcome(id, data);
+        return this.followUpsService.addOutcome(id, data, req.user.organizationId);
     }
 };
 exports.FollowUpsController = FollowUpsController;
@@ -59,8 +59,9 @@ __decorate([
     (0, common_1.Patch)(':id/status'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)('status')),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, Object]),
     __metadata("design:returntype", void 0)
 ], FollowUpsController.prototype, "updateStatus", null);
 __decorate([

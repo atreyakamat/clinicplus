@@ -149,9 +149,9 @@ async function main() {
                     create: {
                         organizationId: appt.organizationId,
                         branchId: appt.branchId,
-                        weight: faker_1.faker.number.float({ min: 40, max: 120, fractionDigits: 1 }),
-                        height: faker_1.faker.number.float({ min: 140, max: 200, fractionDigits: 1 }),
-                        temperature: faker_1.faker.number.float({ min: 36, max: 40, fractionDigits: 1 }),
+                        weight: faker_1.faker.number.float({ min: 40, max: 120 }),
+                        height: faker_1.faker.number.float({ min: 140, max: 200 }),
+                        temperature: faker_1.faker.number.float({ min: 36, max: 40 }),
                         pulse: faker_1.faker.number.int({ min: 60, max: 100 }),
                         bloodPressureSystolic: faker_1.faker.number.int({ min: 110, max: 140 }),
                         bloodPressureDiastolic: faker_1.faker.number.int({ min: 70, max: 90 }),

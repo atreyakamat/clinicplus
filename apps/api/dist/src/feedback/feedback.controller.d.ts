@@ -9,10 +9,10 @@ export declare class FeedbackController {
         updatedAt: Date;
         organizationId: string;
         userId: string;
+        priority: string;
         category: string;
         subject: string;
         content: string;
-        priority: string;
     }>;
     findAll(req: any): Promise<({
         user: {
@@ -26,21 +26,21 @@ export declare class FeedbackController {
         updatedAt: Date;
         organizationId: string;
         userId: string;
+        priority: string;
         category: string;
         subject: string;
         content: string;
-        priority: string;
     })[]>;
-    updateStatus(id: string, status: string): Promise<{
+    updateStatus(id: string, status: string, req: any): Promise<{
         id: string;
         status: string;
         createdAt: Date;
         updatedAt: Date;
         organizationId: string;
         userId: string;
+        priority: string;
         category: string;
         subject: string;
         content: string;
-        priority: string;
     }>;
 }

@@ -9,16 +9,18 @@ export class FeedbackController {
 
   @Post()
   create(@Body() data: any, @Request() req) {
-    return this.feedbackService.create(data, req.user.organizationId, req.user.branchId, req.user.id);
+    data.organizationId = req.user.organizationId;
+    data.userId = req.user.id;
+    return this.feedbackService.create(data);
   }
 
   @Get()
   findAll(@Request() req) {
-    return this.feedbackService.findAll(req.user.organizationId, req.user.branchId);
+    return this.feedbackService.findAll(req.user.organizationId);
   }
 
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body('status') status: string) {
-    return this.feedbackService.updateStatus(id, status);
+  updateStatus(@Param('id') id: string, @Body('status') status: string, @Request() req) {
+    return this.feedbackService.updateStatus(id, status, req.user.organizationId);
   }
 }

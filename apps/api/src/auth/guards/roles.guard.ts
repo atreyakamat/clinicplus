@@ -15,6 +15,11 @@ export class RolesGuard implements CanActivate {
       return true;
     }
     const { user } = context.switchToHttp().getRequest();
-    return requiredRoles.some((role) => user.roles?.includes(role));
+    if (!user) return false;
+    
+    // Support both user.roles as string array or user.roles as object array from Prisma
+    const userRoles = user.roles?.map((r: any) => typeof r === 'string' ? r : r.role?.name || r.name) || [];
+    
+    return requiredRoles.some((role) => userRoles.includes(role));
   }
 }

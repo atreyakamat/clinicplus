@@ -33,7 +33,12 @@ let FeedbackService = class FeedbackService {
             orderBy: { createdAt: 'desc' },
         });
     }
-    async updateStatus(id, status) {
+    async updateStatus(id, status, organizationId) {
+        const feedback = await this.prisma.feedback.findUnique({
+            where: { id, organizationId }
+        });
+        if (!feedback)
+            throw new common_1.NotFoundException('Feedback not found');
         return this.prisma.feedback.update({
             where: { id },
             data: { status }

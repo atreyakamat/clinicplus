@@ -49,7 +49,7 @@ export declare class FollowUpsService {
         consultationId: string | null;
         scheduledDate: Date;
     })[]>;
-    addOutcome(followUpId: string, data: any): Promise<{
+    addOutcome(followUpId: string, data: any, organizationId: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -60,7 +60,7 @@ export declare class FollowUpsService {
         recordedAt: Date;
         followUpId: string;
     }>;
-    updateStatus(id: string, status: string): Promise<{
+    updateStatus(id: string, status: string, organizationId: string): Promise<{
         id: string;
         status: string | null;
         createdAt: Date;

@@ -2,14 +2,20 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, Re
 import { AppointmentsService } from './appointments.service';
 import { Prisma } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Permissions } from '../auth/decorators/permissions.decorator';
 import { stringify } from 'csv-stringify/sync';
 
 @Controller('api/v1/appointments')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
 
   @Post()
+  @Roles('super-admin', 'organization-owner', 'clinic-admin', 'doctor', 'receptionist')
+  @Permissions('appointments:create')
   create(@Body() data: any, @Request() req) {
     return this.appointmentsService.create(data, req.user.organizationId, req.user.branchId, req.user.id);
   }
@@ -49,9 +55,11 @@ export class AppointmentsController {
   }
 
   @Patch(':id')
+  @Roles('super-admin', 'organization-owner', 'clinic-admin', 'doctor', 'receptionist')
+  @Permissions('appointments:update')
   update(@Param('id') id: string, @Body() data: any, @Request() req) {
     data.updatedBy = req.user.id;
-    return this.appointmentsService.update(id, data);
+    return this.appointmentsService.update(id, data, req.user.organizationId, req.user.branchId, req.user.id);
   }
 
   @Delete(':id')

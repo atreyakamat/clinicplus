@@ -55,7 +55,7 @@ export declare class AppointmentsController {
         scheduledStart: Date;
         scheduledEnd: Date;
     })[]>;
-    findOne(id: string): Promise<{
+    findOne(id: string, req: any): Promise<{
         patient: {
             id: string;
             email: string | null;

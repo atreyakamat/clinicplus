@@ -22,9 +22,9 @@ let ConsultationsService = class ConsultationsService {
             data,
         });
     }
-    async findAllByPatient(patientId) {
+    async findAllByPatient(patientId, organizationId) {
         return this.prisma.consultation.findMany({
-            where: { patientId },
+            where: { patientId, organizationId },
             include: {
                 diagnoses: true,
                 vitals: true,
@@ -33,9 +33,9 @@ let ConsultationsService = class ConsultationsService {
             orderBy: { consultationDate: 'desc' },
         });
     }
-    async findOne(id) {
+    async findOne(id, organizationId, branchId) {
         const consultation = await this.prisma.consultation.findUnique({
-            where: { id },
+            where: { id, organizationId, branchId },
             include: {
                 patient: true,
                 diagnoses: true,
@@ -49,9 +49,10 @@ let ConsultationsService = class ConsultationsService {
             throw new common_1.NotFoundException('Consultation not found');
         return consultation;
     }
-    async update(id, data) {
+    async update(id, data, organizationId, branchId) {
         const { diagnoses, vitals, ...consultationData } = data;
         return this.prisma.$transaction(async (tx) => {
+            await this.findOne(id, organizationId, branchId);
             const updated = await tx.consultation.update({
                 where: { id },
                 data: consultationData,
@@ -72,7 +73,8 @@ let ConsultationsService = class ConsultationsService {
             return updated;
         });
     }
-    async complete(id) {
+    async complete(id, organizationId, branchId) {
+        await this.findOne(id, organizationId, branchId);
         return this.prisma.consultation.update({
             where: { id },
             data: { status: 'COMPLETED' },

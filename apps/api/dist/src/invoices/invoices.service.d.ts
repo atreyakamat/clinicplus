@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 export declare class InvoicesService {
     private prisma;
     constructor(prisma: PrismaService);
-    create(data: any): Promise<{
+    create(data: any, organizationId: string, branchId: string, createdBy: string): Promise<{
         items: {
             id: string;
             createdAt: Date;
@@ -72,7 +72,7 @@ export declare class InvoicesService {
         tax: Prisma.Decimal;
         total: Prisma.Decimal;
     })[]>;
-    findOne(id: string): Promise<{
+    findOne(id: string, organizationId: string, branchId: string): Promise<{
         patient: {
             id: string;
             email: string | null;
@@ -142,7 +142,7 @@ export declare class InvoicesService {
         tax: Prisma.Decimal;
         total: Prisma.Decimal;
     }>;
-    addPayment(invoiceId: string, paymentData: any): Promise<{
+    addPayment(invoiceId: string, paymentData: any, organizationId: string, branchId: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;

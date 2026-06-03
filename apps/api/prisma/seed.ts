@@ -112,7 +112,7 @@ async function main() {
         doctorId: doctor.id,
         scheduledStart: start,
         scheduledEnd: end,
-        status: faker.helpers.arrayElement(['SCHEDULED', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW']),
+        status: faker.helpers.arrayElement(['SCHEDULED', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW']) as any,
         createdBy: doctor.id,
       };
     });
@@ -145,9 +145,9 @@ async function main() {
           create: {
             organizationId: appt.organizationId,
             branchId: appt.branchId,
-            weight: faker.number.float({ min: 40, max: 120, fractionDigits: 1 }),
-            height: faker.number.float({ min: 140, max: 200, fractionDigits: 1 }),
-            temperature: faker.number.float({ min: 36, max: 40, fractionDigits: 1 }),
+            weight: faker.number.float({ min: 40, max: 120 }),
+            height: faker.number.float({ min: 140, max: 200 }),
+            temperature: faker.number.float({ min: 36, max: 40 }),
             pulse: faker.number.int({ min: 60, max: 100 }),
             bloodPressureSystolic: faker.number.int({ min: 110, max: 140 }),
             bloodPressureDiastolic: faker.number.int({ min: 70, max: 90 }),
@@ -253,8 +253,8 @@ async function main() {
         organizationId: branch.organizationId,
         branchId: branch.id,
         title: faker.hacker.phrase(),
-        priority: faker.helpers.arrayElement(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
-        status: 'OPEN'
+        priority: faker.helpers.arrayElement(['LOW', 'MEDIUM', 'HIGH', 'URGENT']) as any,
+        status: 'OPEN' as any
       };
     })
   });

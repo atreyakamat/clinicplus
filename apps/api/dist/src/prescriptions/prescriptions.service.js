@@ -33,16 +33,16 @@ let PrescriptionsService = class PrescriptionsService {
             include: { items: true },
         });
     }
-    async findAllByPatient(patientId) {
+    async findAllByPatient(patientId, organizationId) {
         return this.prisma.prescription.findMany({
-            where: { patientId },
+            where: { patientId, organizationId },
             include: { items: true, doctor: { select: { firstName: true, lastName: true } } },
             orderBy: { issuedAt: 'desc' },
         });
     }
-    async findOne(id) {
+    async findOne(id, organizationId, branchId) {
         const prescription = await this.prisma.prescription.findUnique({
-            where: { id },
+            where: { id, organizationId, branchId },
             include: {
                 items: true,
                 patient: true,

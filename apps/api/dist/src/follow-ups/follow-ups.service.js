@@ -37,17 +37,27 @@ let FollowUpsService = class FollowUpsService {
             orderBy: { scheduledDate: 'asc' }
         });
     }
-    async addOutcome(followUpId, data) {
+    async addOutcome(followUpId, data, organizationId) {
+        const followUp = await this.prisma.followUp.findUnique({
+            where: { id: followUpId, organizationId }
+        });
+        if (!followUp)
+            throw new common_1.NotFoundException('Follow-up not found');
         return this.prisma.followUpOutcome.create({
             data: {
                 ...data,
                 followUpId,
-                organizationId: data.organizationId,
-                branchId: data.branchId,
+                organizationId,
+                branchId: followUp.branchId,
             }
         });
     }
-    async updateStatus(id, status) {
+    async updateStatus(id, status, organizationId) {
+        const followUp = await this.prisma.followUp.findUnique({
+            where: { id, organizationId }
+        });
+        if (!followUp)
+            throw new common_1.NotFoundException('Follow-up not found');
         return this.prisma.followUp.update({
             where: { id },
             data: { status }

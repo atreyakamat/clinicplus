@@ -17,10 +17,12 @@ let AppointmentsService = class AppointmentsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async create(data) {
+    async create(data, organizationId, branchId, createdBy) {
         const overlapping = await this.prisma.appointment.findFirst({
             where: {
                 doctorId: data.doctorId,
+                organizationId,
+                branchId,
                 status: { notIn: ['CANCELLED', 'NO_SHOW'] },
                 OR: [
                     {
@@ -38,7 +40,12 @@ let AppointmentsService = class AppointmentsService {
             throw new common_1.BadRequestException('Doctor is already booked for this time slot');
         }
         return this.prisma.appointment.create({
-            data,
+            data: {
+                ...data,
+                organizationId,
+                branchId,
+                createdBy,
+            },
         });
     }
     async findAll(organizationId, branchId, date) {
@@ -72,9 +79,9 @@ let AppointmentsService = class AppointmentsService {
             },
         });
     }
-    async findOne(id) {
+    async findOne(id, organizationId, branchId) {
         const appointment = await this.prisma.appointment.findUnique({
-            where: { id },
+            where: { id, organizationId, branchId },
             include: {
                 patient: true,
                 doctor: {

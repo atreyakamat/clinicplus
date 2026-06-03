@@ -17,16 +17,19 @@ let InvoicesService = class InvoicesService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async create(data) {
+    async create(data, organizationId, branchId, createdBy) {
         const { items, ...invoiceData } = data;
         return this.prisma.invoice.create({
             data: {
                 ...invoiceData,
+                organizationId,
+                branchId,
+                createdBy,
                 items: {
                     create: items.map(item => ({
                         ...item,
-                        organizationId: invoiceData.organizationId,
-                        branchId: invoiceData.branchId,
+                        organizationId,
+                        branchId,
                     })),
                 },
             },
@@ -40,22 +43,23 @@ let InvoicesService = class InvoicesService {
             orderBy: { createdAt: 'desc' },
         });
     }
-    async findOne(id) {
+    async findOne(id, organizationId, branchId) {
         const invoice = await this.prisma.invoice.findUnique({
-            where: { id },
+            where: { id, organizationId, branchId },
             include: { items: true, patient: true, payments: true },
         });
         if (!invoice)
             throw new common_1.NotFoundException('Invoice not found');
         return invoice;
     }
-    async addPayment(invoiceId, paymentData) {
+    async addPayment(invoiceId, paymentData, organizationId, branchId) {
+        const invoice = await this.findOne(invoiceId, organizationId, branchId);
         return this.prisma.payment.create({
             data: {
                 ...paymentData,
-                invoiceId,
-                organizationId: paymentData.organizationId,
-                branchId: paymentData.branchId,
+                invoiceId: invoice.id,
+                organizationId,
+                branchId,
             },
         });
     }
