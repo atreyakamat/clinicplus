@@ -25,9 +25,12 @@ import { MessagesModule } from './messages/messages.module';
 import { TasksModule } from './tasks/tasks.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { FeedbackModule } from './feedback/feedback.module';
+import { TimelineModule } from './timeline/timeline.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuditService } from './common/services/audit.service';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
+import { TimelineInterceptor } from './common/interceptors/timeline.interceptor';
+import { TimelineService } from './timeline/timeline.service';
 
 @Module({
   imports: [
@@ -54,15 +57,21 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     MessagesModule, 
     TasksModule, 
     AnalyticsModule, 
-    FeedbackModule
+    FeedbackModule,
+    TimelineModule
   ],
   controllers: [AppController],
   providers: [
     AppService,
     AuditService,
+    TimelineService,
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TimelineInterceptor,
     },
   ],
 })

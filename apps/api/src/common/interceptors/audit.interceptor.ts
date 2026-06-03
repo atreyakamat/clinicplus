@@ -11,18 +11,33 @@ export class AuditInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest();
     const { user, method, url, body } = request;
 
-    if (!user) return next.handle();
-
     return next.handle().pipe(
       tap((data) => {
-        // Only log write operations for performance
+        // Special case for login/logout which might not have 'user' in request yet
+        if (url.includes('/auth/login') && method === 'POST') {
+           this.auditService.log({
+             organizationId: data?.user?.organizationId || 'SYSTEM',
+             userId: data?.user?.id || 'ANONYMOUS',
+             action: 'LOGIN',
+             resource: 'auth',
+             resourceId: data?.user?.id,
+             newData: { email: body.email },
+             ipAddress: request.ip,
+             userAgent: request.get('user-agent'),
+           });
+           return;
+        }
+
+        if (!user) return;
+
+        // Log write operations and sensitive reads
         if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
           this.auditService.log({
             organizationId: user.organizationId,
             userId: user.id,
             action: method,
             resource: url.split('/')[3] || 'unknown',
-            resourceId: data?.id,
+            resourceId: data?.id || body?.id || url.split('/')[4],
             newData: body,
             ipAddress: request.ip,
             userAgent: request.get('user-agent'),

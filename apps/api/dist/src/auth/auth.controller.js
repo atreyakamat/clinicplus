@@ -28,7 +28,7 @@ let AuthController = class AuthController {
         return this.authService.login(loginDto);
     }
     async register(registerDto) {
-        return { message: 'Registration endpoint - implementation needed' };
+        return this.authService.register(registerDto);
     }
     async logout(req) {
         return { message: 'Logged out successfully' };

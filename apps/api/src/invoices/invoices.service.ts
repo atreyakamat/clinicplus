@@ -6,17 +6,20 @@ import { Prisma } from '@prisma/client';
 export class InvoicesService {
   constructor(private prisma: PrismaService) {}
 
-  async create(data: any) {
+  async create(data: any, organizationId: string, branchId: string, createdBy: string) {
     const { items, ...invoiceData } = data;
     
     return this.prisma.invoice.create({
       data: {
         ...invoiceData,
+        organizationId,
+        branchId,
+        createdBy,
         items: {
           create: items.map(item => ({
             ...item,
-            organizationId: invoiceData.organizationId,
-            branchId: invoiceData.branchId,
+            organizationId,
+            branchId,
           })),
         },
       },
@@ -32,22 +35,25 @@ export class InvoicesService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, organizationId: string, branchId: string) {
     const invoice = await this.prisma.invoice.findUnique({
-      where: { id },
+      where: { id, organizationId, branchId },
       include: { items: true, patient: true, payments: true },
     });
     if (!invoice) throw new NotFoundException('Invoice not found');
     return invoice;
   }
 
-  async addPayment(invoiceId: string, paymentData: any) {
+  async addPayment(invoiceId: string, paymentData: any, organizationId: string, branchId: string) {
+    // Verify invoice exists and belongs to org
+    const invoice = await this.findOne(invoiceId, organizationId, branchId);
+    
     return this.prisma.payment.create({
       data: {
         ...paymentData,
-        invoiceId,
-        organizationId: paymentData.organizationId,
-        branchId: paymentData.branchId,
+        invoiceId: invoice.id,
+        organizationId,
+        branchId,
       },
     });
   }

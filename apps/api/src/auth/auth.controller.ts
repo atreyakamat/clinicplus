@@ -17,9 +17,7 @@ export class AuthController {
 
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
-    // For now, we'll return a placeholder response
-    // In a full implementation, this would create a user
-    return { message: 'Registration endpoint - implementation needed' };
+    return this.authService.register(registerDto);
   }
 
   @Post('logout')

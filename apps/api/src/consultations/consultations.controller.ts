@@ -9,31 +9,27 @@ export class ConsultationsController {
 
   @Post()
   create(@Body() data: any, @Request() req) {
-    data.organizationId = req.user.organizationId;
-    data.branchId = req.user.branchId;
-    data.doctorId = req.user.id;
-    data.createdBy = req.user.id;
-    return this.consultationsService.create(data);
+    return this.consultationsService.create(data, req.user.organizationId, req.user.branchId, req.user.id);
   }
 
   @Get()
-  findAllByPatient(@Query('patientId') patientId: string) {
-    return this.consultationsService.findAllByPatient(patientId);
+  findAllByPatient(@Query('patientId') patientId: string, @Request() req) {
+    return this.consultationsService.findAllByPatient(patientId, req.user.organizationId, req.user.branchId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.consultationsService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req) {
+    return this.consultationsService.findOne(id, req.user.organizationId, req.user.branchId);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() data: any, @Request() req) {
     data.updatedBy = req.user.id;
-    return this.consultationsService.update(id, data);
+    return this.consultationsService.update(id, data, req.user.organizationId, req.user.branchId);
   }
 
   @Post(':id/complete')
-  complete(@Param('id') id: string) {
-    return this.consultationsService.complete(id);
+  complete(@Param('id') id: string, @Request() req) {
+    return this.consultationsService.complete(id, req.user.organizationId, req.user.branchId);
   }
 }

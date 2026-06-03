@@ -11,10 +11,7 @@ export class AppointmentsController {
 
   @Post()
   create(@Body() data: any, @Request() req) {
-    data.organizationId = req.user.organizationId;
-    data.branchId = req.user.branchId;
-    data.createdBy = req.user.id;
-    return this.appointmentsService.create(data);
+    return this.appointmentsService.create(data, req.user.organizationId, req.user.branchId, req.user.id);
   }
 
   @Get('export/csv')
@@ -47,8 +44,8 @@ export class AppointmentsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.appointmentsService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req) {
+    return this.appointmentsService.findOne(id, req.user.organizationId, req.user.branchId);
   }
 
   @Patch(':id')

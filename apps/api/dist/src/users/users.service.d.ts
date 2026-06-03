@@ -45,6 +45,12 @@ export declare class UsersService {
         avatarUrl: string | null;
         passwordHash: string | null;
         lastLoginAt: Date | null;
+        qualification: string | null;
+        specialization: string | null;
+        registrationNumber: string | null;
+        experienceYears: number | null;
+        bio: string | null;
+        consultationFee: import("@prisma/client/runtime/library").Decimal | null;
         branchId: string;
     }) | null>;
 }

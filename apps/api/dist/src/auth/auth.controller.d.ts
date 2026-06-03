@@ -10,6 +10,8 @@ export declare class AuthController {
     }>;
     register(registerDto: RegisterDto): Promise<{
         message: string;
+        organizationId: string;
+        userId: string;
     }>;
     logout(req: any): Promise<{
         message: string;

@@ -9,6 +9,6 @@ export class AnalyticsController {
 
   @Get('dashboard/doctor')
   getDoctorDashboard(@Request() req) {
-    return this.analyticsService.getDoctorDashboard(req.user.id, req.user.organizationId);
+    return this.analyticsService.getDoctorDashboard(req.user.id, req.user.organizationId, req.user.branchId);
   }
 }

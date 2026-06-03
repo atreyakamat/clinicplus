@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -27,18 +27,30 @@ export class FollowUpsService {
     });
   }
 
-  async addOutcome(followUpId: string, data: any) {
+  async addOutcome(followUpId: string, data: any, organizationId: string) {
+    // Verify followUp belongs to org
+    const followUp = await this.prisma.followUp.findUnique({
+      where: { id: followUpId, organizationId }
+    });
+    if (!followUp) throw new NotFoundException('Follow-up not found');
+
     return this.prisma.followUpOutcome.create({
       data: {
         ...data,
         followUpId,
-        organizationId: data.organizationId,
-        branchId: data.branchId,
+        organizationId,
+        branchId: followUp.branchId,
       }
     });
   }
 
-  async updateStatus(id: string, status: string) {
+  async updateStatus(id: string, status: string, organizationId: string) {
+    // Verify followUp belongs to org
+    const followUp = await this.prisma.followUp.findUnique({
+      where: { id, organizationId }
+    });
+    if (!followUp) throw new NotFoundException('Follow-up not found');
+
     return this.prisma.followUp.update({
       where: { id },
       data: { status }

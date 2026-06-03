@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { cn } from '../lib/cn'
 
-type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info'
+type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'outline'
 
 export type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
   variant?: BadgeVariant
@@ -13,6 +13,7 @@ const variantClasses: Record<BadgeVariant, string> = {
   warning: 'bg-amber-100 text-amber-700',
   error: 'bg-red-100 text-red-700',
   info: 'bg-blue-100 text-blue-700',
+  outline: 'border border-slate-200 text-slate-600 bg-transparent',
 }
 
 export const Badge = ({ className, variant = 'default', ...props }: BadgeProps) => (

@@ -10,13 +10,16 @@ exports.InvoicesModule = void 0;
 const common_1 = require("@nestjs/common");
 const invoices_controller_1 = require("./invoices.controller");
 const invoices_service_1 = require("./invoices.service");
+const pdf_service_1 = require("../common/services/pdf.service");
+const organizations_module_1 = require("../organizations/organizations.module");
 let InvoicesModule = class InvoicesModule {
 };
 exports.InvoicesModule = InvoicesModule;
 exports.InvoicesModule = InvoicesModule = __decorate([
     (0, common_1.Module)({
+        imports: [organizations_module_1.OrganizationsModule],
         controllers: [invoices_controller_1.InvoicesController],
-        providers: [invoices_service_1.InvoicesService]
+        providers: [invoices_service_1.InvoicesService, pdf_service_1.PdfService]
     })
 ], InvoicesModule);
 //# sourceMappingURL=invoices.module.js.map

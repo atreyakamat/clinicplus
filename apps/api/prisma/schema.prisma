@@ -147,6 +147,10 @@ model Organization {
   reviews            Review[]
   referrals          Referral[]
   feedbacks          Feedback[]
+  clinicServices     ClinicService[]
+  workingHours       WorkingHour[]
+  clinicHolidays     ClinicHoliday[]
+  staffInvitations   StaffInvitation[]
 
   @@map("organizations")
 }
@@ -207,17 +211,25 @@ model Department {
 }
 
 model User {
-  id                  String               @id @default(uuid()) @db.Uuid
-  organizationId      String               @map("organization_id") @db.Uuid
-  branchId            String               @map("branch_id") @db.Uuid
-  firstName           String               @map("first_name")
-  lastName            String               @map("last_name")
-  email               String
-  phone               String?
-  avatarUrl           String?              @map("avatar_url")
-  passwordHash        String?              @map("password_hash")
-  lastLoginAt         DateTime?            @map("last_login_at")
-  status              RecordStatus         @default(ACTIVE)
+  id                 String       @id @default(uuid()) @db.Uuid
+  organizationId     String       @map("organization_id") @db.Uuid
+  branchId           String       @map("branch_id") @db.Uuid
+  firstName          String       @map("first_name")
+  lastName           String       @map("last_name")
+  email              String
+  phone              String?
+  avatarUrl          String?      @map("avatar_url")
+  passwordHash       String?      @map("password_hash")
+  lastLoginAt        DateTime?    @map("last_login_at")
+  status             RecordStatus @default(ACTIVE)
+  // Doctor Fields (F-006)
+  qualification      String?
+  specialization     String?
+  registrationNumber String?      @map("registration_number")
+  experienceYears    Int?         @map("experience_years")
+  bio                String?      @db.Text
+  consultationFee    Decimal?     @default(0) @map("consultation_fee") @db.Decimal(12, 2)
+
   createdAt           DateTime             @default(now()) @map("created_at")
   updatedAt           DateTime             @updatedAt @map("updated_at")
   createdBy           String?              @map("created_by") @db.Uuid
@@ -246,6 +258,71 @@ model User {
   @@unique([organizationId, email])
   @@index([organizationId, branchId])
   @@map("users")
+}
+
+model ClinicService {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  departmentId   String?      @map("department_id") @db.Uuid
+  name           String
+  description    String?      @db.Text
+  duration       Int          @default(15) // Minutes
+  price          Decimal      @default(0) @db.Decimal(12, 2)
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("clinic_services")
+}
+
+model WorkingHour {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  branchId       String?      @map("branch_id") @db.Uuid
+  dayOfWeek      Int          @map("day_of_week")
+  openTime       String       @map("open_time")
+  closeTime      String       @map("close_time")
+  breakStart     String?      @map("break_start")
+  breakEnd       String?      @map("break_end")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, dayOfWeek, branchId])
+  @@map("working_hours")
+}
+
+model ClinicHoliday {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  name           String
+  date           DateTime
+  description    String?      @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, date])
+  @@map("clinic_holidays")
+}
+
+model TimelineEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  patientId      String   @map("patient_id") @db.Uuid
+  eventType      String   @map("event_type")
+  eventCategory  String   @map("event_category")
+  title          String
+  description    String?  @db.Text
+  metadata       Json?    @map("metadata_json")
+  createdBy      String?  @map("created_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  patient        Patient  @relation(fields: [patientId], references: [id])
+
+  @@index([patientId, createdAt])
+  @@map("timeline_events")
 }
 
 model Role {
@@ -385,6 +462,7 @@ model Patient {
   labReports           LabReport[]
   imagingReports       ImagingReport[]
   tasks                Task[]
+  timelineEvents       TimelineEvent[]
 
   @@index([organizationId, branchId])
   @@map("patients")
@@ -1131,19 +1209,60 @@ model AuditLog {
 }
 
 model Feedback {
+   id             String       @id @default(uuid()) @db.Uuid
+   organizationId String       @map("organization_id") @db.Uoid
+   branchId       String       @map("branch_id") @db.Uoid
+   userId         String       @map("user_id") @db.Uoid
+   category       String
+   subject        String
+   content        String       @db.Text
+   priority       String       @default("MEDIUM")
+   status         String       @default("OPEN")
+   createdAt      DateTime     @default(now()) @map("created_at")
+   updatedAt      DateTime     @updatedAt @map("updated_at")
+   organization   Organization @relation(fields: [organizationId], references: [id])
+   user           User         @relation(fields: [userId], references: [id])
+   branch         Branch       @relation(fields: [branchId], references: [id])
+
+   @@index([organizationId, branchId])
+   @@map("feedbacks")
+ }
+
+model StaffInvitation {
   id             String       @id @default(uuid()) @db.Uuid
   organizationId String       @map("organization_id") @db.Uuid
-  userId         String       @map("user_id") @db.Uuid
-  category       String
-  subject        String
-  content        String       @db.Text
-  priority       String       @default("MEDIUM")
-  status         String       @default("OPEN")
+  email          String
+  phone          String?
+  roleId         String       @map("role_id") @db.Uuid
+  token          String       @unique
+  status         String       @default("PENDING")
+  expiresAt      DateTime     @map("expires_at")
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
   organization   Organization @relation(fields: [organizationId], references: [id])
-  user           User         @relation(fields: [userId], references: [id])
 
   @@index([organizationId])
-  @@map("feedbacks")
+  @@map("staff_invitations")
+}
+
+model LoginAttempt {
+  id            String   @id @default(uuid()) @db.Uuid
+  email         String
+  ipAddress     String?  @map("ip_address")
+  attemptTime   DateTime @default(now()) @map("attempt_time")
+  status        String
+  failureReason String?  @map("failure_reason")
+
+  @@map("login_attempts")
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("password_resets")
 }

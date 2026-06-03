@@ -4,28 +4,32 @@ import {
   LayoutDashboard, Users, Calendar, Clock, 
   Stethoscope, FileText, FileBadge, Activity, 
   CreditCard, MessageSquare, Star, BarChart3, 
-  CheckSquare, Settings, LogOut, Palette, ShieldAlert
+  CheckSquare, Settings, LogOut, Palette, ShieldAlert, ShieldCheck
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
 
+import { HasPermission } from '../components/HasPermission';
+import { GlobalSearch } from '../components/GlobalSearch';
+
 const navItems = [
-  { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-  { name: 'Patients', path: '/patients', icon: Users },
-  { name: 'Appointments', path: '/appointments', icon: Calendar },
-  { name: 'Queue', path: '/queue', icon: Clock },
-  { name: 'Consultations', path: '/consultations', icon: Stethoscope },
-  { name: 'Prescriptions', path: '/prescriptions', icon: FileText },
-  { name: 'Documents', path: '/documents', icon: FileBadge },
-  { name: 'Follow-Ups', path: '/follow-ups', icon: Activity },
-  { name: 'Billing', path: '/billing', icon: CreditCard },
-  { name: 'Communication', path: '/communication', icon: MessageSquare },
-  { name: 'Feedback', path: '/reviews/feedback', icon: Star },
-  { name: 'Reviews', path: '/reviews', icon: Star },
-  { name: 'Analytics', path: '/analytics', icon: BarChart3 },
-  { name: 'Tasks', path: '/tasks', icon: CheckSquare },
-  { name: 'Branding', path: '/settings/branding', icon: Palette },
-  { name: 'QA Dashboard', path: '/analytics/qa', icon: ShieldAlert },
-  { name: 'Settings', path: '/settings', icon: Settings },
+  { name: 'Dashboard', path: '/', icon: LayoutDashboard, permission: 'dashboard.view' },
+  { name: 'Patients', path: '/patients', icon: Users, permission: 'patients.view' },
+  { name: 'Appointments', path: '/appointments', icon: Calendar, permission: 'appointments.view' },
+  { name: 'Queue', path: '/queue', icon: Clock, permission: 'queues.view' },
+  { name: 'Consultations', path: '/consultations', icon: Stethoscope, permission: 'consultations.view' },
+  { name: 'Prescriptions', path: '/prescriptions', icon: FileText, permission: 'prescriptions.view' },
+  { name: 'Documents', path: '/documents', icon: FileBadge, permission: 'documents.view' },
+  { name: 'Follow-Ups', path: '/follow-ups', icon: Activity, permission: 'follow_ups.view' },
+  { name: 'Billing', path: '/billing', icon: CreditCard, permission: 'billing.view' },
+  { name: 'Communication', path: '/communication', icon: MessageSquare, permission: 'communications.view' },
+  { name: 'Feedback', path: '/reviews/feedback', icon: Star, permission: 'feedback.view' },
+  { name: 'Reviews', path: '/reviews', icon: Star, permission: 'reviews.view' },
+  { name: 'Analytics', path: '/analytics', icon: BarChart3, permission: 'analytics.view' },
+  { name: 'Tasks', path: '/tasks', icon: CheckSquare, permission: 'tasks.view' },
+  { name: 'Branding', path: '/settings/branding', icon: Palette, permission: 'settings.branding' },
+  { name: 'Founder Panel', path: '/admin', icon: ShieldCheck, permission: 'admin.view' },
+  { name: 'QA Dashboard', path: '/analytics/qa', icon: ShieldAlert, permission: 'admin.view' },
+  { name: 'Settings', path: '/settings', icon: Settings, permission: 'settings.view' },
 ];
 
 export const MainLayout = () => {
@@ -61,19 +65,21 @@ export const MainLayout = () => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
               return (
-                <li key={item.path}>
-                  <Link
-                    to={item.path}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      isActive 
-                        ? 'bg-[#1FA971] text-white' 
-                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                    }`}
-                  >
-                    <Icon size={18} />
-                    {item.name}
-                  </Link>
-                </li>
+                <HasPermission key={item.path} permission={item.permission}>
+                  <li>
+                    <Link
+                      to={item.path}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                        isActive 
+                          ? 'bg-[#1FA971] text-white' 
+                          : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                      }`}
+                    >
+                      <Icon size={18} />
+                      {item.name}
+                    </Link>
+                  </li>
+                </HasPermission>
               );
             })}
           </ul>
@@ -84,9 +90,12 @@ export const MainLayout = () => {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-gray-50 text-[#111827]">
         {/* Header */}
         <header className="h-16 bg-white border-b flex items-center px-6 justify-between">
-          <div className="font-semibold">Healthcare Operating System</div>
-          <div className="flex items-center gap-4">
-            <div className="text-sm font-medium">{user?.firstName} {user?.lastName}</div>
+          <div className="flex items-center gap-8 flex-1">
+            <div className="font-semibold hidden lg:block shrink-0">Healthcare OS</div>
+            <GlobalSearch />
+          </div>
+          <div className="flex items-center gap-4 ml-4 shrink-0">
+            <div className="text-sm font-medium hidden md:block">{user?.firstName} {user?.lastName}</div>
             <div className="w-8 h-8 bg-[#2563EB] rounded-full text-white flex items-center justify-center font-bold">
               {getInitials()}
             </div>

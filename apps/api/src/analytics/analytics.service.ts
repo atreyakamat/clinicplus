@@ -5,16 +5,16 @@ import { PrismaService } from '../prisma/prisma.service';
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
 
-  async getDoctorDashboard(doctorId: string, organizationId: string) {
+  async getDoctorDashboard(doctorId: string, organizationId: string, branchId: string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const [totalAppointments, todayAppointments, totalPatients, totalRevenue] = await Promise.all([
-      this.prisma.appointment.count({ where: { doctorId } }),
-      this.prisma.appointment.count({ where: { doctorId, scheduledStart: { gte: today } } }),
-      this.prisma.patient.count({ where: { organizationId } }),
+      this.prisma.appointment.count({ where: { doctorId, organizationId, branchId } }),
+      this.prisma.appointment.count({ where: { doctorId, organizationId, branchId, scheduledStart: { gte: today } } }),
+      this.prisma.patient.count({ where: { organizationId, branchId } }),
       this.prisma.payment.aggregate({
-        where: { organizationId, paymentStatus: 'PAID' },
+        where: { organizationId, branchId, paymentStatus: 'PAID' },
         _sum: { amount: true }
       }),
     ]);
@@ -32,7 +32,7 @@ export class AnalyticsService {
       nextDay.setDate(nextDay.getDate() + 1);
       
       const count = await this.prisma.appointment.count({
-        where: { doctorId, scheduledStart: { gte: date, lt: nextDay } }
+        where: { doctorId, organizationId, branchId, scheduledStart: { gte: date, lt: nextDay } }
       });
       
       return {

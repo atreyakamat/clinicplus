@@ -22,6 +22,9 @@ let PatientsController = class PatientsController {
     constructor(patientsService) {
         this.patientsService = patientsService;
     }
+    create(data, req) {
+        return this.patientsService.create(data, req.user.organizationId, req.user.branchId, req.user.id);
+    }
     async exportCsv(req, res) {
         const patients = await this.patientsService.findAll(req.user.organizationId, req.user.branchId);
         const csvData = (0, sync_1.stringify)(patients, {
@@ -42,6 +45,9 @@ let PatientsController = class PatientsController {
         });
         return res.send(csvData);
     }
+    async search(req, query) {
+        return this.patientsService.search(req.user.organizationId, query);
+    }
     async importCsv(data, req) {
         const patientsToCreate = data.map(row => ({
             ...row,
@@ -54,6 +60,14 @@ let PatientsController = class PatientsController {
 };
 exports.PatientsController = PatientsController;
 __decorate([
+    (0, common_1.Post)(),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], PatientsController.prototype, "create", null);
+__decorate([
     (0, common_1.Get)('export/csv'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Res)()),
@@ -61,6 +75,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], PatientsController.prototype, "exportCsv", null);
+__decorate([
+    (0, common_1.Get)('search'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('q')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], PatientsController.prototype, "search", null);
 __decorate([
     (0, common_1.Post)('import/csv'),
     __param(0, (0, common_1.Body)()),

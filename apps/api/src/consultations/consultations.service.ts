@@ -12,9 +12,9 @@ export class ConsultationsService {
     });
   }
 
-  async findAllByPatient(patientId: string) {
+  async findAllByPatient(patientId: string, organizationId: string) {
     return this.prisma.consultation.findMany({
-      where: { patientId },
+      where: { patientId, organizationId },
       include: {
         diagnoses: true,
         vitals: true,
@@ -24,9 +24,9 @@ export class ConsultationsService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, organizationId: string, branchId: string) {
     const consultation = await this.prisma.consultation.findUnique({
-      where: { id },
+      where: { id, organizationId, branchId },
       include: {
         patient: true,
         diagnoses: true,
@@ -40,11 +40,14 @@ export class ConsultationsService {
     return consultation;
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: any, organizationId: string, branchId: string) {
     const { diagnoses, vitals, ...consultationData } = data;
 
     // Use transaction to update consultation and its nested records
     return this.prisma.$transaction(async (tx) => {
+      // Verify consultation belongs to org/branch
+      await this.findOne(id, organizationId, branchId);
+
       const updated = await tx.consultation.update({
         where: { id },
         data: consultationData,
@@ -71,7 +74,10 @@ export class ConsultationsService {
     });
   }
 
-  async complete(id: string) {
+  async complete(id: string, organizationId: string, branchId: string) {
+    // Verify consultation belongs to org/branch
+    await this.findOne(id, organizationId, branchId);
+
     return this.prisma.consultation.update({
       where: { id },
       data: { status: 'COMPLETED' },

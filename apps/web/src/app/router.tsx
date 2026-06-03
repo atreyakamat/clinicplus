@@ -34,14 +34,24 @@ import { InvoiceDetailPage } from '../pages/billing/InvoiceDetailPage';
 
 import { FeedbackPage } from '../pages/reviews/FeedbackPage';
 
-import { BrandingSettings } from '../pages/settings/BrandingSettings';
-
+import { OnboardingWizard } from '../pages/onboarding';
 import { QADashboard } from '../pages/analytics/QADashboard';
+import { BrandingSettings } from '../pages/settings/BrandingSettings';
+import { StaffManagement } from '../pages/settings/StaffManagement';
+import { PilotAdminPanel } from '../pages/admin';
 
 export const router = createBrowserRouter([
   {
     path: '/auth/login',
     element: <AuthPage />,
+  },
+  {
+    path: '/onboarding',
+    element: <ProtectedRoute><OnboardingWizard /></ProtectedRoute>,
+  },
+  {
+    path: '/admin',
+    element: <ProtectedRoute><PilotAdminPanel /></ProtectedRoute>,
   },
   {
     path: '/',
@@ -72,7 +82,9 @@ export const router = createBrowserRouter([
       { path: 'analytics/*', element: <AnalyticsPage /> },
       { path: 'tasks/*', element: <TasksPage /> },
       { path: 'settings/branding', element: <BrandingSettings /> },
+      { path: 'settings/staff', element: <StaffManagement /> },
       { path: 'settings/*', element: <SettingsPage /> },
     ],
   },
 ]);
+

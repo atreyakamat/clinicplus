@@ -8,7 +8,8 @@ interface User {
   lastName?: string;
   organizationId: string;
   branchId: string;
-  roles?: any[];
+  roles?: string[];
+  permissions?: string[];
 }
 
 interface AuthState {

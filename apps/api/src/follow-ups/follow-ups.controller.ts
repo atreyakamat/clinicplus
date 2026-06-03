@@ -21,14 +21,14 @@ export class FollowUpsController {
   }
 
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body('status') status: string) {
-    return this.followUpsService.updateStatus(id, status);
+  updateStatus(@Param('id') id: string, @Body('status') status: string, @Request() req) {
+    return this.followUpsService.updateStatus(id, status, req.user.organizationId);
   }
 
   @Post(':id/outcomes')
   addOutcome(@Param('id') id: string, @Body() data: any, @Request() req) {
     data.organizationId = req.user.organizationId;
     data.branchId = req.user.branchId;
-    return this.followUpsService.addOutcome(id, data);
+    return this.followUpsService.addOutcome(id, data, req.user.organizationId);
   }
 }

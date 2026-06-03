@@ -1,7 +1,11 @@
 import { InvoicesService } from './invoices.service';
+import { PdfService } from '../common/services/pdf.service';
+import { OrganizationsService } from '../organizations/organizations.service';
 export declare class InvoicesController {
     private readonly invoicesService;
-    constructor(invoicesService: InvoicesService);
+    private readonly pdfService;
+    private readonly organizationsService;
+    constructor(invoicesService: InvoicesService, pdfService: PdfService, organizationsService: OrganizationsService);
     create(data: any, req: any): Promise<{
         items: {
             id: string;
@@ -34,6 +38,7 @@ export declare class InvoicesController {
         tax: import("@prisma/client/runtime/library").Decimal;
         total: import("@prisma/client/runtime/library").Decimal;
     }>;
+    download(id: string, req: any, res: any): Promise<void>;
     findAll(req: any): Promise<({
         patient: {
             firstName: string;

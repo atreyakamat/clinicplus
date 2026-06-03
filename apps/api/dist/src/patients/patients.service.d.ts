@@ -1,10 +1,12 @@
 import { PrismaService } from '../prisma/prisma.service';
+import { TimelineService } from '../timeline/timeline.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
 export declare class PatientsService {
     private prisma;
-    constructor(prisma: PrismaService);
-    create(createPatientDto: CreatePatientDto): Promise<{
+    private timeline;
+    constructor(prisma: PrismaService, timeline: TimelineService);
+    create(createPatientDto: CreatePatientDto, organizationId: string, branchId: string, createdBy: string): Promise<{
         id: string;
         email: string | null;
         phone: string | null;
@@ -54,7 +56,73 @@ export declare class PatientsService {
         occupation: string | null;
         abhaNumber: string | null;
     }[]>;
-    findOne(id: string): Promise<{
+    search(organizationId: string, query: string): Promise<{
+        id: string;
+        email: string | null;
+        phone: string | null;
+        status: import("@prisma/client").$Enums.RecordStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        createdBy: string | null;
+        updatedBy: string | null;
+        deletedAt: Date | null;
+        deletedBy: string | null;
+        deleteReason: string | null;
+        organizationId: string;
+        firstName: string;
+        lastName: string;
+        branchId: string;
+        patientCode: string | null;
+        middleName: string | null;
+        gender: string | null;
+        dateOfBirth: Date | null;
+        bloodGroup: string | null;
+        maritalStatus: string | null;
+        occupation: string | null;
+        abhaNumber: string | null;
+    }[]>;
+    findOne(id: string, organizationId: string, branchId: string): Promise<{
+        appointments: {
+            id: string;
+            status: import("@prisma/client").$Enums.AppointmentStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            updatedBy: string | null;
+            deletedAt: Date | null;
+            deletedBy: string | null;
+            deleteReason: string | null;
+            organizationId: string;
+            branchId: string;
+            notes: string | null;
+            patientId: string;
+            doctorId: string;
+            appointmentType: string | null;
+            appointmentSource: string | null;
+            scheduledStart: Date;
+            scheduledEnd: Date;
+        }[];
+        consultations: {
+            id: string;
+            status: import("@prisma/client").$Enums.ConsultationStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            updatedBy: string | null;
+            deletedAt: Date | null;
+            deletedBy: string | null;
+            deleteReason: string | null;
+            organizationId: string;
+            branchId: string;
+            patientId: string;
+            doctorId: string;
+            chiefComplaint: string | null;
+            historyOfPresentIllness: string | null;
+            clinicalAssessment: string | null;
+            treatmentPlan: string | null;
+            consultationDate: Date;
+            appointmentId: string | null;
+        }[];
         addresses: {
             id: string;
             createdAt: Date;
@@ -187,43 +255,6 @@ export declare class PatientsService {
         maritalStatus: string | null;
         occupation: string | null;
         abhaNumber: string | null;
-    }>;
-    addAddress(patientId: string, addressData: any): Promise<{
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        city: string | null;
-        state: string | null;
-        country: string | null;
-        postalCode: string | null;
-        organizationId: string;
-        branchId: string;
-        patientId: string;
-        addressType: string | null;
-        addressLine1: string | null;
-        addressLine2: string | null;
-    }>;
-    addEmergencyContact(patientId: string, emergencyContactData: any): Promise<{
-        id: string;
-        name: string;
-        email: string | null;
-        phone: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        organizationId: string;
-        branchId: string;
-        patientId: string;
-        relationship: string | null;
-    }>;
-    addTag(patientId: string, tagData: any): Promise<{
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        organizationId: string;
-        branchId: string;
-        patientId: string;
-        tagName: string;
-        tagColor: string | null;
     }>;
     addNote(patientId: string, noteData: any): Promise<{
         id: string;

@@ -10,13 +10,16 @@ exports.PrescriptionsModule = void 0;
 const common_1 = require("@nestjs/common");
 const prescriptions_controller_1 = require("./prescriptions.controller");
 const prescriptions_service_1 = require("./prescriptions.service");
+const pdf_service_1 = require("../common/services/pdf.service");
+const organizations_module_1 = require("../organizations/organizations.module");
 let PrescriptionsModule = class PrescriptionsModule {
 };
 exports.PrescriptionsModule = PrescriptionsModule;
 exports.PrescriptionsModule = PrescriptionsModule = __decorate([
     (0, common_1.Module)({
+        imports: [organizations_module_1.OrganizationsModule],
         controllers: [prescriptions_controller_1.PrescriptionsController],
-        providers: [prescriptions_service_1.PrescriptionsService]
+        providers: [prescriptions_service_1.PrescriptionsService, pdf_service_1.PdfService]
     })
 ], PrescriptionsModule);
 //# sourceMappingURL=prescriptions.module.js.map

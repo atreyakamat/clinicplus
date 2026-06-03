@@ -16,16 +16,33 @@ exports.InvoicesController = void 0;
 const common_1 = require("@nestjs/common");
 const invoices_service_1 = require("./invoices.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const pdf_service_1 = require("../common/services/pdf.service");
+const organizations_service_1 = require("../organizations/organizations.service");
 let InvoicesController = class InvoicesController {
     invoicesService;
-    constructor(invoicesService) {
+    pdfService;
+    organizationsService;
+    constructor(invoicesService, pdfService, organizationsService) {
         this.invoicesService = invoicesService;
+        this.pdfService = pdfService;
+        this.organizationsService = organizationsService;
     }
     create(data, req) {
         data.organizationId = req.user.organizationId;
         data.branchId = req.user.branchId;
         data.createdBy = req.user.id;
         return this.invoicesService.create(data);
+    }
+    async download(id, req, res) {
+        const invoice = await this.invoicesService.findOne(id);
+        const org = await this.organizationsService.findOne(req.user.organizationId);
+        const buffer = await this.pdfService.generateInvoicePdf(invoice, org);
+        res.set({
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="invoice-${invoice.invoiceNumber}.pdf"`,
+            'Content-Length': buffer.length,
+        });
+        res.end(buffer);
     }
     findAll(req) {
         return this.invoicesService.findAll(req.user.organizationId, req.user.branchId);
@@ -49,6 +66,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], InvoicesController.prototype, "create", null);
+__decorate([
+    (0, common_1.Get)(':id/download'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __param(2, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], InvoicesController.prototype, "download", null);
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Request)()),
@@ -75,6 +101,8 @@ __decorate([
 exports.InvoicesController = InvoicesController = __decorate([
     (0, common_1.Controller)('api/v1/invoices'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [invoices_service_1.InvoicesService])
+    __metadata("design:paramtypes", [invoices_service_1.InvoicesService,
+        pdf_service_1.PdfService,
+        organizations_service_1.OrganizationsService])
 ], InvoicesController);
 //# sourceMappingURL=invoices.controller.js.map

@@ -1,7 +1,11 @@
 import { PrescriptionsService } from './prescriptions.service';
+import { PdfService } from '../common/services/pdf.service';
+import { OrganizationsService } from '../organizations/organizations.service';
 export declare class PrescriptionsController {
     private readonly prescriptionsService;
-    constructor(prescriptionsService: PrescriptionsService);
+    private readonly pdfService;
+    private readonly organizationsService;
+    constructor(prescriptionsService: PrescriptionsService, pdfService: PdfService, organizationsService: OrganizationsService);
     create(data: any, req: any): Promise<{
         items: {
             id: string;
@@ -27,6 +31,7 @@ export declare class PrescriptionsController {
         issuedAt: Date;
         consultationId: string | null;
     }>;
+    download(id: string, req: any, res: any): Promise<void>;
     findAllByPatient(patientId: string): Promise<({
         doctor: {
             firstName: string;

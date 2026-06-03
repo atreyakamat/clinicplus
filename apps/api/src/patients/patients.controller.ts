@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards, Request, Res } from '@nestjs/common';
+import { Controller, Post, Get, Body, UseGuards, Request, Res, Query, Param, Patch, Delete } from '@nestjs/common';
 import { PatientsService } from './patients.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { stringify } from 'csv-stringify/sync';
@@ -8,7 +8,17 @@ import { stringify } from 'csv-stringify/sync';
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
-  // ... other endpoints (create, findAll, findOne, etc.)
+  @Post()
+  create(@Body() data: any, @Request() req) {
+    return this.patientsService.create(data, req.user.organizationId, req.user.branchId, req.user.id);
+  }
+
+  // ... other endpoints (findAll, findOne, etc.)
+
+  @Get(':id')
+  findOne(@Param('id') id: string, @Request() req) {
+    return this.patientsService.findOne(id, req.user.organizationId, req.user.branchId);
+  }
 
   @Get('export/csv')
   async exportCsv(@Request() req, @Res() res) {
@@ -33,6 +43,11 @@ export class PatientsController {
     });
 
     return res.send(csvData);
+  }
+
+  @Get('search')
+  async search(@Request() req, @Query('q') query: string) {
+    return this.patientsService.search(req.user.organizationId, query);
   }
 
   @Post('import/csv')

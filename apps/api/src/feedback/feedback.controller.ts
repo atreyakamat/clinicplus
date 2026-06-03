@@ -9,14 +9,12 @@ export class FeedbackController {
 
   @Post()
   create(@Body() data: any, @Request() req) {
-    data.organizationId = req.user.organizationId;
-    data.userId = req.user.id;
-    return this.feedbackService.create(data);
+    return this.feedbackService.create(data, req.user.organizationId, req.user.branchId, req.user.id);
   }
 
   @Get()
   findAll(@Request() req) {
-    return this.feedbackService.findAll(req.user.organizationId);
+    return this.feedbackService.findAll(req.user.organizationId, req.user.branchId);
   }
 
   @Patch(':id/status')

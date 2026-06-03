@@ -6,11 +6,13 @@ import { Prisma } from '@prisma/client';
 export class AppointmentsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(data: Prisma.AppointmentUncheckedCreateInput) {
+  async create(data: Prisma.AppointmentUncheckedCreateInput, organizationId: string, branchId: string, createdBy: string) {
     // Check if slot is available
     const overlapping = await this.prisma.appointment.findFirst({
       where: {
         doctorId: data.doctorId,
+        organizationId,
+        branchId,
         status: { notIn: ['CANCELLED', 'NO_SHOW'] },
         OR: [
           {
@@ -30,7 +32,12 @@ export class AppointmentsService {
     }
 
     return this.prisma.appointment.create({
-      data,
+      data: {
+        ...data,
+        organizationId,
+        branchId,
+        createdBy,
+      },
     });
   }
 
@@ -69,9 +76,9 @@ export class AppointmentsService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, organizationId: string, branchId: string) {
     const appointment = await this.prisma.appointment.findUnique({
-      where: { id },
+      where: { id, organizationId, branchId },
       include: {
         patient: true,
         doctor: {
