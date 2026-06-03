@@ -2,12 +2,14 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { TimelineService } from '../timeline/timeline.service';
+import { AuditService } from '../common/services/audit.service';
 
 @Injectable()
 export class PatientsService {
   constructor(
     private prisma: PrismaService,
     private timeline: TimelineService,
+    private auditService: AuditService,
   ) {}
 
   private validateUuid(id: string) {
@@ -58,6 +60,16 @@ export class PatientsService {
         createdBy: data.createdBy,
       });
 
+      // 4. Audit Log
+      await this.auditService.log({
+        organizationId: patient.organizationId,
+        userId: data.createdBy,
+        action: 'CREATE',
+        resource: 'patient',
+        resourceId: patient.id,
+        afterData: patient,
+      });
+
       return patient;
     });
   }
@@ -95,8 +107,9 @@ export class PatientsService {
 
   async update(id: string, data: any, organizationId: string, branchId: string) {
     this.validateUuid(id);
-    // Verify patient belongs to org/branch
-    await this.findOne(id, organizationId, branchId);
+    
+    // Get old data for audit
+    const oldPatient = await this.findOne(id, organizationId, branchId);
 
     const patient = await this.prisma.patient.update({
       where: { id },
@@ -113,13 +126,25 @@ export class PatientsService {
       createdBy: data.updatedBy,
     });
 
+    // Audit Log
+    await this.auditService.log({
+        organizationId: patient.organizationId,
+        userId: data.updatedBy,
+        action: 'UPDATE',
+        resource: 'patient',
+        resourceId: patient.id,
+        beforeData: oldPatient,
+        afterData: patient,
+    });
+
     return patient;
   }
 
-  async remove(id: string, organizationId: string, branchId: string) {
+  async remove(id: string, organizationId: string, branchId: string, removedBy: string) {
     this.validateUuid(id);
-    // Verify patient belongs to org/branch
-    await this.findOne(id, organizationId, branchId);
+    
+    // Get old data for audit
+    const oldPatient = await this.findOne(id, organizationId, branchId);
 
     const patient = await this.prisma.patient.update({
       where: { id },
@@ -136,6 +161,17 @@ export class PatientsService {
       eventCategory: 'PATIENT',
       title: 'Patient Archived',
       description: 'Patient record was marked as inactive.',
+    });
+
+    // Audit Log
+    await this.auditService.log({
+        organizationId: patient.organizationId,
+        userId: removedBy,
+        action: 'DELETE',
+        resource: 'patient',
+        resourceId: patient.id,
+        beforeData: oldPatient,
+        afterData: patient,
     });
 
     return patient;

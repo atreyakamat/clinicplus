@@ -2,6 +2,25 @@ import { DocumentsService } from './documents.service';
 export declare class DocumentsController {
     private readonly documentsService;
     constructor(documentsService: DocumentsService);
+    uploadFile(file: Express.Multer.File, body: {
+        patientId: string;
+        documentType: string;
+        title: string;
+    }, req: any): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        organizationId: string;
+        branchId: string;
+        patientId: string;
+        title: string;
+        documentType: string;
+        fileUrl: string;
+        mimeType: string | null;
+        fileSize: number | null;
+        uploadedAt: Date;
+        uploadedBy: string;
+    }>;
     create(data: any, req: any): Promise<{
         id: string;
         createdAt: Date;

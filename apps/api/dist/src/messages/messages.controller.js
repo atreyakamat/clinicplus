@@ -16,6 +16,8 @@ exports.MessagesController = void 0;
 const common_1 = require("@nestjs/common");
 const messages_service_1 = require("./messages.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const roles_guard_1 = require("../auth/guards/roles.guard");
+const permissions_guard_1 = require("../auth/guards/permissions.guard");
 let MessagesController = class MessagesController {
     messagesService;
     constructor(messagesService) {
@@ -56,7 +58,7 @@ __decorate([
 ], MessagesController.prototype, "getTemplates", null);
 exports.MessagesController = MessagesController = __decorate([
     (0, common_1.Controller)('api/v1/messages'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard, permissions_guard_1.PermissionsGuard),
     __metadata("design:paramtypes", [messages_service_1.MessagesService])
 ], MessagesController);
 //# sourceMappingURL=messages.controller.js.map

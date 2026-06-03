@@ -30,6 +30,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuditModule } from './common/services/audit.module';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { TimelineInterceptor } from './common/interceptors/timeline.interceptor';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -58,7 +59,8 @@ import { TimelineInterceptor } from './common/interceptors/timeline.interceptor'
     TasksModule, 
     AnalyticsModule, 
     FeedbackModule,
-    TimelineModule
+    TimelineModule,
+    HealthModule
   ],
   controllers: [AppController],
   providers: [

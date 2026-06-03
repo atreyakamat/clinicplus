@@ -1,8 +1,10 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
+import { AuditService } from '../common/services/audit.service';
 export declare class AppointmentsService {
     private prisma;
-    constructor(prisma: PrismaService);
+    private auditService;
+    constructor(prisma: PrismaService, auditService: AuditService);
     create(data: Prisma.AppointmentUncheckedCreateInput, organizationId: string, branchId: string, createdBy: string): Promise<{
         id: string;
         status: import("@prisma/client").$Enums.AppointmentStatus;
@@ -106,7 +108,7 @@ export declare class AppointmentsService {
         scheduledStart: Date;
         scheduledEnd: Date;
     }>;
-    update(id: string, data: Prisma.AppointmentUpdateInput): Promise<{
+    update(id: string, data: Prisma.AppointmentUpdateInput, organizationId: string, branchId: string, updatedBy: string): Promise<{
         id: string;
         status: import("@prisma/client").$Enums.AppointmentStatus;
         createdAt: Date;
@@ -126,7 +128,7 @@ export declare class AppointmentsService {
         scheduledStart: Date;
         scheduledEnd: Date;
     }>;
-    remove(id: string): Promise<{
+    remove(id: string, organizationId: string, branchId: string, removedBy: string): Promise<{
         id: string;
         status: import("@prisma/client").$Enums.AppointmentStatus;
         createdAt: Date;

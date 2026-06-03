@@ -8,8 +8,8 @@ export declare class AuditService {
         action: string;
         resource: string;
         resourceId?: string;
-        oldData?: any;
-        newData?: any;
+        beforeData?: any;
+        afterData?: any;
         ipAddress?: string;
         userAgent?: string;
     }): Promise<{
@@ -17,13 +17,13 @@ export declare class AuditService {
         createdAt: Date;
         organizationId: string;
         branchId: string | null;
+        ipAddress: string | null;
         action: string;
         actorId: string | null;
         entityType: string | null;
         entityId: string | null;
         beforeData: import("@prisma/client/runtime/library").JsonValue | null;
         afterData: import("@prisma/client/runtime/library").JsonValue | null;
-        ipAddress: string | null;
         userAgent: string | null;
     }>;
 }

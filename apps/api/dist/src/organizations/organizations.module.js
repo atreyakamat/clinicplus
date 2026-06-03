@@ -16,7 +16,8 @@ exports.OrganizationsModule = OrganizationsModule;
 exports.OrganizationsModule = OrganizationsModule = __decorate([
     (0, common_1.Module)({
         controllers: [organizations_controller_1.OrganizationsController],
-        providers: [organizations_service_1.OrganizationsService]
+        providers: [organizations_service_1.OrganizationsService],
+        exports: [organizations_service_1.OrganizationsService],
     })
 ], OrganizationsModule);
 //# sourceMappingURL=organizations.module.js.map

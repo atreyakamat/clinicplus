@@ -36,10 +36,10 @@ const analytics_module_1 = require("./analytics/analytics.module");
 const feedback_module_1 = require("./feedback/feedback.module");
 const timeline_module_1 = require("./timeline/timeline.module");
 const prisma_module_1 = require("./prisma/prisma.module");
-const audit_service_1 = require("./common/services/audit.service");
+const audit_module_1 = require("./common/services/audit.module");
 const audit_interceptor_1 = require("./common/interceptors/audit.interceptor");
 const timeline_interceptor_1 = require("./common/interceptors/timeline.interceptor");
-const timeline_service_1 = require("./timeline/timeline.service");
+const health_module_1 = require("./health/health.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -48,6 +48,7 @@ exports.AppModule = AppModule = __decorate([
         imports: [
             config_1.ConfigModule.forRoot({ isGlobal: true }),
             prisma_module_1.PrismaModule,
+            audit_module_1.AuditModule,
             auth_module_1.AuthModule,
             organizations_module_1.OrganizationsModule,
             branches_module_1.BranchesModule,
@@ -70,13 +71,12 @@ exports.AppModule = AppModule = __decorate([
             tasks_module_1.TasksModule,
             analytics_module_1.AnalyticsModule,
             feedback_module_1.FeedbackModule,
-            timeline_module_1.TimelineModule
+            timeline_module_1.TimelineModule,
+            health_module_1.HealthModule
         ],
         controllers: [app_controller_1.AppController],
         providers: [
             app_service_1.AppService,
-            audit_service_1.AuditService,
-            timeline_service_1.TimelineService,
             {
                 provide: core_1.APP_INTERCEPTOR,
                 useClass: audit_interceptor_1.AuditInterceptor,

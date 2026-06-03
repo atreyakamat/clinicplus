@@ -5,6 +5,7 @@ import { compare, hash } from 'bcryptjs';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AuthService {
@@ -23,13 +24,31 @@ export class AuthService {
     return null;
   }
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto, ipAddress?: string, userAgent?: string) {
     const user = await this.validateUser(loginDto.email, loginDto.password);
     if (!user) {
+      // Record failed attempt
+      await this.prisma.loginAttempt.create({
+        data: {
+          email: loginDto.email,
+          ipAddress,
+          status: 'FAILED',
+          failureReason: 'Invalid credentials',
+        },
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    // Success attempt
+    await this.prisma.loginAttempt.create({
+      data: {
+        email: loginDto.email,
+        ipAddress,
+        status: 'SUCCESS',
+      },
+    });
     
-    // Fetch roles
+    // Fetch roles and permissions
     const userRoles = await this.prisma.userRole.findMany({
       where: { userId: user.id },
       include: { role: { include: { rolePermissions: { include: { permission: true } } } } },
@@ -46,14 +65,83 @@ export class AuthService {
       roles,
       permissions
     };
+
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = uuidv4();
+    const refreshTokenHash = await hash(refreshToken, 10);
+
+    // Create session (F-003)
+    const session = await this.prisma.userSession.create({
+      data: {
+        userId: user.id,
+        organizationId: user.organizationId,
+        branchId: user.branchId,
+        ipAddress,
+        deviceName: userAgent,
+        refreshTokenHash,
+      },
+    });
+
     return {
-      accessToken: this.jwtService.sign(payload),
+      accessToken,
+      refreshToken,
+      sessionId: session.id,
       user: {
         ...user,
         roles,
         permissions
       },
     };
+  }
+
+  async refresh(refreshToken: string, sessionId: string) {
+    const session = await this.prisma.userSession.findUnique({
+      where: { id: sessionId, status: 'ACTIVE' },
+      include: { user: true },
+    });
+
+    if (!session || !session.refreshTokenHash || !(await compare(refreshToken, session.refreshTokenHash))) {
+      throw new UnauthorizedException('Invalid refresh token or session');
+    }
+
+    // Rotate refresh token (Security Hardening)
+    const newRefreshToken = uuidv4();
+    const newRefreshTokenHash = await hash(newRefreshToken, 10);
+
+    await this.prisma.userSession.update({
+      where: { id: session.id },
+      data: { refreshTokenHash: newRefreshTokenHash },
+    });
+
+    const user = session.user;
+    const userRoles = await this.prisma.userRole.findMany({
+      where: { userId: user.id },
+      include: { role: { include: { rolePermissions: { include: { permission: true } } } } },
+    });
+
+    const roles = userRoles.map(ur => ur.role.name);
+    const permissions = userRoles.flatMap(ur => ur.role.rolePermissions.map(rp => `${rp.permission.module}.${rp.permission.action}`));
+
+    const payload = { 
+      email: user.email, 
+      sub: user.id, 
+      organizationId: user.organizationId, 
+      branchId: user.branchId,
+      roles,
+      permissions
+    };
+
+    return {
+      accessToken: this.jwtService.sign(payload),
+      refreshToken: newRefreshToken,
+    };
+  }
+
+  async logout(sessionId: string) {
+    return this.prisma.userSession.update({
+      where: { id: sessionId },
+      data: { status: 'INACTIVE', logoutAt: new Date() },
+    });
   }
 
   async register(registerDto: RegisterDto) {

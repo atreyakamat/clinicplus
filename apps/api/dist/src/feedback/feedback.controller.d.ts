@@ -8,6 +8,7 @@ export declare class FeedbackController {
         createdAt: Date;
         updatedAt: Date;
         organizationId: string;
+        branchId: string;
         userId: string;
         priority: string;
         category: string;
@@ -25,6 +26,7 @@ export declare class FeedbackController {
         createdAt: Date;
         updatedAt: Date;
         organizationId: string;
+        branchId: string;
         userId: string;
         priority: string;
         category: string;
@@ -37,6 +39,7 @@ export declare class FeedbackController {
         createdAt: Date;
         updatedAt: Date;
         organizationId: string;
+        branchId: string;
         userId: string;
         priority: string;
         category: string;

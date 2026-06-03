@@ -2,19 +2,41 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 export declare class AuthController {
-    private authService;
+    private readonly authService;
     constructor(authService: AuthService);
-    login(loginDto: LoginDto, req: any): Promise<{
+    login(loginDto: LoginDto, ip: string, userAgent: string): Promise<{
         accessToken: string;
+        refreshToken: string;
+        sessionId: string;
         user: any;
+    }>;
+    refresh(body: {
+        refreshToken: string;
+        sessionId: string;
+    }): Promise<{
+        accessToken: string;
+        refreshToken: string;
     }>;
     register(registerDto: RegisterDto): Promise<{
         message: string;
         organizationId: string;
         userId: string;
     }>;
-    logout(req: any): Promise<{
-        message: string;
+    logout(body: {
+        sessionId: string;
+    }): Promise<{
+        id: string;
+        status: import("@prisma/client").$Enums.RecordStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        organizationId: string;
+        branchId: string;
+        userId: string;
+        ipAddress: string | null;
+        deviceName: string | null;
+        loginAt: Date;
+        logoutAt: Date | null;
+        refreshTokenHash: string | null;
     }>;
     getProfile(req: any): any;
 }

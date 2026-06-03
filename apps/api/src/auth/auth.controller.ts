@@ -1,18 +1,25 @@
-import { Controller, Post, Body, UseGuards, Request, Get } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get, Ip, Headers } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
-@Controller('auth')
+@Controller('api/v1/auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  @UseGuards(LocalAuthGuard)
-  async login(@Body() loginDto: LoginDto, @Request() req) {
-    return this.authService.login(loginDto);
+  async login(
+    @Body() loginDto: LoginDto, 
+    @Ip() ip: string, 
+    @Headers('user-agent') userAgent: string
+  ) {
+    return this.authService.login(loginDto, ip, userAgent);
+  }
+
+  @Post('refresh')
+  async refresh(@Body() body: { refreshToken: string; sessionId: string }) {
+    return this.authService.refresh(body.refreshToken, body.sessionId);
   }
 
   @Post('register')
@@ -22,9 +29,8 @@ export class AuthController {
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
-  async logout(@Request() req) {
-    // In a real app, you would invalidate the token here
-    return { message: 'Logged out successfully' };
+  async logout(@Body() body: { sessionId: string }) {
+    return this.authService.logout(body.sessionId);
   }
 
   @Get('profile')

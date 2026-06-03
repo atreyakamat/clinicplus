@@ -16,10 +16,6 @@ exports.AppointmentsController = void 0;
 const common_1 = require("@nestjs/common");
 const appointments_service_1 = require("./appointments.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
-const roles_guard_1 = require("../auth/guards/roles.guard");
-const permissions_guard_1 = require("../auth/guards/permissions.guard");
-const roles_decorator_1 = require("../auth/decorators/roles.decorator");
-const permissions_decorator_1 = require("../auth/decorators/permissions.decorator");
 const sync_1 = require("csv-stringify/sync");
 let AppointmentsController = class AppointmentsController {
     appointmentsService;
@@ -27,6 +23,9 @@ let AppointmentsController = class AppointmentsController {
         this.appointmentsService = appointmentsService;
     }
     create(data, req) {
+        data.organizationId = req.user.organizationId;
+        data.branchId = req.user.branchId;
+        data.createdBy = req.user.id;
         return this.appointmentsService.create(data, req.user.organizationId, req.user.branchId, req.user.id);
     }
     async exportCsv(req, res) {
@@ -55,18 +54,15 @@ let AppointmentsController = class AppointmentsController {
         return this.appointmentsService.findOne(id, req.user.organizationId, req.user.branchId);
     }
     update(id, data, req) {
-        data.updatedBy = req.user.id;
-        return this.appointmentsService.update(id, data);
+        return this.appointmentsService.update(id, data, req.user.organizationId, req.user.branchId, req.user.id);
     }
-    remove(id) {
-        return this.appointmentsService.remove(id);
+    remove(id, req) {
+        return this.appointmentsService.remove(id, req.user.organizationId, req.user.branchId, req.user.id);
     }
 };
 exports.AppointmentsController = AppointmentsController;
 __decorate([
     (0, common_1.Post)(),
-    (0, roles_decorator_1.Roles)('super-admin', 'organization-owner', 'clinic-admin', 'doctor', 'receptionist'),
-    (0, permissions_decorator_1.Permissions)('appointments:create'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -109,13 +105,14 @@ __decorate([
 __decorate([
     (0, common_1.Delete)(':id'),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], AppointmentsController.prototype, "remove", null);
 exports.AppointmentsController = AppointmentsController = __decorate([
     (0, common_1.Controller)('api/v1/appointments'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard, permissions_guard_1.PermissionsGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [appointments_service_1.AppointmentsService])
 ], AppointmentsController);
 //# sourceMappingURL=appointments.controller.js.map

@@ -15,6 +15,7 @@ const users_service_1 = require("../users/users.service");
 const jwt_1 = require("@nestjs/jwt");
 const bcryptjs_1 = require("bcryptjs");
 const prisma_service_1 = require("../prisma/prisma.service");
+const uuid_1 = require("uuid");
 let AuthService = class AuthService {
     usersService;
     jwtService;
@@ -32,11 +33,79 @@ let AuthService = class AuthService {
         }
         return null;
     }
-    async login(loginDto) {
+    async login(loginDto, ipAddress, userAgent) {
         const user = await this.validateUser(loginDto.email, loginDto.password);
         if (!user) {
+            await this.prisma.loginAttempt.create({
+                data: {
+                    email: loginDto.email,
+                    ipAddress,
+                    status: 'FAILED',
+                    failureReason: 'Invalid credentials',
+                },
+            });
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
+        await this.prisma.loginAttempt.create({
+            data: {
+                email: loginDto.email,
+                ipAddress,
+                status: 'SUCCESS',
+            },
+        });
+        const userRoles = await this.prisma.userRole.findMany({
+            where: { userId: user.id },
+            include: { role: { include: { rolePermissions: { include: { permission: true } } } } },
+        });
+        const roles = userRoles.map(ur => ur.role.name);
+        const permissions = userRoles.flatMap(ur => ur.role.rolePermissions.map(rp => `${rp.permission.module}.${rp.permission.action}`));
+        const payload = {
+            email: user.email,
+            sub: user.id,
+            organizationId: user.organizationId,
+            branchId: user.branchId,
+            roles,
+            permissions
+        };
+        const accessToken = this.jwtService.sign(payload);
+        const refreshToken = (0, uuid_1.v4)();
+        const refreshTokenHash = await (0, bcryptjs_1.hash)(refreshToken, 10);
+        const session = await this.prisma.userSession.create({
+            data: {
+                userId: user.id,
+                organizationId: user.organizationId,
+                branchId: user.branchId,
+                ipAddress,
+                deviceName: userAgent,
+                refreshTokenHash,
+            },
+        });
+        return {
+            accessToken,
+            refreshToken,
+            sessionId: session.id,
+            user: {
+                ...user,
+                roles,
+                permissions
+            },
+        };
+    }
+    async refresh(refreshToken, sessionId) {
+        const session = await this.prisma.userSession.findUnique({
+            where: { id: sessionId, status: 'ACTIVE' },
+            include: { user: true },
+        });
+        if (!session || !session.refreshTokenHash || !(await (0, bcryptjs_1.compare)(refreshToken, session.refreshTokenHash))) {
+            throw new common_1.UnauthorizedException('Invalid refresh token or session');
+        }
+        const newRefreshToken = (0, uuid_1.v4)();
+        const newRefreshTokenHash = await (0, bcryptjs_1.hash)(newRefreshToken, 10);
+        await this.prisma.userSession.update({
+            where: { id: session.id },
+            data: { refreshTokenHash: newRefreshTokenHash },
+        });
+        const user = session.user;
         const userRoles = await this.prisma.userRole.findMany({
             where: { userId: user.id },
             include: { role: { include: { rolePermissions: { include: { permission: true } } } } },
@@ -53,12 +122,14 @@ let AuthService = class AuthService {
         };
         return {
             accessToken: this.jwtService.sign(payload),
-            user: {
-                ...user,
-                roles,
-                permissions
-            },
+            refreshToken: newRefreshToken,
         };
+    }
+    async logout(sessionId) {
+        return this.prisma.userSession.update({
+            where: { id: sessionId },
+            data: { status: 'INACTIVE', logoutAt: new Date() },
+        });
     }
     async register(registerDto) {
         const existingUser = await this.prisma.user.findFirst({

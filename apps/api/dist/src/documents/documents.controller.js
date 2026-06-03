@@ -16,10 +16,26 @@ exports.DocumentsController = void 0;
 const common_1 = require("@nestjs/common");
 const documents_service_1 = require("./documents.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const platform_express_1 = require("@nestjs/platform-express");
+const file_validation_pipe_1 = require("../common/pipes/file-validation.pipe");
 let DocumentsController = class DocumentsController {
     documentsService;
     constructor(documentsService) {
         this.documentsService = documentsService;
+    }
+    async uploadFile(file, body, req) {
+        const fileUrl = `https://storage.clinicos.com/${req.user.organizationId}/${file.originalname}`;
+        return this.documentsService.create({
+            patientId: body.patientId,
+            organizationId: req.user.organizationId,
+            branchId: req.user.branchId,
+            uploadedBy: req.user.id,
+            title: body.title,
+            documentType: body.documentType,
+            fileUrl,
+            mimeType: file.mimetype,
+            fileSize: file.size,
+        }, req.user.organizationId, req.user.branchId, req.user.id);
     }
     create(data, req) {
         return this.documentsService.create(data, req.user.organizationId, req.user.branchId, req.user.id);
@@ -38,6 +54,16 @@ let DocumentsController = class DocumentsController {
     }
 };
 exports.DocumentsController = DocumentsController;
+__decorate([
+    (0, common_1.Post)('upload'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    __param(0, (0, common_1.UploadedFile)(file_validation_pipe_1.FileValidationPipe)),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object, Object]),
+    __metadata("design:returntype", Promise)
+], DocumentsController.prototype, "uploadFile", null);
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),

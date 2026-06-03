@@ -13,20 +13,30 @@ exports.PatientsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const timeline_service_1 = require("../timeline/timeline.service");
+const audit_service_1 = require("../common/services/audit.service");
 let PatientsService = class PatientsService {
     prisma;
     timeline;
-    constructor(prisma, timeline) {
+    auditService;
+    constructor(prisma, timeline, auditService) {
         this.prisma = prisma;
         this.timeline = timeline;
+        this.auditService = auditService;
     }
-    async create(createPatientDto, organizationId, branchId, createdBy) {
+    validateUuid(id) {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(id)) {
+            throw new common_1.NotFoundException(`Invalid ID format: ${id}`);
+        }
+    }
+    async create(data) {
+        const organizationId = data.organizationId;
         const existing = await this.prisma.patient.findFirst({
             where: {
                 organizationId,
                 OR: [
-                    { email: createPatientDto.email || 'none' },
-                    { phone: createPatientDto.phone || 'none' }
+                    { email: data.email || 'none' },
+                    { phone: data.phone || 'none' }
                 ]
             }
         });
@@ -34,14 +44,12 @@ let PatientsService = class PatientsService {
             throw new common_1.ConflictException('Patient with this email or phone already exists in this clinic');
         }
         const count = await this.prisma.patient.count({ where: { organizationId } });
-        const patientCode = createPatientDto.patientCode || `PAT-${(count + 1).toString().padStart(6, '0')}`;
+        const patientCode = data.patientCode || `PAT-${(count + 1).toString().padStart(6, '0')}`;
         return this.prisma.$transaction(async (tx) => {
             const patient = await tx.patient.create({
                 data: {
-                    ...createPatientDto,
+                    ...data,
                     patientCode,
-                    organizationId,
-                    branchId,
                 },
             });
             await this.timeline.record({
@@ -51,7 +59,15 @@ let PatientsService = class PatientsService {
                 eventCategory: 'PATIENT',
                 title: 'Patient Registered',
                 description: `Patient ${patient.firstName} ${patient.lastName} was registered in the system.`,
-                createdBy,
+                createdBy: data.createdBy,
+            });
+            await this.auditService.log({
+                organizationId: patient.organizationId,
+                userId: data.createdBy,
+                action: 'CREATE',
+                resource: 'patient',
+                resourceId: patient.id,
+                afterData: patient,
             });
             return patient;
         });
@@ -68,23 +84,8 @@ let PatientsService = class PatientsService {
             },
         });
     }
-    async search(organizationId, query) {
-        return this.prisma.patient.findMany({
-            where: {
-                organizationId,
-                status: 'ACTIVE',
-                OR: [
-                    { firstName: { contains: query, mode: 'insensitive' } },
-                    { lastName: { contains: query, mode: 'insensitive' } },
-                    { phone: { contains: query } },
-                    { patientCode: { contains: query, mode: 'insensitive' } },
-                    { email: { contains: query, mode: 'insensitive' } },
-                ],
-            },
-            take: 10,
-        });
-    }
     async findOne(id, organizationId, branchId) {
+        this.validateUuid(id);
         const patient = await this.prisma.patient.findUnique({
             where: { id, organizationId, branchId },
             include: {
@@ -93,8 +94,6 @@ let PatientsService = class PatientsService {
                 familyMembers: true,
                 tags: true,
                 notes: true,
-                appointments: { take: 5, orderBy: { scheduledStart: 'desc' } },
-                consultations: { take: 5, orderBy: { consultationDate: 'desc' } },
             },
         });
         if (!patient) {
@@ -102,10 +101,12 @@ let PatientsService = class PatientsService {
         }
         return patient;
     }
-    async update(id, updatePatientDto) {
+    async update(id, data, organizationId, branchId) {
+        this.validateUuid(id);
+        const oldPatient = await this.findOne(id, organizationId, branchId);
         const patient = await this.prisma.patient.update({
             where: { id },
-            data: updatePatientDto,
+            data,
         });
         await this.timeline.record({
             organizationId: patient.organizationId,
@@ -114,11 +115,22 @@ let PatientsService = class PatientsService {
             eventCategory: 'PATIENT',
             title: 'Profile Updated',
             description: 'Patient personal information was updated.',
-            createdBy: updatePatientDto.updatedBy,
+            createdBy: data.updatedBy,
+        });
+        await this.auditService.log({
+            organizationId: patient.organizationId,
+            userId: data.updatedBy,
+            action: 'UPDATE',
+            resource: 'patient',
+            resourceId: patient.id,
+            beforeData: oldPatient,
+            afterData: patient,
         });
         return patient;
     }
-    async remove(id) {
+    async remove(id, organizationId, branchId, removedBy) {
+        this.validateUuid(id);
+        const oldPatient = await this.findOne(id, organizationId, branchId);
         const patient = await this.prisma.patient.update({
             where: { id },
             data: {
@@ -134,16 +146,41 @@ let PatientsService = class PatientsService {
             title: 'Patient Archived',
             description: 'Patient record was marked as inactive.',
         });
+        await this.auditService.log({
+            organizationId: patient.organizationId,
+            userId: removedBy,
+            action: 'DELETE',
+            resource: 'patient',
+            resourceId: patient.id,
+            beforeData: oldPatient,
+            afterData: patient,
+        });
         return patient;
     }
+    async search(organizationId, query) {
+        if (!query || query.length < 2)
+            return [];
+        return this.prisma.patient.findMany({
+            where: {
+                organizationId,
+                status: 'ACTIVE',
+                OR: [
+                    { firstName: { contains: query, mode: 'insensitive' } },
+                    { lastName: { contains: query, mode: 'insensitive' } },
+                    { phone: { contains: query } },
+                    { patientCode: { contains: query, mode: 'insensitive' } },
+                    { email: { contains: query, mode: 'insensitive' } },
+                ],
+            },
+            take: 10,
+        });
+    }
     async addNote(patientId, noteData) {
+        this.validateUuid(patientId);
         return this.prisma.patientNote.create({
             data: {
                 ...noteData,
                 patientId,
-                organizationId: noteData.organizationId || 'default-org-id',
-                branchId: noteData.branchId || 'default-branch-id',
-                createdBy: noteData.createdBy || 'default-user-id',
             },
         });
     }
@@ -152,6 +189,7 @@ exports.PatientsService = PatientsService;
 exports.PatientsService = PatientsService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        timeline_service_1.TimelineService])
+        timeline_service_1.TimelineService,
+        audit_service_1.AuditService])
 ], PatientsService);
 //# sourceMappingURL=patients.service.js.map

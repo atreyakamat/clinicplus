@@ -11,8 +11,8 @@ export class AuditService {
     action: string;
     resource: string;
     resourceId?: string;
-    oldData?: any;
-    newData?: any;
+    beforeData?: any;
+    afterData?: any;
     ipAddress?: string;
     userAgent?: string;
   }) {
@@ -23,8 +23,8 @@ export class AuditService {
         action: data.action,
         entityType: data.resource,
         entityId: data.resourceId,
-        beforeData: data.oldData || undefined,
-        afterData: data.newData || undefined,
+        beforeData: data.beforeData || undefined,
+        afterData: data.afterData || undefined,
         ipAddress: data.ipAddress,
         userAgent: data.userAgent,
       },

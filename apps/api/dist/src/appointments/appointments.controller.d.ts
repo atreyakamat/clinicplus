@@ -126,7 +126,7 @@ export declare class AppointmentsController {
         scheduledStart: Date;
         scheduledEnd: Date;
     }>;
-    remove(id: string): Promise<{
+    remove(id: string, req: any): Promise<{
         id: string;
         status: import("@prisma/client").$Enums.AppointmentStatus;
         createdAt: Date;

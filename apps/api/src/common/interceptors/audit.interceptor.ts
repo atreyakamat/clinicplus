@@ -21,7 +21,7 @@ export class AuditInterceptor implements NestInterceptor {
              action: 'LOGIN',
              resource: 'auth',
              resourceId: data?.user?.id,
-             newData: { email: body.email },
+             afterData: { email: body.email },
              ipAddress: request.ip,
              userAgent: request.get('user-agent'),
            });
@@ -38,7 +38,7 @@ export class AuditInterceptor implements NestInterceptor {
             action: method,
             resource: url.split('/')[3] || 'unknown',
             resourceId: data?.id || body?.id || url.split('/')[4],
-            newData: body,
+            afterData: body,
             ipAddress: request.ip,
             userAgent: request.get('user-agent'),
           });

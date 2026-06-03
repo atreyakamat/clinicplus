@@ -13,8 +13,10 @@ let TimelineModule = class TimelineModule {
 };
 exports.TimelineModule = TimelineModule;
 exports.TimelineModule = TimelineModule = __decorate([
+    (0, common_1.Global)(),
     (0, common_1.Module)({
-        providers: [timeline_service_1.TimelineService]
+        providers: [timeline_service_1.TimelineService],
+        exports: [timeline_service_1.TimelineService],
     })
 ], TimelineModule);
 //# sourceMappingURL=timeline.module.js.map

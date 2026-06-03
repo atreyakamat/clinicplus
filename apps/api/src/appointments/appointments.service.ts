@@ -51,7 +51,7 @@ export class AppointmentsService {
       action: 'CREATE',
       resource: 'appointment',
       resourceId: appointment.id,
-      newData: {
+      afterData: {
         id: appointment.id,
         patientId: appointment.patientId,
         doctorId: appointment.doctorId,

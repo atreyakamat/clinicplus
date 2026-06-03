@@ -72,6 +72,6 @@ export class PatientsController {
 
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req) {
-    return this.patientsService.remove(id, req.user.organizationId, req.user.branchId);
+    return this.patientsService.remove(id, req.user.organizationId, req.user.branchId, req.user.id);
   }
 }

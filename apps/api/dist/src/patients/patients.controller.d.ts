@@ -2,6 +2,31 @@ import { PatientsService } from './patients.service';
 export declare class PatientsController {
     private readonly patientsService;
     constructor(patientsService: PatientsService);
+    search(req: any, query: string): Promise<{
+        id: string;
+        email: string | null;
+        phone: string | null;
+        status: import("@prisma/client").$Enums.RecordStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        createdBy: string | null;
+        updatedBy: string | null;
+        deletedAt: Date | null;
+        deletedBy: string | null;
+        deleteReason: string | null;
+        organizationId: string;
+        firstName: string;
+        lastName: string;
+        branchId: string;
+        patientCode: string | null;
+        middleName: string | null;
+        gender: string | null;
+        dateOfBirth: Date | null;
+        bloodGroup: string | null;
+        maritalStatus: string | null;
+        occupation: string | null;
+        abhaNumber: string | null;
+    }[]>;
     create(data: any, req: any): Promise<{
         id: string;
         email: string | null;
@@ -27,48 +52,32 @@ export declare class PatientsController {
         occupation: string | null;
         abhaNumber: string | null;
     }>;
+    findAll(req: any): Promise<{
+        id: string;
+        email: string | null;
+        phone: string | null;
+        status: import("@prisma/client").$Enums.RecordStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        createdBy: string | null;
+        updatedBy: string | null;
+        deletedAt: Date | null;
+        deletedBy: string | null;
+        deleteReason: string | null;
+        organizationId: string;
+        firstName: string;
+        lastName: string;
+        branchId: string;
+        patientCode: string | null;
+        middleName: string | null;
+        gender: string | null;
+        dateOfBirth: Date | null;
+        bloodGroup: string | null;
+        maritalStatus: string | null;
+        occupation: string | null;
+        abhaNumber: string | null;
+    }[]>;
     findOne(id: string, req: any): Promise<{
-        appointments: {
-            id: string;
-            status: import("@prisma/client").$Enums.AppointmentStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            createdBy: string | null;
-            updatedBy: string | null;
-            deletedAt: Date | null;
-            deletedBy: string | null;
-            deleteReason: string | null;
-            organizationId: string;
-            branchId: string;
-            notes: string | null;
-            patientId: string;
-            doctorId: string;
-            appointmentType: string | null;
-            appointmentSource: string | null;
-            scheduledStart: Date;
-            scheduledEnd: Date;
-        }[];
-        consultations: {
-            id: string;
-            status: import("@prisma/client").$Enums.ConsultationStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            createdBy: string | null;
-            updatedBy: string | null;
-            deletedAt: Date | null;
-            deletedBy: string | null;
-            deleteReason: string | null;
-            organizationId: string;
-            branchId: string;
-            patientId: string;
-            doctorId: string;
-            chiefComplaint: string | null;
-            historyOfPresentIllness: string | null;
-            clinicalAssessment: string | null;
-            treatmentPlan: string | null;
-            consultationDate: Date;
-            appointmentId: string | null;
-        }[];
         addresses: {
             id: string;
             createdAt: Date;
@@ -152,8 +161,7 @@ export declare class PatientsController {
         occupation: string | null;
         abhaNumber: string | null;
     }>;
-    exportCsv(req: any, res: any): Promise<any>;
-    search(req: any, query: string): Promise<{
+    update(id: string, data: any, req: any): Promise<{
         id: string;
         email: string | null;
         phone: string | null;
@@ -177,8 +185,31 @@ export declare class PatientsController {
         maritalStatus: string | null;
         occupation: string | null;
         abhaNumber: string | null;
-    }[]>;
-    importCsv(data: any[], req: any): Promise<{
-        imported: number;
+    }>;
+    exportCsv(req: any, res: any): Promise<any>;
+    remove(id: string, req: any): Promise<{
+        id: string;
+        email: string | null;
+        phone: string | null;
+        status: import("@prisma/client").$Enums.RecordStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        createdBy: string | null;
+        updatedBy: string | null;
+        deletedAt: Date | null;
+        deletedBy: string | null;
+        deleteReason: string | null;
+        organizationId: string;
+        firstName: string;
+        lastName: string;
+        branchId: string;
+        patientCode: string | null;
+        middleName: string | null;
+        gender: string | null;
+        dateOfBirth: Date | null;
+        bloodGroup: string | null;
+        maritalStatus: string | null;
+        occupation: string | null;
+        abhaNumber: string | null;
     }>;
 }

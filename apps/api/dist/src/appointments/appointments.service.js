@@ -12,10 +12,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppointmentsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const audit_service_1 = require("../common/services/audit.service");
 let AppointmentsService = class AppointmentsService {
     prisma;
-    constructor(prisma) {
+    auditService;
+    constructor(prisma, auditService) {
         this.prisma = prisma;
+        this.auditService = auditService;
     }
     async create(data, organizationId, branchId, createdBy) {
         const overlapping = await this.prisma.appointment.findFirst({
@@ -39,7 +42,7 @@ let AppointmentsService = class AppointmentsService {
         if (overlapping) {
             throw new common_1.BadRequestException('Doctor is already booked for this time slot');
         }
-        return this.prisma.appointment.create({
+        const appointment = await this.prisma.appointment.create({
             data: {
                 ...data,
                 organizationId,
@@ -47,6 +50,24 @@ let AppointmentsService = class AppointmentsService {
                 createdBy,
             },
         });
+        await this.auditService.log({
+            organizationId: appointment.organizationId,
+            userId: createdBy,
+            action: 'CREATE',
+            resource: 'appointment',
+            resourceId: appointment.id,
+            afterData: {
+                id: appointment.id,
+                patientId: appointment.patientId,
+                doctorId: appointment.doctorId,
+                scheduledStart: appointment.scheduledStart,
+                scheduledEnd: appointment.scheduledEnd,
+                status: appointment.status,
+                organizationId: appointment.organizationId,
+                branchId: appointment.branchId
+            },
+        });
+        return appointment;
     }
     async findAll(organizationId, branchId, date) {
         const where = {
@@ -93,22 +114,74 @@ let AppointmentsService = class AppointmentsService {
             throw new common_1.NotFoundException('Appointment not found');
         return appointment;
     }
-    async update(id, data) {
-        return this.prisma.appointment.update({
+    async update(id, data, organizationId, branchId, updatedBy) {
+        const oldAppointment = await this.prisma.appointment.findUnique({
+            where: { id, organizationId, branchId },
+            include: {
+                patient: {
+                    select: { id: true, firstName: true, lastName: true }
+                },
+                doctor: {
+                    select: { id: true, firstName: true, lastName: true }
+                }
+            }
+        });
+        if (!oldAppointment) {
+            throw new common_1.NotFoundException('Appointment not found');
+        }
+        const appointment = await this.prisma.appointment.update({
             where: { id },
             data,
         });
+        await this.auditService.log({
+            organizationId: appointment.organizationId,
+            userId: updatedBy,
+            action: 'UPDATE',
+            resource: 'appointment',
+            resourceId: appointment.id,
+            beforeData: oldAppointment,
+            afterData: appointment,
+        });
+        return appointment;
     }
-    async remove(id) {
-        return this.prisma.appointment.update({
+    async remove(id, organizationId, branchId, removedBy) {
+        const oldAppointment = await this.prisma.appointment.findUnique({
+            where: { id, organizationId, branchId },
+            include: {
+                patient: {
+                    select: { id: true, firstName: true, lastName: true }
+                },
+                doctor: {
+                    select: { id: true, firstName: true, lastName: true }
+                }
+            }
+        });
+        if (!oldAppointment) {
+            throw new common_1.NotFoundException('Appointment not found');
+        }
+        const appointment = await this.prisma.appointment.update({
             where: { id },
             data: { status: 'CANCELLED' },
         });
+        await this.auditService.log({
+            organizationId: appointment.organizationId,
+            userId: removedBy,
+            action: 'DELETE',
+            resource: 'appointment',
+            resourceId: appointment.id,
+            beforeData: oldAppointment,
+            afterData: {
+                id: appointment.id,
+                status: appointment.status,
+            },
+        });
+        return appointment;
     }
 };
 exports.AppointmentsService = AppointmentsService;
 exports.AppointmentsService = AppointmentsService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        audit_service_1.AuditService])
 ], AppointmentsService);
 //# sourceMappingURL=appointments.service.js.map
