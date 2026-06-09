@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1781002377559" clover="3.2.0">
-  <project timestamp="1781002377560" name="All files">
-    <metrics statements="1231" coveredstatements="113" conditionals="559" coveredconditionals="50" methods="263" coveredmethods="17" elements="2053" coveredelements="180" complexity="0" loc="1231" ncloc="1231" packages="38" files="108" classes="108"/>
+<coverage generated="1781005099736" clover="3.2.0">
+  <project timestamp="1781005099736" name="All files">
+    <metrics statements="1231" coveredstatements="157" conditionals="559" coveredconditionals="63" methods="263" coveredmethods="29" elements="2053" coveredelements="249" complexity="0" loc="1231" ncloc="1231" packages="38" files="108" classes="108"/>
     <package name="src">
       <metrics statements="58" coveredstatements="9" conditionals="8" coveredconditionals="3" methods="4" coveredmethods="3"/>
       <file name="app.controller.ts" path="C:\Projects\clinicplus\apps\api\src\app.controller.ts">
@@ -211,12 +211,12 @@
       </file>
     </package>
     <package name="src.auth">
-      <metrics statements="138" coveredstatements="36" conditionals="82" coveredconditionals="20" methods="32" coveredmethods="6"/>
+      <metrics statements="138" coveredstatements="60" conditionals="82" coveredconditionals="28" methods="32" coveredmethods="11"/>
       <file name="access.bootstrap.ts" path="C:\Projects\clinicplus\apps\api\src\auth\access.bootstrap.ts">
         <metrics statements="20" coveredstatements="3" conditionals="13" coveredconditionals="0" methods="5" coveredmethods="0"/>
-        <line num="1" count="1" type="stmt"/>
-        <line num="5" count="1" type="stmt"/>
-        <line num="7" count="1" type="stmt"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="5" count="2" type="stmt"/>
+        <line num="7" count="2" type="stmt"/>
         <line num="12" count="0" type="stmt"/>
         <line num="14" count="0" type="stmt"/>
         <line num="37" count="0" type="stmt"/>
@@ -236,10 +236,10 @@
         <line num="106" count="0" type="stmt"/>
       </file>
       <file name="access.utils.ts" path="C:\Projects\clinicplus\apps\api\src\auth\access.utils.ts">
-        <metrics statements="23" coveredstatements="5" conditionals="17" coveredconditionals="0" methods="9" coveredmethods="0"/>
-        <line num="1" count="1" type="stmt"/>
+        <metrics statements="23" coveredstatements="7" conditionals="17" coveredconditionals="0" methods="9" coveredmethods="2"/>
+        <line num="1" count="3" type="stmt"/>
         <line num="2" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="7" count="1" type="stmt"/>
+        <line num="7" count="3" type="stmt"/>
         <line num="8" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="9" count="0" type="stmt"/>
         <line num="12" count="0" type="stmt"/>
@@ -247,15 +247,15 @@
         <line num="15" count="0" type="cond" truecount="0" falsecount="4"/>
         <line num="16" count="0" type="stmt"/>
         <line num="19" count="0" type="stmt"/>
-        <line num="22" count="1" type="stmt"/>
+        <line num="22" count="3" type="stmt"/>
         <line num="23" count="0" type="stmt"/>
-        <line num="25" count="1" type="cond" truecount="0" falsecount="1"/>
-        <line num="26" count="0" type="stmt"/>
+        <line num="25" count="3" type="cond" truecount="0" falsecount="1"/>
+        <line num="26" count="1" type="stmt"/>
         <line num="28" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="29" count="0" type="stmt"/>
         <line num="32" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="36" count="1" type="cond" truecount="0" falsecount="1"/>
-        <line num="37" count="0" type="stmt"/>
+        <line num="36" count="3" type="cond" truecount="0" falsecount="1"/>
+        <line num="37" count="1" type="stmt"/>
         <line num="41" count="0" type="cond" truecount="0" falsecount="3"/>
         <line num="42" count="0" type="stmt"/>
         <line num="43" count="0" type="stmt"/>
@@ -296,38 +296,38 @@
         <line num="39" count="0" type="stmt"/>
       </file>
       <file name="auth.service.ts" path="C:\Projects\clinicplus\apps\api\src\auth\auth.service.ts">
-        <metrics statements="61" coveredstatements="9" conditionals="34" coveredconditionals="9" methods="7" coveredmethods="0"/>
-        <line num="1" count="1" type="stmt"/>
-        <line num="6" count="1" type="stmt"/>
-        <line num="7" count="1" type="stmt"/>
-        <line num="8" count="1" type="stmt"/>
-        <line num="11" count="1" type="stmt"/>
-        <line num="12" count="1" type="stmt"/>
-        <line num="13" count="1" type="stmt"/>
-        <line num="14" count="1" type="stmt"/>
-        <line num="17" count="1" type="stmt"/>
-        <line num="19" count="0" type="cond" truecount="6" falsecount="2"/>
-        <line num="20" count="0" type="cond" truecount="3" falsecount="1"/>
-        <line num="21" count="0" type="stmt"/>
-        <line num="25" count="0" type="stmt"/>
-        <line num="26" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="31" count="0" type="stmt"/>
-        <line num="32" count="0" type="stmt"/>
-        <line num="34" count="0" type="stmt"/>
-        <line num="38" count="0" type="stmt"/>
-        <line num="39" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="41" count="0" type="stmt"/>
-        <line num="49" count="0" type="stmt"/>
-        <line num="53" count="0" type="stmt"/>
-        <line num="62" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="63" count="0" type="stmt"/>
-        <line num="64" count="0" type="stmt"/>
-        <line num="66" count="0" type="stmt"/>
-        <line num="75" count="0" type="stmt"/>
-        <line num="76" count="0" type="stmt"/>
-        <line num="77" count="0" type="stmt"/>
-        <line num="80" count="0" type="stmt"/>
-        <line num="91" count="0" type="stmt"/>
+        <metrics statements="61" coveredstatements="31" conditionals="34" coveredconditionals="17" methods="7" coveredmethods="3"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="6" count="2" type="stmt"/>
+        <line num="7" count="2" type="stmt"/>
+        <line num="8" count="2" type="stmt"/>
+        <line num="11" count="2" type="stmt"/>
+        <line num="12" count="2" type="stmt"/>
+        <line num="13" count="2" type="stmt"/>
+        <line num="14" count="2" type="stmt"/>
+        <line num="17" count="2" type="stmt"/>
+        <line num="19" count="5" type="cond" truecount="6" falsecount="2"/>
+        <line num="20" count="5" type="cond" truecount="3" falsecount="1"/>
+        <line num="21" count="5" type="stmt"/>
+        <line num="25" count="2" type="stmt"/>
+        <line num="26" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="31" count="1" type="stmt"/>
+        <line num="32" count="1" type="stmt"/>
+        <line num="34" count="1" type="stmt"/>
+        <line num="38" count="2" type="stmt"/>
+        <line num="39" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="41" count="1" type="stmt"/>
+        <line num="49" count="1" type="stmt"/>
+        <line num="53" count="1" type="stmt"/>
+        <line num="62" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="63" count="1" type="stmt"/>
+        <line num="64" count="1" type="stmt"/>
+        <line num="66" count="1" type="stmt"/>
+        <line num="75" count="1" type="stmt"/>
+        <line num="76" count="1" type="stmt"/>
+        <line num="77" count="1" type="stmt"/>
+        <line num="80" count="1" type="stmt"/>
+        <line num="91" count="1" type="stmt"/>
         <line num="104" count="0" type="stmt"/>
         <line num="109" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="114" count="0" type="stmt"/>
@@ -361,12 +361,12 @@
       </file>
       <file name="default-access.ts" path="C:\Projects\clinicplus\apps\api\src\auth\default-access.ts">
         <metrics statements="6" coveredstatements="6" conditionals="2" coveredconditionals="2" methods="4" coveredmethods="4"/>
-        <line num="1" count="1" type="stmt"/>
-        <line num="146" count="1" type="stmt"/>
-        <line num="148" count="42" type="stmt"/>
-        <line num="151" count="42" type="stmt"/>
-        <line num="155" count="42" type="cond" truecount="2" falsecount="0"/>
-        <line num="156" count="41" type="stmt"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="146" count="2" type="stmt"/>
+        <line num="148" count="84" type="stmt"/>
+        <line num="151" count="84" type="stmt"/>
+        <line num="155" count="84" type="cond" truecount="2" falsecount="0"/>
+        <line num="156" count="82" type="stmt"/>
       </file>
     </package>
     <package name="src.auth.decorators">
@@ -987,7 +987,7 @@
       </file>
     </package>
     <package name="src.invoices">
-      <metrics statements="48" coveredstatements="0" conditionals="18" coveredconditionals="0" methods="12" coveredmethods="0"/>
+      <metrics statements="48" coveredstatements="12" conditionals="18" coveredconditionals="5" methods="12" coveredmethods="5"/>
       <file name="invoices.controller.ts" path="C:\Projects\clinicplus\apps\api\src\invoices\invoices.controller.ts">
         <metrics statements="29" coveredstatements="0" conditionals="12" coveredconditionals="0" methods="6" coveredmethods="0"/>
         <line num="1" count="0" type="stmt"/>
@@ -1030,20 +1030,20 @@
         <line num="12" count="0" type="stmt"/>
       </file>
       <file name="invoices.service.ts" path="C:\Projects\clinicplus\apps\api\src\invoices\invoices.service.ts">
-        <metrics statements="13" coveredstatements="0" conditionals="6" coveredconditionals="0" methods="6" coveredmethods="0"/>
-        <line num="1" count="0" type="stmt"/>
-        <line num="2" count="0" type="stmt"/>
-        <line num="6" count="0" type="stmt"/>
-        <line num="7" count="0" type="cond" truecount="0" falsecount="4"/>
-        <line num="15" count="0" type="stmt"/>
-        <line num="17" count="0" type="stmt"/>
-        <line num="24" count="0" type="stmt"/>
+        <metrics statements="13" coveredstatements="12" conditionals="6" coveredconditionals="5" methods="6" coveredmethods="5"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="7" count="5" type="cond" truecount="3" falsecount="1"/>
+        <line num="15" count="1" type="stmt"/>
+        <line num="17" count="1" type="stmt"/>
+        <line num="24" count="1" type="stmt"/>
         <line num="36" count="0" type="stmt"/>
-        <line num="47" count="0" type="stmt"/>
-        <line num="51" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="52" count="0" type="stmt"/>
-        <line num="62" count="0" type="stmt"/>
-        <line num="64" count="0" type="stmt"/>
+        <line num="47" count="2" type="stmt"/>
+        <line num="51" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="52" count="1" type="stmt"/>
+        <line num="62" count="1" type="stmt"/>
+        <line num="64" count="1" type="stmt"/>
       </file>
     </package>
     <package name="src.messages">
@@ -1128,7 +1128,7 @@
       </file>
     </package>
     <package name="src.patients">
-      <metrics statements="73" coveredstatements="34" conditionals="32" coveredconditionals="18" methods="18" coveredmethods="8"/>
+      <metrics statements="73" coveredstatements="37" conditionals="32" coveredconditionals="17" methods="18" coveredmethods="7"/>
       <file name="patients.controller.ts" path="C:\Projects\clinicplus\apps\api\src\patients\patients.controller.ts">
         <metrics statements="24" coveredstatements="0" conditionals="4" coveredconditionals="0" methods="8" coveredmethods="0"/>
         <line num="1" count="0" type="stmt"/>
@@ -1165,17 +1165,17 @@
         <line num="12" count="0" type="stmt"/>
       </file>
       <file name="patients.service.ts" path="C:\Projects\clinicplus\apps\api\src\patients\patients.service.ts">
-        <metrics statements="44" coveredstatements="34" conditionals="28" coveredconditionals="18" methods="10" coveredmethods="8"/>
+        <metrics statements="44" coveredstatements="37" conditionals="28" coveredconditionals="17" methods="10" coveredmethods="7"/>
         <line num="1" count="1" type="stmt"/>
         <line num="6" count="1" type="stmt"/>
         <line num="8" count="1" type="stmt"/>
         <line num="9" count="1" type="stmt"/>
         <line num="12" count="1" type="stmt"/>
-        <line num="14" count="8" type="cond" truecount="6" falsecount="2"/>
-        <line num="15" count="8" type="cond" truecount="3" falsecount="1"/>
-        <line num="16" count="8" type="stmt"/>
-        <line num="21" count="8" type="stmt"/>
-        <line num="22" count="8" type="cond" truecount="1" falsecount="1"/>
+        <line num="14" count="6" type="cond" truecount="6" falsecount="2"/>
+        <line num="15" count="6" type="cond" truecount="3" falsecount="1"/>
+        <line num="16" count="6" type="stmt"/>
+        <line num="21" count="4" type="stmt"/>
+        <line num="22" count="4" type="cond" truecount="1" falsecount="1"/>
         <line num="23" count="0" type="stmt"/>
         <line num="28" count="1" type="stmt"/>
         <line num="31" count="1" type="stmt"/>
@@ -1188,24 +1188,24 @@
         <line num="60" count="1" type="stmt"/>
         <line num="71" count="1" type="stmt"/>
         <line num="80" count="1" type="stmt"/>
-        <line num="85" count="1" type="stmt"/>
-        <line num="98" count="5" type="stmt"/>
-        <line num="99" count="5" type="stmt"/>
-        <line num="176" count="5" type="cond" truecount="2" falsecount="0"/>
-        <line num="177" count="3" type="stmt"/>
-        <line num="179" count="2" type="stmt"/>
-        <line num="188" count="2" type="stmt"/>
-        <line num="191" count="2" type="stmt"/>
+        <line num="85" count="0" type="stmt"/>
+        <line num="98" count="2" type="stmt"/>
+        <line num="99" count="2" type="stmt"/>
+        <line num="176" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="177" count="1" type="stmt"/>
+        <line num="179" count="1" type="stmt"/>
+        <line num="188" count="1" type="stmt"/>
+        <line num="191" count="1" type="stmt"/>
         <line num="193" count="1" type="stmt"/>
         <line num="198" count="1" type="stmt"/>
         <line num="209" count="1" type="stmt"/>
         <line num="219" count="1" type="stmt"/>
         <line num="228" count="1" type="stmt"/>
         <line num="231" count="1" type="stmt"/>
-        <line num="233" count="0" type="stmt"/>
-        <line num="241" count="0" type="stmt"/>
-        <line num="251" count="0" type="stmt"/>
-        <line num="261" count="0" type="stmt"/>
+        <line num="233" count="1" type="stmt"/>
+        <line num="241" count="1" type="stmt"/>
+        <line num="251" count="1" type="stmt"/>
+        <line num="261" count="1" type="stmt"/>
         <line num="265" count="0" type="cond" truecount="0" falsecount="4"/>
         <line num="266" count="0" type="stmt"/>
         <line num="283" count="0" type="stmt"/>
@@ -1387,9 +1387,9 @@
       </file>
       <file name="prisma.service.ts" path="C:\Projects\clinicplus\apps\api\src\prisma\prisma.service.ts">
         <metrics statements="4" coveredstatements="3" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="0"/>
-        <line num="1" count="2" type="stmt"/>
-        <line num="2" count="2" type="stmt"/>
-        <line num="5" count="2" type="stmt"/>
+        <line num="1" count="5" type="stmt"/>
+        <line num="2" count="5" type="stmt"/>
+        <line num="5" count="5" type="stmt"/>
         <line num="7" count="0" type="stmt"/>
       </file>
     </package>
@@ -1613,7 +1613,7 @@
       </file>
     </package>
     <package name="src.users">
-      <metrics statements="27" coveredstatements="4" conditionals="10" coveredconditionals="3" methods="9" coveredmethods="0"/>
+      <metrics statements="27" coveredstatements="9" conditionals="10" coveredconditionals="4" methods="9" coveredmethods="3"/>
       <file name="users.controller.ts" path="C:\Projects\clinicplus\apps\api\src\users\users.controller.ts">
         <metrics statements="9" coveredstatements="0" conditionals="4" coveredconditionals="0" methods="3" coveredmethods="0"/>
         <line num="1" count="0" type="stmt"/>
@@ -1634,16 +1634,16 @@
         <line num="10" count="0" type="stmt"/>
       </file>
       <file name="users.service.ts" path="C:\Projects\clinicplus\apps\api\src\users\users.service.ts">
-        <metrics statements="14" coveredstatements="4" conditionals="6" coveredconditionals="3" methods="6" coveredmethods="0"/>
-        <line num="1" count="1" type="stmt"/>
-        <line num="2" count="1" type="stmt"/>
-        <line num="3" count="1" type="stmt"/>
-        <line num="6" count="1" type="stmt"/>
-        <line num="7" count="0" type="cond" truecount="3" falsecount="1"/>
-        <line num="10" count="0" type="stmt"/>
-        <line num="31" count="0" type="stmt"/>
-        <line num="47" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="48" count="0" type="stmt"/>
+        <metrics statements="14" coveredstatements="9" conditionals="6" coveredconditionals="4" methods="6" coveredmethods="3"/>
+        <line num="1" count="3" type="stmt"/>
+        <line num="2" count="3" type="stmt"/>
+        <line num="3" count="3" type="stmt"/>
+        <line num="6" count="3" type="stmt"/>
+        <line num="7" count="3" type="cond" truecount="3" falsecount="1"/>
+        <line num="10" count="1" type="stmt"/>
+        <line num="31" count="1" type="stmt"/>
+        <line num="47" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="48" count="1" type="stmt"/>
         <line num="51" count="0" type="stmt"/>
         <line num="52" count="0" type="stmt"/>
         <line num="53" count="0" type="stmt"/>
