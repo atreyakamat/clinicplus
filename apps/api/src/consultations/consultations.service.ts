@@ -12,12 +12,23 @@ export class ConsultationsService {
     });
   }
 
-  async findAllByPatient(patientId: string, organizationId: string) {
+  async findAll(organizationId: string, branchId: string, patientId?: string) {
     return this.prisma.consultation.findMany({
-      where: { patientId, organizationId },
+      where: {
+        organizationId,
+        branchId,
+        ...(patientId ? { patientId } : {}),
+      },
       include: {
         diagnoses: true,
         vitals: true,
+        patient: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
         doctor: { select: { firstName: true, lastName: true } },
       },
       orderBy: { consultationDate: 'desc' },
@@ -40,7 +51,12 @@ export class ConsultationsService {
     return consultation;
   }
 
-  async update(id: string, data: any, organizationId: string, branchId: string) {
+  async update(
+    id: string,
+    data: any,
+    organizationId: string,
+    branchId: string,
+  ) {
     const { diagnoses, vitals, ...consultationData } = data;
 
     // Use transaction to update consultation and its nested records
@@ -58,7 +74,12 @@ export class ConsultationsService {
         await tx.vital.upsert({
           where: { id: vitals.id || 'none' }, // Simple upsert logic
           update: vitals,
-          create: { ...vitals, consultationId: id, organizationId: updated.organizationId, branchId: updated.branchId },
+          create: {
+            ...vitals,
+            consultationId: id,
+            organizationId: updated.organizationId,
+            branchId: updated.branchId,
+          },
         });
       }
 
@@ -66,7 +87,12 @@ export class ConsultationsService {
         // Delete old diagnoses and insert new ones or handle syncing
         await tx.diagnosis.deleteMany({ where: { consultationId: id } });
         await tx.diagnosis.createMany({
-          data: diagnoses.map(d => ({ ...d, consultationId: id, organizationId: updated.organizationId, branchId: updated.branchId })),
+          data: diagnoses.map((d) => ({
+            ...d,
+            consultationId: id,
+            organizationId: updated.organizationId,
+            branchId: updated.branchId,
+          })),
         });
       }
 

@@ -13,12 +13,12 @@ export declare class AuditService {
         ipAddress?: string;
         userAgent?: string;
     }): Promise<{
+        action: string;
         id: string;
         createdAt: Date;
         organizationId: string;
         branchId: string | null;
         ipAddress: string | null;
-        action: string;
         actorId: string | null;
         entityType: string | null;
         entityId: string | null;

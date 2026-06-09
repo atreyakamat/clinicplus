@@ -28,10 +28,13 @@ describe('Evidence-Based Verification: Performance & Security (E2E)', () => {
     await app.init();
 
     org = await prisma.organization.create({
-      data: { name: 'Performance Test Clinic', slug: `perf-${Math.random().toString(36).substring(7)}` }
+      data: {
+        name: 'Performance Test Clinic',
+        slug: `perf-${Math.random().toString(36).substring(7)}`,
+      },
     });
     const branch = await prisma.branch.create({
-      data: { name: 'Perf Branch', organizationId: org.id }
+      data: { name: 'Perf Branch', organizationId: org.id },
     });
     doctor = await prisma.user.create({
       data: {
@@ -40,46 +43,58 @@ describe('Evidence-Based Verification: Performance & Security (E2E)', () => {
         lastName: 'Doctor',
         organizationId: org.id,
         branchId: branch.id,
-      }
+      },
     });
-    token = jwtService.sign({ 
-        sub: doctor.id, 
-        email: doctor.email, 
-        organizationId: org.id, 
-        branchId: branch.id,
-        roles: ['Organization Owner'],
+    token = jwtService.sign({
+      sub: doctor.id,
+      email: doctor.email,
+      organizationId: org.id,
+      branchId: branch.id,
+      roles: ['Organization Owner'],
     });
 
     // Create one patient for individual tests
     patient = await prisma.patient.create({
-        data: {
-            firstName: 'Individual',
-            lastName: 'Patient',
-            organizationId: org.id,
-            branchId: branch.id,
-        }
+      data: {
+        firstName: 'Individual',
+        lastName: 'Patient',
+        organizationId: org.id,
+        branchId: branch.id,
+      },
     });
 
     // Seed 100 patients for search benchmark
     const patients = Array.from({ length: 100 }).map((_, i) => ({
-        firstName: `BenchPatient${i}`,
-        lastName: `Last${i}`,
-        organizationId: org.id,
-        branchId: branch.id,
+      firstName: `BenchPatient${i}`,
+      lastName: `Last${i}`,
+      organizationId: org.id,
+      branchId: branch.id,
     }));
     await prisma.patient.createMany({ data: patients });
   });
 
   afterAll(async () => {
     if (org?.id) {
-        const orgIds = [org.id];
-        await prisma.timelineEvent.deleteMany({ where: { organizationId: { in: orgIds } } });
-        await prisma.auditLog.deleteMany({ where: { organizationId: { in: orgIds } } });
-        await prisma.patient.deleteMany({ where: { organizationId: { in: orgIds } } });
-        await prisma.userRole.deleteMany({ where: { organizationId: { in: orgIds } } });
-        await prisma.user.deleteMany({ where: { organizationId: { in: orgIds } } });
-        await prisma.branch.deleteMany({ where: { organizationId: { in: orgIds } } });
-        await prisma.organization.deleteMany({ where: { id: { in: orgIds } } });
+      const orgIds = [org.id];
+      await prisma.timelineEvent.deleteMany({
+        where: { organizationId: { in: orgIds } },
+      });
+      await prisma.auditLog.deleteMany({
+        where: { organizationId: { in: orgIds } },
+      });
+      await prisma.patient.deleteMany({
+        where: { organizationId: { in: orgIds } },
+      });
+      await prisma.userRole.deleteMany({
+        where: { organizationId: { in: orgIds } },
+      });
+      await prisma.user.deleteMany({
+        where: { organizationId: { in: orgIds } },
+      });
+      await prisma.branch.deleteMany({
+        where: { organizationId: { in: orgIds } },
+      });
+      await prisma.organization.deleteMany({ where: { id: { in: orgIds } } });
     }
     await app.close();
   });
@@ -91,10 +106,12 @@ describe('Evidence-Based Verification: Performance & Security (E2E)', () => {
         .get('/api/v1/patients/search?q=BenchPatient')
         .set('Authorization', `Bearer ${token}`);
       const end = performance.now();
-      
+
       const duration = end - start;
-      console.log(`[EVIDENCE] Patient Search Latency: ${duration.toFixed(2)}ms`);
-      
+      console.log(
+        `[EVIDENCE] Patient Search Latency: ${duration.toFixed(2)}ms`,
+      );
+
       expect(response.status).toBe(200);
       expect(duration).toBeLessThan(500);
     });
@@ -105,38 +122,38 @@ describe('Evidence-Based Verification: Performance & Security (E2E)', () => {
         .get('/api/v1/patients')
         .set('Authorization', `Bearer ${token}`);
       const end = performance.now();
-      
+
       const duration = end - start;
       console.log(`[EVIDENCE] Patient List Latency: ${duration.toFixed(2)}ms`);
-      
+
       expect(response.status).toBe(200);
       expect(duration).toBeLessThan(500);
     });
   });
 
   describe('RBAC Role Enforcement Proof', () => {
-     it('PROVE: Doctor role can view patients', async () => {
-        const docToken = jwtService.sign({ 
-            sub: doctor.id, 
-            email: doctor.email, 
-            organizationId: org.id, 
-            branchId: doctor.branchId,
-            roles: ['Doctor'],
-        });
+    it('PROVE: Doctor role can view patients', async () => {
+      const docToken = jwtService.sign({
+        sub: doctor.id,
+        email: doctor.email,
+        organizationId: org.id,
+        branchId: doctor.branchId,
+        roles: ['Doctor'],
+      });
 
-        const response = await request(app.getHttpServer())
-            .get(`/api/v1/patients/${patient.id}`)
-            .set('Authorization', `Bearer ${docToken}`);
-        
-        expect(response.status).toBe(200);
-     });
+      const response = await request(app.getHttpServer())
+        .get(`/api/v1/patients/${patient.id}`)
+        .set('Authorization', `Bearer ${docToken}`);
 
-     it('PROVE: Invalid token returns 401', async () => {
-        const response = await request(app.getHttpServer())
-            .get(`/api/v1/patients/${patient.id}`)
-            .set('Authorization', `Bearer invalid-token`);
-        
-        expect(response.status).toBe(401);
-     });
+      expect(response.status).toBe(200);
+    });
+
+    it('PROVE: Invalid token returns 401', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/api/v1/patients/${patient.id}`)
+        .set('Authorization', `Bearer invalid-token`);
+
+      expect(response.status).toBe(401);
+    });
   });
 });

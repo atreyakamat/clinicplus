@@ -15,7 +15,9 @@ const users_service_1 = require("../users/users.service");
 const jwt_1 = require("@nestjs/jwt");
 const bcryptjs_1 = require("bcryptjs");
 const prisma_service_1 = require("../prisma/prisma.service");
-const uuid_1 = require("uuid");
+const crypto_1 = require("crypto");
+const access_bootstrap_1 = require("./access.bootstrap");
+const access_utils_1 = require("./access.utils");
 let AuthService = class AuthService {
     usersService;
     jwtService;
@@ -27,7 +29,9 @@ let AuthService = class AuthService {
     }
     async validateUser(email, password) {
         const user = await this.usersService.findByEmail(email);
-        if (user && user.passwordHash && (await (0, bcryptjs_1.compare)(password, user.passwordHash))) {
+        if (user &&
+            user.passwordHash &&
+            (await (0, bcryptjs_1.compare)(password, user.passwordHash))) {
             const { passwordHash, ...result } = user;
             return result;
         }
@@ -53,22 +57,19 @@ let AuthService = class AuthService {
                 status: 'SUCCESS',
             },
         });
-        const userRoles = await this.prisma.userRole.findMany({
-            where: { userId: user.id },
-            include: { role: { include: { rolePermissions: { include: { permission: true } } } } },
-        });
-        const roles = userRoles.map(ur => ur.role.name);
-        const permissions = userRoles.flatMap(ur => ur.role.rolePermissions.map(rp => `${rp.permission.module}.${rp.permission.action}`));
+        const userRoles = user.roles ?? [];
+        const roles = (0, access_utils_1.extractRoleNames)(userRoles);
+        const permissions = (0, access_utils_1.extractPermissionNames)(userRoles);
         const payload = {
             email: user.email,
             sub: user.id,
             organizationId: user.organizationId,
             branchId: user.branchId,
             roles,
-            permissions
+            permissions,
         };
         const accessToken = this.jwtService.sign(payload);
-        const refreshToken = (0, uuid_1.v4)();
+        const refreshToken = (0, crypto_1.randomUUID)();
         const refreshTokenHash = await (0, bcryptjs_1.hash)(refreshToken, 10);
         const session = await this.prisma.userSession.create({
             data: {
@@ -87,7 +88,7 @@ let AuthService = class AuthService {
             user: {
                 ...user,
                 roles,
-                permissions
+                permissions,
             },
         };
     }
@@ -96,29 +97,30 @@ let AuthService = class AuthService {
             where: { id: sessionId, status: 'ACTIVE' },
             include: { user: true },
         });
-        if (!session || !session.refreshTokenHash || !(await (0, bcryptjs_1.compare)(refreshToken, session.refreshTokenHash))) {
+        if (!session ||
+            !session.refreshTokenHash ||
+            !(await (0, bcryptjs_1.compare)(refreshToken, session.refreshTokenHash))) {
             throw new common_1.UnauthorizedException('Invalid refresh token or session');
         }
-        const newRefreshToken = (0, uuid_1.v4)();
+        const newRefreshToken = (0, crypto_1.randomUUID)();
         const newRefreshTokenHash = await (0, bcryptjs_1.hash)(newRefreshToken, 10);
         await this.prisma.userSession.update({
             where: { id: session.id },
             data: { refreshTokenHash: newRefreshTokenHash },
         });
-        const user = session.user;
-        const userRoles = await this.prisma.userRole.findMany({
-            where: { userId: user.id },
-            include: { role: { include: { rolePermissions: { include: { permission: true } } } } },
-        });
-        const roles = userRoles.map(ur => ur.role.name);
-        const permissions = userRoles.flatMap(ur => ur.role.rolePermissions.map(rp => `${rp.permission.module}.${rp.permission.action}`));
+        const user = await this.usersService.findByEmail(session.user.email);
+        if (!user) {
+            throw new common_1.UnauthorizedException('User no longer exists');
+        }
+        const roles = (0, access_utils_1.extractRoleNames)(user.roles);
+        const permissions = (0, access_utils_1.extractPermissionNames)(user.roles);
         const payload = {
             email: user.email,
             sub: user.id,
             organizationId: user.organizationId,
             branchId: user.branchId,
             roles,
-            permissions
+            permissions,
         };
         return {
             accessToken: this.jwtService.sign(payload),
@@ -165,6 +167,7 @@ let AuthService = class AuthService {
                     country: registerDto.country,
                 },
             });
+            const access = await (0, access_bootstrap_1.ensureOrganizationAccess)(tx, org.id);
             const user = await tx.user.create({
                 data: {
                     organizationId: org.id,
@@ -176,6 +179,24 @@ let AuthService = class AuthService {
                     phone: registerDto.phone,
                 },
             });
+            const ownerRole = access.rolesByName.get('Organization Owner');
+            if (ownerRole) {
+                await tx.userRole.upsert({
+                    where: {
+                        userId_roleId: {
+                            userId: user.id,
+                            roleId: ownerRole.id,
+                        },
+                    },
+                    update: {},
+                    create: {
+                        organizationId: org.id,
+                        branchId: branch.id,
+                        userId: user.id,
+                        roleId: ownerRole.id,
+                    },
+                });
+            }
             return {
                 message: 'Clinic registered successfully',
                 organizationId: org.id,

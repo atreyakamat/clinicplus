@@ -16,7 +16,7 @@ exports.FeedbackModule = FeedbackModule;
 exports.FeedbackModule = FeedbackModule = __decorate([
     (0, common_1.Module)({
         controllers: [feedback_controller_1.FeedbackController],
-        providers: [feedback_service_1.FeedbackService]
+        providers: [feedback_service_1.FeedbackService],
     })
 ], FeedbackModule);
 //# sourceMappingURL=feedback.module.js.map

@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Calendar, Clock } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Input, Button, PageHeader } from '@clinicplus/ui';
 import { api, ApiError } from '../../app/lib/api';
 
@@ -21,12 +21,13 @@ type AppointmentFormValues = z.infer<typeof appointmentSchema>;
 
 export const AppointmentFormPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [serverError, setServerError] = useState<string | null>(null);
+  const patientIdFromQuery = searchParams.get('patientId') || '';
 
-  // Fetch doctors (mocked filter for now, in real app use roles)
   const { data: doctors } = useQuery<any[]>({
     queryKey: ['doctors'],
-    queryFn: () => api.get('/users'), // In real app, filter for doctors
+    queryFn: () => api.get('/users?role=doctor'),
   });
 
   // Fetch patients
@@ -43,6 +44,7 @@ export const AppointmentFormPage = () => {
     resolver: zodResolver(appointmentSchema),
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
+      patientId: patientIdFromQuery,
     }
   });
 

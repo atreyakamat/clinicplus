@@ -1,10 +1,20 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { StaffInvitationsService } from './staff-invitations.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('api/v1/staff-invitations')
 export class StaffInvitationsController {
-  constructor(private readonly staffInvitationsService: StaffInvitationsService) {}
+  constructor(
+    private readonly staffInvitationsService: StaffInvitationsService,
+  ) {}
 
   @Post('invite')
   @UseGuards(JwtAuthGuard)

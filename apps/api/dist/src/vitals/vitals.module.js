@@ -16,7 +16,7 @@ exports.VitalsModule = VitalsModule;
 exports.VitalsModule = VitalsModule = __decorate([
     (0, common_1.Module)({
         controllers: [vitals_controller_1.VitalsController],
-        providers: [vitals_service_1.VitalsService]
+        providers: [vitals_service_1.VitalsService],
     })
 ], VitalsModule);
 //# sourceMappingURL=vitals.module.js.map

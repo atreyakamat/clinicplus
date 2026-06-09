@@ -1,4 +1,9 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import {
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+} from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { TimelineService } from '../../timeline/timeline.service';
@@ -17,21 +22,35 @@ export class TimelineInterceptor implements NestInterceptor {
       tap((data) => {
         // Automatically detect and record timeline events
         if (['POST', 'PATCH', 'PUT'].includes(method)) {
-          const patientId = body.patientId || data?.patientId || (url.includes('patients/') ? url.split('/')[4] : null);
-          
-          if (patientId && patientId.length === 36) { // Basic UUID check
+          const patientId =
+            body.patientId ||
+            data?.patientId ||
+            (url.includes('patients/') ? url.split('/')[4] : null);
+
+          if (patientId && patientId.length === 36) {
+            // Basic UUID check
             const module = url.split('/')[3];
             let eventType = '';
             let title = '';
 
-            switch(module) {
+            switch (module) {
               case 'appointments':
-                eventType = method === 'POST' ? 'APPOINTMENT_BOOKED' : 'APPOINTMENT_UPDATED';
-                title = method === 'POST' ? 'New Appointment' : 'Appointment Updated';
+                eventType =
+                  method === 'POST'
+                    ? 'APPOINTMENT_BOOKED'
+                    : 'APPOINTMENT_UPDATED';
+                title =
+                  method === 'POST' ? 'New Appointment' : 'Appointment Updated';
                 break;
               case 'consultations':
-                eventType = method === 'POST' ? 'CONSULTATION_STARTED' : 'CONSULTATION_UPDATED';
-                title = method === 'POST' ? 'Consultation Started' : 'Consultation Updated';
+                eventType =
+                  method === 'POST'
+                    ? 'CONSULTATION_STARTED'
+                    : 'CONSULTATION_UPDATED';
+                title =
+                  method === 'POST'
+                    ? 'Consultation Started'
+                    : 'Consultation Updated';
                 break;
               case 'prescriptions':
                 eventType = 'PRESCRIPTION_GENERATED';
@@ -57,7 +76,11 @@ export class TimelineInterceptor implements NestInterceptor {
               title,
               description: `Action performed via ${module} module.`,
               createdBy: user.id,
-              metadata: { method, url, body: method === 'POST' ? body : undefined }
+              metadata: {
+                method,
+                url,
+                body: method === 'POST' ? body : undefined,
+              },
             });
           }
         }

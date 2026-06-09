@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, Request, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+  UseGuards,
+  Request,
+  Res,
+} from '@nestjs/common';
 import { AppointmentsService } from './appointments.service';
 import { Prisma } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -14,13 +26,21 @@ export class AppointmentsController {
     data.organizationId = req.user.organizationId;
     data.branchId = req.user.branchId;
     data.createdBy = req.user.id;
-    return this.appointmentsService.create(data, req.user.organizationId, req.user.branchId, req.user.id);
+    return this.appointmentsService.create(
+      data,
+      req.user.organizationId,
+      req.user.branchId,
+      req.user.id,
+    );
   }
 
   @Get('export/csv')
   async exportCsv(@Request() req, @Res() res) {
-    const appointments = await this.appointmentsService.findAll(req.user.organizationId, req.user.branchId);
-    
+    const appointments = await this.appointmentsService.findAll(
+      req.user.organizationId,
+      req.user.branchId,
+    );
+
     const csvData = stringify(appointments, {
       header: true,
       columns: [
@@ -43,21 +63,40 @@ export class AppointmentsController {
 
   @Get()
   findAll(@Request() req, @Query('date') date?: string) {
-    return this.appointmentsService.findAll(req.user.organizationId, req.user.branchId, date);
+    return this.appointmentsService.findAll(
+      req.user.organizationId,
+      req.user.branchId,
+      date,
+    );
   }
 
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req) {
-    return this.appointmentsService.findOne(id, req.user.organizationId, req.user.branchId);
+    return this.appointmentsService.findOne(
+      id,
+      req.user.organizationId,
+      req.user.branchId,
+    );
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() data: any, @Request() req) {
-    return this.appointmentsService.update(id, data, req.user.organizationId, req.user.branchId, req.user.id);
+    return this.appointmentsService.update(
+      id,
+      data,
+      req.user.organizationId,
+      req.user.branchId,
+      req.user.id,
+    );
   }
 
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req) {
-    return this.appointmentsService.remove(id, req.user.organizationId, req.user.branchId, req.user.id);
+    return this.appointmentsService.remove(
+      id,
+      req.user.organizationId,
+      req.user.branchId,
+      req.user.id,
+    );
   }
 }

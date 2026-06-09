@@ -23,7 +23,7 @@ let FeedbackService = class FeedbackService {
                 ...data,
                 organizationId: data.organizationId,
                 userId: data.userId,
-            }
+            },
         });
     }
     async findAll(organizationId) {
@@ -35,13 +35,13 @@ let FeedbackService = class FeedbackService {
     }
     async updateStatus(id, status, organizationId) {
         const feedback = await this.prisma.feedback.findUnique({
-            where: { id, organizationId }
+            where: { id, organizationId },
         });
         if (!feedback)
             throw new common_1.NotFoundException('Feedback not found');
         return this.prisma.feedback.update({
             where: { id },
-            data: { status }
+            data: { status },
         });
     }
 };

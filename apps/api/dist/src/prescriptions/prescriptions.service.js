@@ -23,7 +23,7 @@ let PrescriptionsService = class PrescriptionsService {
             data: {
                 ...prescriptionData,
                 items: {
-                    create: items.map(item => ({
+                    create: items.map((item) => ({
                         ...item,
                         organizationId: prescriptionData.organizationId,
                         branchId: prescriptionData.branchId,
@@ -33,10 +33,30 @@ let PrescriptionsService = class PrescriptionsService {
             include: { items: true },
         });
     }
-    async findAllByPatient(patientId, organizationId) {
+    async findAll(organizationId, branchId, patientId) {
         return this.prisma.prescription.findMany({
-            where: { patientId, organizationId },
-            include: { items: true, doctor: { select: { firstName: true, lastName: true } } },
+            where: {
+                organizationId,
+                branchId,
+                ...(patientId ? { patientId } : {}),
+            },
+            include: {
+                items: true,
+                patient: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                    },
+                },
+                doctor: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                    },
+                },
+            },
             orderBy: { issuedAt: 'desc' },
         });
     }

@@ -17,16 +17,23 @@ let OrganizationsService = class OrganizationsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async findOne(id) {
-        const org = await this.prisma.organization.findUnique({
-            where: { id },
+    async findOne(id, organizationId) {
+        const targetId = organizationId ?? id;
+        if (organizationId && id !== organizationId) {
+            throw new common_1.NotFoundException('Organization not found');
+        }
+        const org = await this.prisma.organization.findFirst({
+            where: {
+                id: targetId,
+            },
             include: { branches: true },
         });
         if (!org)
             throw new common_1.NotFoundException('Organization not found');
         return org;
     }
-    async update(id, data) {
+    async update(id, data, organizationId) {
+        await this.findOne(id, organizationId);
         return this.prisma.organization.update({
             where: { id },
             data,

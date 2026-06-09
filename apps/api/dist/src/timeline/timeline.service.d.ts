@@ -16,20 +16,20 @@ export declare class TimelineService {
         createdAt: Date;
         createdBy: string | null;
         organizationId: string;
-        patientId: string;
         description: string | null;
+        patientId: string;
         eventType: string;
         eventCategory: string;
         title: string;
         metadata: import("@prisma/client/runtime/library").JsonValue | null;
     }>;
-    findAllByPatient(patientId: string): Promise<{
+    findAllByPatient(patientId: string, organizationId: string): Promise<{
         id: string;
         createdAt: Date;
         createdBy: string | null;
         organizationId: string;
-        patientId: string;
         description: string | null;
+        patientId: string;
         eventType: string;
         eventCategory: string;
         title: string;

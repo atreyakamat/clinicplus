@@ -28,8 +28,8 @@ let ConsultationsController = class ConsultationsController {
         data.createdBy = req.user.id;
         return this.consultationsService.create(data);
     }
-    findAllByPatient(patientId, req) {
-        return this.consultationsService.findAllByPatient(patientId, req.user.organizationId);
+    findAll(patientId, req) {
+        return this.consultationsService.findAll(req.user.organizationId, req.user.branchId, patientId);
     }
     findOne(id, req) {
         return this.consultationsService.findOne(id, req.user.organizationId, req.user.branchId);
@@ -56,9 +56,9 @@ __decorate([
     __param(0, (0, common_1.Query)('patientId')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
-], ConsultationsController.prototype, "findAllByPatient", null);
+], ConsultationsController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),

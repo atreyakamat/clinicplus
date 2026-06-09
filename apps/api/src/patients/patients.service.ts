@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { TimelineService } from '../timeline/timeline.service';
@@ -13,7 +17,8 @@ export class PatientsService {
   ) {}
 
   private validateUuid(id: string) {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(id)) {
       throw new NotFoundException(`Invalid ID format: ${id}`);
     }
@@ -26,20 +31,22 @@ export class PatientsService {
     const existing = await this.prisma.patient.findFirst({
       where: {
         organizationId,
-        OR: [
-          { email: data.email || 'none' },
-          { phone: data.phone || 'none' }
-        ]
-      }
+        OR: [{ email: data.email || 'none' }, { phone: data.phone || 'none' }],
+      },
     });
 
     if (existing) {
-      throw new ConflictException('Patient with this email or phone already exists in this clinic');
+      throw new ConflictException(
+        'Patient with this email or phone already exists in this clinic',
+      );
     }
 
     // 2. Patient ID Generation (F-007)
-    const count = await this.prisma.patient.count({ where: { organizationId } });
-    const patientCode = data.patientCode || `PAT-${(count + 1).toString().padStart(6, '0')}`;
+    const count = await this.prisma.patient.count({
+      where: { organizationId },
+    });
+    const patientCode =
+      data.patientCode || `PAT-${(count + 1).toString().padStart(6, '0')}`;
 
     return this.prisma.$transaction(async (tx) => {
       const patient = await tx.patient.create({
@@ -97,6 +104,73 @@ export class PatientsService {
         familyMembers: true,
         tags: true,
         notes: true,
+        appointments: {
+          include: {
+            doctor: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+          orderBy: {
+            scheduledStart: 'desc',
+          },
+        },
+        consultations: {
+          include: {
+            doctor: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            diagnoses: true,
+          },
+          orderBy: {
+            consultationDate: 'desc',
+          },
+        },
+        prescriptions: {
+          include: {
+            doctor: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            items: true,
+          },
+          orderBy: {
+            issuedAt: 'desc',
+          },
+        },
+        invoices: {
+          include: {
+            items: true,
+            payments: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+        documents: {
+          include: {
+            uploader: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
     });
     if (!patient) {
@@ -105,9 +179,14 @@ export class PatientsService {
     return patient;
   }
 
-  async update(id: string, data: any, organizationId: string, branchId: string) {
+  async update(
+    id: string,
+    data: any,
+    organizationId: string,
+    branchId: string,
+  ) {
     this.validateUuid(id);
-    
+
     // Get old data for audit
     const oldPatient = await this.findOne(id, organizationId, branchId);
 
@@ -128,21 +207,26 @@ export class PatientsService {
 
     // Audit Log
     await this.auditService.log({
-        organizationId: patient.organizationId,
-        userId: data.updatedBy,
-        action: 'UPDATE',
-        resource: 'patient',
-        resourceId: patient.id,
-        beforeData: oldPatient,
-        afterData: patient,
+      organizationId: patient.organizationId,
+      userId: data.updatedBy,
+      action: 'UPDATE',
+      resource: 'patient',
+      resourceId: patient.id,
+      beforeData: oldPatient,
+      afterData: patient,
     });
 
     return patient;
   }
 
-  async remove(id: string, organizationId: string, branchId: string, removedBy: string) {
+  async remove(
+    id: string,
+    organizationId: string,
+    branchId: string,
+    removedBy: string,
+  ) {
     this.validateUuid(id);
-    
+
     // Get old data for audit
     const oldPatient = await this.findOne(id, organizationId, branchId);
 
@@ -165,13 +249,13 @@ export class PatientsService {
 
     // Audit Log
     await this.auditService.log({
-        organizationId: patient.organizationId,
-        userId: removedBy,
-        action: 'DELETE',
-        resource: 'patient',
-        resourceId: patient.id,
-        beforeData: oldPatient,
-        afterData: patient,
+      organizationId: patient.organizationId,
+      userId: removedBy,
+      action: 'DELETE',
+      resource: 'patient',
+      resourceId: patient.id,
+      beforeData: oldPatient,
+      afterData: patient,
     });
 
     return patient;

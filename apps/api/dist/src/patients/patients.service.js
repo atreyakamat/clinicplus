@@ -34,16 +34,15 @@ let PatientsService = class PatientsService {
         const existing = await this.prisma.patient.findFirst({
             where: {
                 organizationId,
-                OR: [
-                    { email: data.email || 'none' },
-                    { phone: data.phone || 'none' }
-                ]
-            }
+                OR: [{ email: data.email || 'none' }, { phone: data.phone || 'none' }],
+            },
         });
         if (existing) {
             throw new common_1.ConflictException('Patient with this email or phone already exists in this clinic');
         }
-        const count = await this.prisma.patient.count({ where: { organizationId } });
+        const count = await this.prisma.patient.count({
+            where: { organizationId },
+        });
         const patientCode = data.patientCode || `PAT-${(count + 1).toString().padStart(6, '0')}`;
         return this.prisma.$transaction(async (tx) => {
             const patient = await tx.patient.create({
@@ -94,6 +93,73 @@ let PatientsService = class PatientsService {
                 familyMembers: true,
                 tags: true,
                 notes: true,
+                appointments: {
+                    include: {
+                        doctor: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                            },
+                        },
+                    },
+                    orderBy: {
+                        scheduledStart: 'desc',
+                    },
+                },
+                consultations: {
+                    include: {
+                        doctor: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                            },
+                        },
+                        diagnoses: true,
+                    },
+                    orderBy: {
+                        consultationDate: 'desc',
+                    },
+                },
+                prescriptions: {
+                    include: {
+                        doctor: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                            },
+                        },
+                        items: true,
+                    },
+                    orderBy: {
+                        issuedAt: 'desc',
+                    },
+                },
+                invoices: {
+                    include: {
+                        items: true,
+                        payments: true,
+                    },
+                    orderBy: {
+                        createdAt: 'desc',
+                    },
+                },
+                documents: {
+                    include: {
+                        uploader: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                            },
+                        },
+                    },
+                    orderBy: {
+                        createdAt: 'desc',
+                    },
+                },
             },
         });
         if (!patient) {

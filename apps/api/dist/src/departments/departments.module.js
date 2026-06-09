@@ -16,7 +16,7 @@ exports.DepartmentsModule = DepartmentsModule;
 exports.DepartmentsModule = DepartmentsModule = __decorate([
     (0, common_1.Module)({
         controllers: [departments_controller_1.DepartmentsController],
-        providers: [departments_service_1.DepartmentsService]
+        providers: [departments_service_1.DepartmentsService],
     })
 ], DepartmentsModule);
 //# sourceMappingURL=departments.module.js.map

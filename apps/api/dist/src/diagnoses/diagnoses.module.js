@@ -16,7 +16,7 @@ exports.DiagnosesModule = DiagnosesModule;
 exports.DiagnosesModule = DiagnosesModule = __decorate([
     (0, common_1.Module)({
         controllers: [diagnoses_controller_1.DiagnosesController],
-        providers: [diagnoses_service_1.DiagnosesService]
+        providers: [diagnoses_service_1.DiagnosesService],
     })
 ], DiagnosesModule);
 //# sourceMappingURL=diagnoses.module.js.map

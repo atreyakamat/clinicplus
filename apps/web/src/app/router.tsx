@@ -24,6 +24,7 @@ import { PatientFormPage } from '../pages/patients/PatientFormPage';
 import { PatientProfilePage } from '../pages/patients/PatientProfilePage';
 
 import { AppointmentFormPage } from '../pages/appointments/AppointmentFormPage';
+import { AppointmentDetailPage } from '../pages/appointments/AppointmentDetailPage';
 
 import { ConsultationWorkspace } from '../pages/consultations/ConsultationWorkspace';
 
@@ -64,7 +65,7 @@ export const router = createBrowserRouter([
       { path: 'patients/:id/edit', element: <PatientFormPage /> },
       { path: 'appointments', element: <AppointmentsPage /> },
       { path: 'appointments/new', element: <AppointmentFormPage /> },
-      { path: 'appointments/:id', element: <div className="p-6">Appointment Detail placeholder</div> },
+      { path: 'appointments/:id', element: <AppointmentDetailPage /> },
       { path: 'queue', element: <QueuePage /> },
       { path: 'consultations/:id', element: <ConsultationWorkspace /> },
       { path: 'consultations', element: <ConsultationsPage /> },

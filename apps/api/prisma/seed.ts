@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { faker } from '@faker-js/faker';
 import * as bcrypt from 'bcryptjs';
+import { ensureOrganizationAccess } from '../src/auth/access.bootstrap';
 
 const prisma = new PrismaClient();
 
@@ -35,6 +36,10 @@ async function main() {
     })
   ));
 
+  for (const org of orgs) {
+    await ensureOrganizationAccess(prisma, org.id);
+  }
+
   // --- PHASE 2: Users & Roles ---
   const doctors = await Promise.all(branches.map((branch, i) => 
     prisma.user.create({
@@ -61,6 +66,60 @@ async function main() {
       }
     })
   ));
+
+  for (const doctor of doctors) {
+    const doctorRole = await prisma.role.findFirst({
+      where: {
+        organizationId: doctor.organizationId,
+        name: 'Doctor',
+      },
+    });
+
+    if (doctorRole) {
+      await prisma.userRole.upsert({
+        where: {
+          userId_roleId: {
+            userId: doctor.id,
+            roleId: doctorRole.id,
+          },
+        },
+        update: {},
+        create: {
+          organizationId: doctor.organizationId,
+          branchId: doctor.branchId,
+          userId: doctor.id,
+          roleId: doctorRole.id,
+        },
+      });
+    }
+  }
+
+  for (const receptionist of receptionists) {
+    const receptionistRole = await prisma.role.findFirst({
+      where: {
+        organizationId: receptionist.organizationId,
+        name: 'Receptionist',
+      },
+    });
+
+    if (receptionistRole) {
+      await prisma.userRole.upsert({
+        where: {
+          userId_roleId: {
+            userId: receptionist.id,
+            roleId: receptionistRole.id,
+          },
+        },
+        update: {},
+        create: {
+          organizationId: receptionist.organizationId,
+          branchId: receptionist.branchId,
+          userId: receptionist.id,
+          roleId: receptionistRole.id,
+        },
+      });
+    }
+  }
 
   console.log('✅ Infrastructure Ready.');
 

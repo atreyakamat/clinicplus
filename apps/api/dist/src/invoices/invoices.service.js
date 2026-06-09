@@ -26,7 +26,7 @@ let InvoicesService = class InvoicesService {
                 branchId,
                 createdBy,
                 items: {
-                    create: items.map(item => ({
+                    create: items.map((item) => ({
                         ...item,
                         organizationId,
                         branchId,
@@ -39,7 +39,10 @@ let InvoicesService = class InvoicesService {
     async findAll(organizationId, branchId) {
         return this.prisma.invoice.findMany({
             where: { organizationId, branchId },
-            include: { patient: { select: { firstName: true, lastName: true } }, payments: true },
+            include: {
+                patient: { select: { firstName: true, lastName: true } },
+                payments: true,
+            },
             orderBy: { createdAt: 'desc' },
         });
     }

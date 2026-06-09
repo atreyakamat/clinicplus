@@ -1,4 +1,5 @@
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { TimelineService } from '../timeline/timeline.service';
 import { AuditService } from '../common/services/audit.service';
 export declare class PatientsService {
@@ -58,6 +59,167 @@ export declare class PatientsService {
         abhaNumber: string | null;
     }[]>;
     findOne(id: string, organizationId: string, branchId: string): Promise<{
+        appointments: ({
+            doctor: {
+                id: string;
+                firstName: string;
+                lastName: string;
+            };
+        } & {
+            id: string;
+            status: import("@prisma/client").$Enums.AppointmentStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            updatedBy: string | null;
+            deletedAt: Date | null;
+            deletedBy: string | null;
+            deleteReason: string | null;
+            organizationId: string;
+            branchId: string;
+            notes: string | null;
+            patientId: string;
+            doctorId: string;
+            appointmentType: string | null;
+            appointmentSource: string | null;
+            scheduledStart: Date;
+            scheduledEnd: Date;
+        })[];
+        consultations: ({
+            doctor: {
+                id: string;
+                firstName: string;
+                lastName: string;
+            };
+            diagnoses: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                organizationId: string;
+                branchId: string;
+                notes: string | null;
+                icdCode: string | null;
+                diagnosisName: string;
+                severity: string | null;
+                consultationId: string;
+            }[];
+        } & {
+            id: string;
+            status: import("@prisma/client").$Enums.ConsultationStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            updatedBy: string | null;
+            deletedAt: Date | null;
+            deletedBy: string | null;
+            deleteReason: string | null;
+            organizationId: string;
+            branchId: string;
+            patientId: string;
+            doctorId: string;
+            chiefComplaint: string | null;
+            historyOfPresentIllness: string | null;
+            clinicalAssessment: string | null;
+            treatmentPlan: string | null;
+            consultationDate: Date;
+            appointmentId: string | null;
+        })[];
+        prescriptions: ({
+            doctor: {
+                id: string;
+                firstName: string;
+                lastName: string;
+            };
+            items: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                organizationId: string;
+                branchId: string;
+                medicineName: string;
+                dosage: string | null;
+                frequency: string | null;
+                duration: string | null;
+                instructions: string | null;
+                prescriptionId: string;
+            }[];
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            organizationId: string;
+            branchId: string;
+            patientId: string;
+            doctorId: string;
+            issuedAt: Date;
+            consultationId: string | null;
+        })[];
+        documents: ({
+            uploader: {
+                id: string;
+                firstName: string;
+                lastName: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            organizationId: string;
+            branchId: string;
+            patientId: string;
+            title: string;
+            uploadedBy: string;
+            documentType: string;
+            fileUrl: string;
+            mimeType: string | null;
+            fileSize: number | null;
+            uploadedAt: Date;
+        })[];
+        invoices: ({
+            payments: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                organizationId: string;
+                branchId: string;
+                amount: Prisma.Decimal;
+                paymentMethod: string;
+                transactionReference: string | null;
+                paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+                paidAt: Date | null;
+                invoiceId: string;
+            }[];
+            items: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                organizationId: string;
+                branchId: string;
+                itemName: string;
+                quantity: number;
+                unitPrice: Prisma.Decimal;
+                amount: Prisma.Decimal;
+                invoiceId: string;
+            }[];
+        } & {
+            id: string;
+            status: import("@prisma/client").$Enums.InvoiceStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            updatedBy: string | null;
+            deletedAt: Date | null;
+            deletedBy: string | null;
+            deleteReason: string | null;
+            organizationId: string;
+            branchId: string;
+            patientId: string;
+            invoiceNumber: string;
+            subtotal: Prisma.Decimal;
+            discount: Prisma.Decimal;
+            tax: Prisma.Decimal;
+            total: Prisma.Decimal;
+        })[];
         addresses: {
             id: string;
             createdAt: Date;

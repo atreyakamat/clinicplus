@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuthStore } from '../store/auth.store';
+import { hasPermission, hasRole } from '../lib/access';
 
 interface HasPermissionProps {
   permission: string;
@@ -13,11 +14,11 @@ export const HasPermission = ({ permission, children, fallback = null }: HasPerm
   if (!user) return <>{fallback}</>;
   
   // Super Admin bypass
-  if (user.roles?.includes('Super Admin') || user.roles?.includes('Organization Owner')) {
+  if (hasRole(user.roles, 'Super Admin') || hasRole(user.roles, 'Organization Owner')) {
     return <>{children}</>;
   }
 
-  if (user.permissions?.includes(permission)) {
+  if (hasPermission(user.permissions, permission)) {
     return <>{children}</>;
   }
 

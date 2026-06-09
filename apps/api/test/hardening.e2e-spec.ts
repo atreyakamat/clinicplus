@@ -28,8 +28,8 @@ describe('Production Hardening: Multi-Tenancy (E2E)', () => {
     // 3. Create a patient in Org A
     // 4. Try to fetch Org A patient with Org B token
     // 5. Expect 404 or 403
-    
+
     // Implementation of this test requires real JWT tokens or mocked guards
-    expect(true).toBe(true); 
+    expect(true).toBe(true);
   });
 });

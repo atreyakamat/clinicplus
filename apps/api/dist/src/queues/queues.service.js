@@ -27,13 +27,13 @@ let QueuesService = class QueuesService {
                         appointment: {
                             include: {
                                 patient: true,
-                                doctor: { select: { firstName: true, lastName: true } }
-                            }
-                        }
+                                doctor: { select: { firstName: true, lastName: true } },
+                            },
+                        },
                     },
-                    orderBy: { tokenNumber: 'asc' }
-                }
-            }
+                    orderBy: { tokenNumber: 'asc' },
+                },
+            },
         });
         if (!queue) {
             return this.prisma.queue.create({
@@ -42,7 +42,7 @@ let QueuesService = class QueuesService {
                     organizationId,
                     branchId,
                 },
-                include: { entries: true }
+                include: { entries: true },
             });
         }
         return queue;
@@ -51,7 +51,7 @@ let QueuesService = class QueuesService {
         const queue = await this.getLiveQueue(organizationId, branchId);
         const lastEntry = await this.prisma.queueEntry.findFirst({
             where: { queueId: queue.id },
-            orderBy: { tokenNumber: 'desc' }
+            orderBy: { tokenNumber: 'desc' },
         });
         const tokenNumber = (lastEntry?.tokenNumber || 0) + 1;
         return this.prisma.queueEntry.create({
@@ -62,8 +62,8 @@ let QueuesService = class QueuesService {
                 branchId,
                 tokenNumber,
                 checkInTime: new Date(),
-                status: 'WAITING'
-            }
+                status: 'WAITING',
+            },
         });
     }
     async updateEntryStatus(entryId, status) {
@@ -74,7 +74,7 @@ let QueuesService = class QueuesService {
             data.completedTime = new Date();
         return this.prisma.queueEntry.update({
             where: { id: entryId },
-            data
+            data,
         });
     }
 };

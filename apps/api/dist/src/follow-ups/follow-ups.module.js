@@ -16,7 +16,7 @@ exports.FollowUpsModule = FollowUpsModule;
 exports.FollowUpsModule = FollowUpsModule = __decorate([
     (0, common_1.Module)({
         controllers: [follow_ups_controller_1.FollowUpsController],
-        providers: [follow_ups_service_1.FollowUpsService]
+        providers: [follow_ups_service_1.FollowUpsService],
     })
 ], FollowUpsModule);
 //# sourceMappingURL=follow-ups.module.js.map

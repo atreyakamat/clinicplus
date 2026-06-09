@@ -72,7 +72,7 @@ exports.AppModule = AppModule = __decorate([
             analytics_module_1.AnalyticsModule,
             feedback_module_1.FeedbackModule,
             timeline_module_1.TimelineModule,
-            health_module_1.HealthModule
+            health_module_1.HealthModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

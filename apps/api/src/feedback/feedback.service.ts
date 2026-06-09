@@ -11,7 +11,7 @@ export class FeedbackService {
         ...data,
         organizationId: data.organizationId,
         userId: data.userId,
-      }
+      },
     });
   }
 
@@ -26,14 +26,14 @@ export class FeedbackService {
   async updateStatus(id: string, status: string, organizationId: string) {
     // Verify feedback belongs to org
     const feedback = await this.prisma.feedback.findUnique({
-       where: { id, organizationId }
+      where: { id, organizationId },
     });
 
     if (!feedback) throw new NotFoundException('Feedback not found');
 
     return this.prisma.feedback.update({
       where: { id },
-      data: { status }
+      data: { status },
     });
   }
 }

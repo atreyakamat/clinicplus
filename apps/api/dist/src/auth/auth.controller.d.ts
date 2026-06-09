@@ -6,7 +6,7 @@ export declare class AuthController {
     constructor(authService: AuthService);
     login(loginDto: LoginDto, ip: string, userAgent: string): Promise<{
         accessToken: string;
-        refreshToken: string;
+        refreshToken: `${string}-${string}-${string}-${string}-${string}`;
         sessionId: string;
         user: any;
     }>;
@@ -15,7 +15,7 @@ export declare class AuthController {
         sessionId: string;
     }): Promise<{
         accessToken: string;
-        refreshToken: string;
+        refreshToken: `${string}-${string}-${string}-${string}-${string}`;
     }>;
     register(registerDto: RegisterDto): Promise<{
         message: string;

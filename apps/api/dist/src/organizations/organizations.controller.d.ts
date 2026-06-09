@@ -1,2 +1,78 @@
+import { OrganizationsService } from './organizations.service';
 export declare class OrganizationsController {
+    private readonly organizationsService;
+    constructor(organizationsService: OrganizationsService);
+    findOne(id: string, req: any): Promise<{
+        branches: {
+            id: string;
+            name: string;
+            email: string | null;
+            phone: string | null;
+            status: import("@prisma/client").$Enums.RecordStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            updatedBy: string | null;
+            deletedAt: Date | null;
+            deletedBy: string | null;
+            deleteReason: string | null;
+            code: string | null;
+            address: string | null;
+            city: string | null;
+            state: string | null;
+            country: string | null;
+            postalCode: string | null;
+            timezone: string | null;
+            organizationId: string;
+        }[];
+    } & {
+        id: string;
+        slug: string;
+        name: string;
+        legalName: string | null;
+        logoUrl: string | null;
+        website: string | null;
+        email: string | null;
+        phone: string | null;
+        primaryColor: string | null;
+        secondaryColor: string | null;
+        letterheadUrl: string | null;
+        footerText: string | null;
+        watermarkUrl: string | null;
+        subscriptionPlan: import("@prisma/client").$Enums.SubscriptionPlan | null;
+        subscriptionStatus: import("@prisma/client").$Enums.SubscriptionStatus;
+        status: import("@prisma/client").$Enums.RecordStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        createdBy: string | null;
+        updatedBy: string | null;
+        deletedAt: Date | null;
+        deletedBy: string | null;
+        deleteReason: string | null;
+    }>;
+    update(id: string, data: any, req: any): Promise<{
+        id: string;
+        slug: string;
+        name: string;
+        legalName: string | null;
+        logoUrl: string | null;
+        website: string | null;
+        email: string | null;
+        phone: string | null;
+        primaryColor: string | null;
+        secondaryColor: string | null;
+        letterheadUrl: string | null;
+        footerText: string | null;
+        watermarkUrl: string | null;
+        subscriptionPlan: import("@prisma/client").$Enums.SubscriptionPlan | null;
+        subscriptionStatus: import("@prisma/client").$Enums.SubscriptionStatus;
+        status: import("@prisma/client").$Enums.RecordStatus;
+        createdAt: Date;
+        updatedAt: Date;
+        createdBy: string | null;
+        updatedBy: string | null;
+        deletedAt: Date | null;
+        deletedBy: string | null;
+        deleteReason: string | null;
+    }>;
 }

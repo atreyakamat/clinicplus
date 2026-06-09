@@ -2,7 +2,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export declare class OrganizationsService {
     private prisma;
     constructor(prisma: PrismaService);
-    findOne(id: string): Promise<{
+    findOne(id: string, organizationId?: string): Promise<{
         branches: {
             id: string;
             name: string;
@@ -50,7 +50,7 @@ export declare class OrganizationsService {
         deletedBy: string | null;
         deleteReason: string | null;
     }>;
-    update(id: string, data: any): Promise<{
+    update(id: string, data: any, organizationId?: string): Promise<{
         id: string;
         slug: string;
         name: string;

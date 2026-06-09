@@ -11,32 +11,12 @@ export declare class JwtStrategy extends JwtStrategy_base {
     validate(payload: any): Promise<{
         id: string;
         email: string;
-        roles: ({
-            role: {
-                id: string;
-                name: string;
-                createdAt: Date;
-                updatedAt: Date;
-                createdBy: string | null;
-                updatedBy: string | null;
-                deletedAt: Date | null;
-                deletedBy: string | null;
-                deleteReason: string | null;
-                organizationId: string;
-                branchId: string | null;
-                description: string | null;
-            };
-        } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            organizationId: string;
-            branchId: string;
-            userId: string;
-            roleId: string;
-        })[];
+        roles: any;
+        permissions: any;
         organizationId: string;
         branchId: string;
+        firstName: string;
+        lastName: string;
     } | null>;
 }
 export {};

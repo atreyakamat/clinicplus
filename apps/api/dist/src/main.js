@@ -44,9 +44,7 @@ async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     Sentry.init({
         dsn: process.env.SENTRY_DSN,
-        integrations: [
-            (0, profiling_node_1.nodeProfilingIntegration)(),
-        ],
+        integrations: [(0, profiling_node_1.nodeProfilingIntegration)()],
         tracesSampleRate: 1.0,
         profilesSampleRate: 1.0,
         environment: process.env.NODE_ENV || 'development',

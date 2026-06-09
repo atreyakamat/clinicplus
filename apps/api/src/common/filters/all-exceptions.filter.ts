@@ -1,4 +1,10 @@
-import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  ExceptionFilter,
+  Catch,
+  ArgumentsHost,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { Request, Response } from 'express';
 
 @Catch()
@@ -13,9 +19,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message = 
-      exception instanceof HttpException 
-        ? exception.getResponse() 
+    const message =
+      exception instanceof HttpException
+        ? exception.getResponse()
         : 'Internal server error';
 
     const errorResponse = {
@@ -28,7 +34,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
     };
 
     // Log the error (In real app, send to Sentry/CloudWatch)
-    console.error(`[Error] ${request.method} ${request.url} - Status: ${status}`, exception);
+    console.error(
+      `[Error] ${request.method} ${request.url} - Status: ${status}`,
+      exception,
+    );
 
     response.status(status).json(errorResponse);
   }

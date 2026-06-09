@@ -16,7 +16,7 @@ export class PermissionsService {
     const where: any = {};
     if (organizationId) where.organizationId = organizationId;
     if (branchId) where.branchId = branchId;
-    
+
     return this.prisma.permission.findMany({
       where,
     });

@@ -6,9 +6,14 @@ import { Prisma } from '@prisma/client';
 export class InvoicesService {
   constructor(private prisma: PrismaService) {}
 
-  async create(data: any, organizationId: string, branchId: string, createdBy: string) {
+  async create(
+    data: any,
+    organizationId: string,
+    branchId: string,
+    createdBy: string,
+  ) {
     const { items, ...invoiceData } = data;
-    
+
     return this.prisma.invoice.create({
       data: {
         ...invoiceData,
@@ -16,7 +21,7 @@ export class InvoicesService {
         branchId,
         createdBy,
         items: {
-          create: items.map(item => ({
+          create: items.map((item) => ({
             ...item,
             organizationId,
             branchId,
@@ -30,7 +35,10 @@ export class InvoicesService {
   async findAll(organizationId: string, branchId: string) {
     return this.prisma.invoice.findMany({
       where: { organizationId, branchId },
-      include: { patient: { select: { firstName: true, lastName: true } }, payments: true },
+      include: {
+        patient: { select: { firstName: true, lastName: true } },
+        payments: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -44,10 +52,15 @@ export class InvoicesService {
     return invoice;
   }
 
-  async addPayment(invoiceId: string, paymentData: any, organizationId: string, branchId: string) {
+  async addPayment(
+    invoiceId: string,
+    paymentData: any,
+    organizationId: string,
+    branchId: string,
+  ) {
     // Verify invoice exists and belongs to org
     const invoice = await this.findOne(invoiceId, organizationId, branchId);
-    
+
     return this.prisma.payment.create({
       data: {
         ...paymentData,

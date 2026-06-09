@@ -35,11 +35,11 @@ let TasksService = class TasksService {
             },
             include: {
                 assignee: {
-                    select: { id: true, firstName: true, lastName: true }
+                    select: { id: true, firstName: true, lastName: true },
                 },
                 patient: {
-                    select: { id: true, firstName: true, lastName: true }
-                }
+                    select: { id: true, firstName: true, lastName: true },
+                },
             },
             orderBy: {
                 createdAt: 'desc',
@@ -51,11 +51,11 @@ let TasksService = class TasksService {
             where: { id, organizationId, branchId },
             include: {
                 assignee: {
-                    select: { id: true, firstName: true, lastName: true }
+                    select: { id: true, firstName: true, lastName: true },
                 },
                 patient: {
-                    select: { id: true, firstName: true, lastName: true }
-                }
+                    select: { id: true, firstName: true, lastName: true },
+                },
             },
         });
         if (!task) {

@@ -64,7 +64,9 @@ let StaffInvitationsService = class StaffInvitationsService {
             const user = await tx.user.create({
                 data: {
                     organizationId: invitation.organizationId,
-                    branchId: (await tx.branch.findFirst({ where: { organizationId: invitation.organizationId } }))?.id || '',
+                    branchId: (await tx.branch.findFirst({
+                        where: { organizationId: invitation.organizationId },
+                    }))?.id || '',
                     email: invitation.email,
                     firstName: userData.firstName,
                     lastName: userData.lastName,

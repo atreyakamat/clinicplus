@@ -20,7 +20,9 @@ let MessagesService = class MessagesService {
     async findAll(organizationId, branchId) {
         return this.prisma.message.findMany({
             where: { organizationId, branchId },
-            include: { patient: { select: { firstName: true, lastName: true, phone: true } } },
+            include: {
+                patient: { select: { firstName: true, lastName: true, phone: true } },
+            },
             orderBy: { createdAt: 'desc' },
         });
     }
@@ -47,12 +49,12 @@ let MessagesService = class MessagesService {
                 deliveryStatus: success ? 'SENT' : 'FAILED',
                 organizationId,
                 branchId,
-            }
+            },
         });
     }
     async getTemplates(organizationId) {
         return this.prisma.template.findMany({
-            where: { organizationId, channel: 'WHATSAPP' }
+            where: { organizationId, channel: 'WHATSAPP' },
         });
     }
 };

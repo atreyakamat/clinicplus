@@ -31,20 +31,11 @@ let PatientsController = class PatientsController {
             ...data,
             organizationId: req.user.organizationId,
             branchId: req.user.branchId,
-            createdBy: req.user.id
+            createdBy: req.user.id,
         });
     }
     findAll(req) {
         return this.patientsService.findAll(req.user.organizationId, req.user.branchId);
-    }
-    findOne(id, req) {
-        return this.patientsService.findOne(id, req.user.organizationId, req.user.branchId);
-    }
-    update(id, data, req) {
-        return this.patientsService.update(id, {
-            ...data,
-            updatedBy: req.user.id
-        }, req.user.organizationId, req.user.branchId);
     }
     async exportCsv(req, res) {
         const patients = await this.patientsService.findAll(req.user.organizationId, req.user.branchId);
@@ -65,6 +56,15 @@ let PatientsController = class PatientsController {
             'Content-Disposition': `attachment; filename="patients-${new Date().toISOString().split('T')[0]}.csv"`,
         });
         return res.send(csvData);
+    }
+    findOne(id, req) {
+        return this.patientsService.findOne(id, req.user.organizationId, req.user.branchId);
+    }
+    update(id, data, req) {
+        return this.patientsService.update(id, {
+            ...data,
+            updatedBy: req.user.id,
+        }, req.user.organizationId, req.user.branchId);
     }
     remove(id, req) {
         return this.patientsService.remove(id, req.user.organizationId, req.user.branchId, req.user.id);
@@ -95,6 +95,14 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "findAll", null);
 __decorate([
+    (0, common_1.Get)('export/csv'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], PatientsController.prototype, "exportCsv", null);
+__decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
@@ -111,14 +119,6 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "update", null);
-__decorate([
-    (0, common_1.Get)('export/csv'),
-    __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Res)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
-    __metadata("design:returntype", Promise)
-], PatientsController.prototype, "exportCsv", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     __param(0, (0, common_1.Param)('id')),

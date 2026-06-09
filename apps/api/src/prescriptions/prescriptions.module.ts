@@ -7,6 +7,6 @@ import { OrganizationsModule } from '../organizations/organizations.module';
 @Module({
   imports: [OrganizationsModule],
   controllers: [PrescriptionsController],
-  providers: [PrescriptionsService, PdfService]
+  providers: [PrescriptionsService, PdfService],
 })
 export class PrescriptionsModule {}

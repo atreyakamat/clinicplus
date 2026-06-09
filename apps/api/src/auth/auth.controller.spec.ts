@@ -36,9 +36,9 @@ describe('AuthController', () => {
     it('should return a user and access token', async () => {
       const loginDto = { email: 'test@clinicos.com', password: 'password' };
       const req = { user: { id: '1', email: 'test@clinicos.com', roles: [] } };
-      
+
       const result = await controller.login(loginDto, req);
-      
+
       expect(result).toEqual({
         accessToken: 'test_token',
         user: { id: '1', email: 'test@clinicos.com', roles: [] },

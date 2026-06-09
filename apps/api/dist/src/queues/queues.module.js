@@ -16,7 +16,7 @@ exports.QueuesModule = QueuesModule;
 exports.QueuesModule = QueuesModule = __decorate([
     (0, common_1.Module)({
         controllers: [queues_controller_1.QueuesController],
-        providers: [queues_service_1.QueuesService]
+        providers: [queues_service_1.QueuesService],
     })
 ], QueuesModule);
 //# sourceMappingURL=queues.module.js.map

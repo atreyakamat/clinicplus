@@ -1,4 +1,9 @@
-import { PipeTransform, Injectable, ArgumentMetadata, BadRequestException } from '@nestjs/common';
+import {
+  PipeTransform,
+  Injectable,
+  ArgumentMetadata,
+  BadRequestException,
+} from '@nestjs/common';
 
 @Injectable()
 export class FileValidationPipe implements PipeTransform {
@@ -18,7 +23,9 @@ export class FileValidationPipe implements PipeTransform {
     }
 
     if (file.size > this.MAX_SIZE) {
-      throw new BadRequestException(`File size exceeds 10MB limit (size: ${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+      throw new BadRequestException(
+        `File size exceeds 10MB limit (size: ${(file.size / 1024 / 1024).toFixed(2)}MB)`,
+      );
     }
 
     if (!this.ALLOWED_MIMES.includes(file.mimetype)) {

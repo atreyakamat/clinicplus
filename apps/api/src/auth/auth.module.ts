@@ -20,7 +20,9 @@ import { APP_GUARD } from '@nestjs/core';
       inject: [ConfigService],
       useFactory: (configService: ConfigService): any => ({
         secret: configService.get<string>('JWT_SECRET') || 'super-secret',
-        signOptions: { expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '1d' },
+        signOptions: {
+          expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '1d',
+        },
       }),
     }),
   ],

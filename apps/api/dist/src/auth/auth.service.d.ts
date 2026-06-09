@@ -11,13 +11,13 @@ export declare class AuthService {
     validateUser(email: string, password: string): Promise<any>;
     login(loginDto: LoginDto, ipAddress?: string, userAgent?: string): Promise<{
         accessToken: string;
-        refreshToken: string;
+        refreshToken: `${string}-${string}-${string}-${string}-${string}`;
         sessionId: string;
         user: any;
     }>;
     refresh(refreshToken: string, sessionId: string): Promise<{
         accessToken: string;
-        refreshToken: string;
+        refreshToken: `${string}-${string}-${string}-${string}-${string}`;
     }>;
     logout(sessionId: string): Promise<{
         id: string;

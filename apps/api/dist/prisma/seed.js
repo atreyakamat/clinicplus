@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const client_1 = require("@prisma/client");
 const faker_1 = require("@faker-js/faker");
 const bcrypt = __importStar(require("bcryptjs"));
+const access_bootstrap_1 = require("../src/auth/access.bootstrap");
 const prisma = new client_1.PrismaClient();
 async function main() {
     console.log('🚀 Starting Master Production Readiness Seeding...');
@@ -59,6 +60,9 @@ async function main() {
     const branches = await Promise.all(orgs.map(org => prisma.branch.create({
         data: { name: `${org.name} Main Branch`, organizationId: org.id, address: faker_1.faker.location.streetAddress() }
     })));
+    for (const org of orgs) {
+        await (0, access_bootstrap_1.ensureOrganizationAccess)(prisma, org.id);
+    }
     const doctors = await Promise.all(branches.map((branch, i) => prisma.user.create({
         data: {
             email: `doctor${i + 1}@clinicos.com`,
@@ -79,6 +83,56 @@ async function main() {
             branchId: branch.id,
         }
     })));
+    for (const doctor of doctors) {
+        const doctorRole = await prisma.role.findFirst({
+            where: {
+                organizationId: doctor.organizationId,
+                name: 'Doctor',
+            },
+        });
+        if (doctorRole) {
+            await prisma.userRole.upsert({
+                where: {
+                    userId_roleId: {
+                        userId: doctor.id,
+                        roleId: doctorRole.id,
+                    },
+                },
+                update: {},
+                create: {
+                    organizationId: doctor.organizationId,
+                    branchId: doctor.branchId,
+                    userId: doctor.id,
+                    roleId: doctorRole.id,
+                },
+            });
+        }
+    }
+    for (const receptionist of receptionists) {
+        const receptionistRole = await prisma.role.findFirst({
+            where: {
+                organizationId: receptionist.organizationId,
+                name: 'Receptionist',
+            },
+        });
+        if (receptionistRole) {
+            await prisma.userRole.upsert({
+                where: {
+                    userId_roleId: {
+                        userId: receptionist.id,
+                        roleId: receptionistRole.id,
+                    },
+                },
+                update: {},
+                create: {
+                    organizationId: receptionist.organizationId,
+                    branchId: receptionist.branchId,
+                    userId: receptionist.id,
+                    roleId: receptionistRole.id,
+                },
+            });
+        }
+    }
     console.log('✅ Infrastructure Ready.');
     console.log('📥 Seeding 1000 Patients...');
     const patientBatches = 10;

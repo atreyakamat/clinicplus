@@ -1,4 +1,13 @@
-import { Controller, Post, Body, UseGuards, Request, Get, Ip, Headers } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Request,
+  Get,
+  Ip,
+  Headers,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -10,9 +19,9 @@ export class AuthController {
 
   @Post('login')
   async login(
-    @Body() loginDto: LoginDto, 
-    @Ip() ip: string, 
-    @Headers('user-agent') userAgent: string
+    @Body() loginDto: LoginDto,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent: string,
   ) {
     return this.authService.login(loginDto, ip, userAgent);
   }

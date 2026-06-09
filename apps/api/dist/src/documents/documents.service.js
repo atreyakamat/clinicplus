@@ -35,11 +35,11 @@ let DocumentsService = class DocumentsService {
             },
             include: {
                 patient: {
-                    select: { id: true, firstName: true, lastName: true }
+                    select: { id: true, firstName: true, lastName: true },
                 },
                 uploader: {
-                    select: { id: true, firstName: true, lastName: true }
-                }
+                    select: { id: true, firstName: true, lastName: true },
+                },
             },
             orderBy: {
                 createdAt: 'desc',
@@ -51,13 +51,13 @@ let DocumentsService = class DocumentsService {
             where: { id, organizationId, branchId },
             include: {
                 patient: {
-                    select: { id: true, firstName: true, lastName: true }
+                    select: { id: true, firstName: true, lastName: true },
                 },
                 uploader: {
-                    select: { id: true, firstName: true, lastName: true }
+                    select: { id: true, firstName: true, lastName: true },
                 },
                 labReports: true,
-                imagingReports: true
+                imagingReports: true,
             },
         });
         if (!document) {

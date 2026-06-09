@@ -19,7 +19,7 @@ exports.PrescriptionsModule = PrescriptionsModule = __decorate([
     (0, common_1.Module)({
         imports: [organizations_module_1.OrganizationsModule],
         controllers: [prescriptions_controller_1.PrescriptionsController],
-        providers: [prescriptions_service_1.PrescriptionsService, pdf_service_1.PdfService]
+        providers: [prescriptions_service_1.PrescriptionsService, pdf_service_1.PdfService],
     })
 ], PrescriptionsModule);
 //# sourceMappingURL=prescriptions.module.js.map

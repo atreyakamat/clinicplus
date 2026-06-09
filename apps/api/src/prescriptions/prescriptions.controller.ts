@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, Request, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+  Res,
+} from '@nestjs/common';
 import { PrescriptionsService } from './prescriptions.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PdfService } from '../common/services/pdf.service';
@@ -23,11 +33,17 @@ export class PrescriptionsController {
 
   @Get(':id/download')
   async download(@Param('id') id: string, @Request() req, @Res() res) {
-    const rx = await this.prescriptionsService.findOne(id, req.user.organizationId, req.user.branchId);
-    const org = await this.organizationsService.findOne(req.user.organizationId);
-    
+    const rx = await this.prescriptionsService.findOne(
+      id,
+      req.user.organizationId,
+      req.user.branchId,
+    );
+    const org = await this.organizationsService.findOne(
+      req.user.organizationId,
+    );
+
     const buffer = await this.pdfService.generatePrescriptionPdf(rx, org);
-    
+
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="prescription-${rx.id.split('-')[0]}.pdf"`,
@@ -38,12 +54,20 @@ export class PrescriptionsController {
   }
 
   @Get()
-  findAllByPatient(@Query('patientId') patientId: string, @Request() req) {
-    return this.prescriptionsService.findAllByPatient(patientId, req.user.organizationId);
+  findAll(@Query('patientId') patientId: string | undefined, @Request() req) {
+    return this.prescriptionsService.findAll(
+      req.user.organizationId,
+      req.user.branchId,
+      patientId,
+    );
   }
 
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req) {
-    return this.prescriptionsService.findOne(id, req.user.organizationId, req.user.branchId);
+    return this.prescriptionsService.findOne(
+      id,
+      req.user.organizationId,
+      req.user.branchId,
+    );
   }
 }

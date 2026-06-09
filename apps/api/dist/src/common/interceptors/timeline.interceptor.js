@@ -25,19 +25,31 @@ let TimelineInterceptor = class TimelineInterceptor {
             return next.handle();
         return next.handle().pipe((0, operators_1.tap)((data) => {
             if (['POST', 'PATCH', 'PUT'].includes(method)) {
-                const patientId = body.patientId || data?.patientId || (url.includes('patients/') ? url.split('/')[4] : null);
+                const patientId = body.patientId ||
+                    data?.patientId ||
+                    (url.includes('patients/') ? url.split('/')[4] : null);
                 if (patientId && patientId.length === 36) {
                     const module = url.split('/')[3];
                     let eventType = '';
                     let title = '';
                     switch (module) {
                         case 'appointments':
-                            eventType = method === 'POST' ? 'APPOINTMENT_BOOKED' : 'APPOINTMENT_UPDATED';
-                            title = method === 'POST' ? 'New Appointment' : 'Appointment Updated';
+                            eventType =
+                                method === 'POST'
+                                    ? 'APPOINTMENT_BOOKED'
+                                    : 'APPOINTMENT_UPDATED';
+                            title =
+                                method === 'POST' ? 'New Appointment' : 'Appointment Updated';
                             break;
                         case 'consultations':
-                            eventType = method === 'POST' ? 'CONSULTATION_STARTED' : 'CONSULTATION_UPDATED';
-                            title = method === 'POST' ? 'Consultation Started' : 'Consultation Updated';
+                            eventType =
+                                method === 'POST'
+                                    ? 'CONSULTATION_STARTED'
+                                    : 'CONSULTATION_UPDATED';
+                            title =
+                                method === 'POST'
+                                    ? 'Consultation Started'
+                                    : 'Consultation Updated';
                             break;
                         case 'prescriptions':
                             eventType = 'PRESCRIPTION_GENERATED';
@@ -62,7 +74,11 @@ let TimelineInterceptor = class TimelineInterceptor {
                         title,
                         description: `Action performed via ${module} module.`,
                         createdBy: user.id,
-                        metadata: { method, url, body: method === 'POST' ? body : undefined }
+                        metadata: {
+                            method,
+                            url,
+                            body: method === 'POST' ? body : undefined,
+                        },
                     });
                 }
             }

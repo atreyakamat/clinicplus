@@ -16,7 +16,7 @@ exports.PermissionsModule = PermissionsModule;
 exports.PermissionsModule = PermissionsModule = __decorate([
     (0, common_1.Module)({
         controllers: [permissions_controller_1.PermissionsController],
-        providers: [permissions_service_1.PermissionsService]
+        providers: [permissions_service_1.PermissionsService],
     })
 ], PermissionsModule);
 //# sourceMappingURL=permissions.module.js.map

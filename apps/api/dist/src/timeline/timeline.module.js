@@ -9,12 +9,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TimelineModule = void 0;
 const common_1 = require("@nestjs/common");
 const timeline_service_1 = require("./timeline.service");
+const timeline_controller_1 = require("./timeline.controller");
 let TimelineModule = class TimelineModule {
 };
 exports.TimelineModule = TimelineModule;
 exports.TimelineModule = TimelineModule = __decorate([
     (0, common_1.Global)(),
     (0, common_1.Module)({
+        controllers: [timeline_controller_1.TimelineController],
         providers: [timeline_service_1.TimelineService],
         exports: [timeline_service_1.TimelineService],
     })

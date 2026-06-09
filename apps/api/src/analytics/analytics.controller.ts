@@ -15,6 +15,10 @@ export class AnalyticsController {
   @Roles('super-admin', 'organization-owner', 'clinic-admin', 'doctor')
   @Permissions('analytics:view')
   getDoctorDashboard(@Request() req) {
-    return this.analyticsService.getDoctorDashboard(req.user.id, req.user.organizationId, req.user.branchId);
+    return this.analyticsService.getDoctorDashboard(
+      req.user.id,
+      req.user.organizationId,
+      req.user.branchId,
+    );
   }
 }

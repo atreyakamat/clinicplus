@@ -16,7 +16,7 @@ exports.StaffInvitationsModule = StaffInvitationsModule;
 exports.StaffInvitationsModule = StaffInvitationsModule = __decorate([
     (0, common_1.Module)({
         controllers: [staff_invitations_controller_1.StaffInvitationsController],
-        providers: [staff_invitations_service_1.StaffInvitationsService]
+        providers: [staff_invitations_service_1.StaffInvitationsService],
     })
 ], StaffInvitationsModule);
 //# sourceMappingURL=staff-invitations.module.js.map

@@ -36,7 +36,7 @@ let AppointmentsService = class AppointmentsService {
                         scheduledStart: { lt: data.scheduledEnd },
                         scheduledEnd: { gte: data.scheduledEnd },
                     },
-                ]
+                ],
             },
         });
         if (overlapping) {
@@ -64,7 +64,7 @@ let AppointmentsService = class AppointmentsService {
                 scheduledEnd: appointment.scheduledEnd,
                 status: appointment.status,
                 organizationId: appointment.organizationId,
-                branchId: appointment.branchId
+                branchId: appointment.branchId,
             },
         });
         return appointment;
@@ -89,11 +89,11 @@ let AppointmentsService = class AppointmentsService {
             where,
             include: {
                 patient: {
-                    select: { id: true, firstName: true, lastName: true, phone: true }
+                    select: { id: true, firstName: true, lastName: true, phone: true },
                 },
                 doctor: {
-                    select: { id: true, firstName: true, lastName: true }
-                }
+                    select: { id: true, firstName: true, lastName: true },
+                },
             },
             orderBy: {
                 scheduledStart: 'asc',
@@ -106,8 +106,8 @@ let AppointmentsService = class AppointmentsService {
             include: {
                 patient: true,
                 doctor: {
-                    select: { id: true, firstName: true, lastName: true }
-                }
+                    select: { id: true, firstName: true, lastName: true },
+                },
             },
         });
         if (!appointment)
@@ -119,12 +119,12 @@ let AppointmentsService = class AppointmentsService {
             where: { id, organizationId, branchId },
             include: {
                 patient: {
-                    select: { id: true, firstName: true, lastName: true }
+                    select: { id: true, firstName: true, lastName: true },
                 },
                 doctor: {
-                    select: { id: true, firstName: true, lastName: true }
-                }
-            }
+                    select: { id: true, firstName: true, lastName: true },
+                },
+            },
         });
         if (!oldAppointment) {
             throw new common_1.NotFoundException('Appointment not found');
@@ -149,12 +149,12 @@ let AppointmentsService = class AppointmentsService {
             where: { id, organizationId, branchId },
             include: {
                 patient: {
-                    select: { id: true, firstName: true, lastName: true }
+                    select: { id: true, firstName: true, lastName: true },
                 },
                 doctor: {
-                    select: { id: true, firstName: true, lastName: true }
-                }
-            }
+                    select: { id: true, firstName: true, lastName: true },
+                },
+            },
         });
         if (!oldAppointment) {
             throw new common_1.NotFoundException('Appointment not found');

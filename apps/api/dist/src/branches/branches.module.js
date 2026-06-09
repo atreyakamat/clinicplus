@@ -16,7 +16,7 @@ exports.BranchesModule = BranchesModule;
 exports.BranchesModule = BranchesModule = __decorate([
     (0, common_1.Module)({
         controllers: [branches_controller_1.BranchesController],
-        providers: [branches_service_1.BranchesService]
+        providers: [branches_service_1.BranchesService],
     })
 ], BranchesModule);
 //# sourceMappingURL=branches.module.js.map

@@ -4,6 +4,6 @@ import { StaffInvitationsService } from './staff-invitations.service';
 
 @Module({
   controllers: [StaffInvitationsController],
-  providers: [StaffInvitationsService]
+  providers: [StaffInvitationsService],
 })
 export class StaffInvitationsModule {}

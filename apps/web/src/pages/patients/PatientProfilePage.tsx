@@ -102,10 +102,12 @@ export const PatientProfilePage = () => {
             </div>
 
             <div className="pt-6 border-t space-y-3">
+              <Link to={`/appointments/new?patientId=${patient.id}`} className="block">
                <Button className="w-full justify-start gap-2 bg-[#1FA971]">
                   <Calendar size={16} /> Book Appointment
                </Button>
-               <Button variant="outline" className="w-full justify-start gap-2">
+              </Link>
+               <Button variant="outline" className="w-full justify-start gap-2" disabled>
                   <Stethoscope size={16} /> Start Consultation
                </Button>
             </div>
@@ -222,21 +224,102 @@ export const PatientProfilePage = () => {
               </TabsContent>
 
               <TabsContent value="prescriptions">
-                 <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed text-slate-400">
-                    No prescriptions found.
-                 </div>
+                <Card className="p-0 overflow-hidden">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 text-slate-500 border-b">
+                      <tr>
+                        <th className="px-6 py-4">Issued</th>
+                        <th className="px-6 py-4">Doctor</th>
+                        <th className="px-6 py-4">Medications</th>
+                        <th className="px-6 py-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {!patient.prescriptions?.length ? (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-10 text-center text-slate-400">No prescriptions found.</td>
+                        </tr>
+                      ) : patient.prescriptions.map((prescription: any) => (
+                        <tr key={prescription.id} className="hover:bg-slate-50">
+                          <td className="px-6 py-4">{new Date(prescription.issuedAt).toLocaleDateString()}</td>
+                          <td className="px-6 py-4">Dr. {prescription.doctor?.lastName}</td>
+                          <td className="px-6 py-4">{prescription.items?.length || 0} items</td>
+                          <td className="px-6 py-4 text-right">
+                            <Link to={`/prescriptions/${prescription.id}`}>
+                              <Button variant="ghost" size="sm">Open</Button>
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Card>
               </TabsContent>
 
               <TabsContent value="billing">
-                <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed text-slate-400">
-                    No billing history.
-                 </div>
+                <Card className="p-0 overflow-hidden">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 text-slate-500 border-b">
+                      <tr>
+                        <th className="px-6 py-4">Invoice</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4">Total</th>
+                        <th className="px-6 py-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {!patient.invoices?.length ? (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-10 text-center text-slate-400">No billing history.</td>
+                        </tr>
+                      ) : patient.invoices.map((invoice: any) => (
+                        <tr key={invoice.id} className="hover:bg-slate-50">
+                          <td className="px-6 py-4">{invoice.invoiceNumber}</td>
+                          <td className="px-6 py-4"><Badge>{invoice.status}</Badge></td>
+                          <td className="px-6 py-4">${Number(invoice.total ?? 0).toFixed(2)}</td>
+                          <td className="px-6 py-4 text-right">
+                            <Link to={`/billing/${invoice.id}`}>
+                              <Button variant="ghost" size="sm">Open</Button>
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Card>
               </TabsContent>
 
               <TabsContent value="documents">
-                <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed text-slate-400">
-                    No documents uploaded.
-                 </div>
+                <Card className="p-0 overflow-hidden">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 text-slate-500 border-b">
+                      <tr>
+                        <th className="px-6 py-4">Document</th>
+                        <th className="px-6 py-4">Type</th>
+                        <th className="px-6 py-4">Uploaded</th>
+                        <th className="px-6 py-4 text-right">File</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {!patient.documents?.length ? (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-10 text-center text-slate-400">No documents uploaded.</td>
+                        </tr>
+                      ) : patient.documents.map((document: any) => (
+                        <tr key={document.id} className="hover:bg-slate-50">
+                          <td className="px-6 py-4">{document.title}</td>
+                          <td className="px-6 py-4">{document.documentType}</td>
+                          <td className="px-6 py-4">{new Date(document.createdAt).toLocaleDateString()}</td>
+                          <td className="px-6 py-4 text-right">
+                            <a href={document.fileUrl} target="_blank" rel="noreferrer">
+                              <Button variant="ghost" size="sm">Open</Button>
+                            </a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Card>
               </TabsContent>
             </div>
           </Tabs>

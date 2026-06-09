@@ -19,7 +19,7 @@ exports.InvoicesModule = InvoicesModule = __decorate([
     (0, common_1.Module)({
         imports: [organizations_module_1.OrganizationsModule],
         controllers: [invoices_controller_1.InvoicesController],
-        providers: [invoices_service_1.InvoicesService, pdf_service_1.PdfService]
+        providers: [invoices_service_1.InvoicesService, pdf_service_1.PdfService],
     })
 ], InvoicesModule);
 //# sourceMappingURL=invoices.module.js.map

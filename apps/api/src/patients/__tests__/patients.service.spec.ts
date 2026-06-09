@@ -93,7 +93,9 @@ describe('PatientsService', () => {
           status: 'ACTIVE',
         },
       ];
-      jest.spyOn(prisma.patient, 'findMany').mockResolvedValue(expectedPatients);
+      jest
+        .spyOn(prisma.patient, 'findMany')
+        .mockResolvedValue(expectedPatients);
 
       const result = await service.findAll('org1', 'branch1');
       expect(result).toEqual(expectedPatients);
@@ -121,7 +123,9 @@ describe('PatientsService', () => {
         addresses: [],
         emergencyContacts: [],
       };
-      jest.spyOn(prisma.patient, 'findUnique').mockResolvedValue(expectedPatient);
+      jest
+        .spyOn(prisma.patient, 'findUnique')
+        .mockResolvedValue(expectedPatient);
 
       const result = await service.findOne('1');
       expect(result).toEqual(expectedPatient);
@@ -159,7 +163,9 @@ describe('PatientsService', () => {
         ...existingPatient,
         ...updatePatientDto,
       };
-      jest.spyOn(prisma.patient, 'findUnique').mockResolvedValue(existingPatient);
+      jest
+        .spyOn(prisma.patient, 'findUnique')
+        .mockResolvedValue(existingPatient);
       jest.spyOn(prisma.patient, 'update').mockResolvedValue(updatedPatient);
 
       const result = await service.update('1', updatePatientDto);
@@ -226,7 +232,9 @@ describe('PatientsService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      jest.spyOn(prisma.patientAddress, 'create').mockResolvedValue(expectedAddress);
+      jest
+        .spyOn(prisma.patientAddress, 'create')
+        .mockResolvedValue(expectedAddress);
 
       const result = await service.addAddress('1', addressData);
       expect(result).toEqual(expectedAddress);
@@ -257,9 +265,14 @@ describe('PatientsService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      jest.spyOn(prisma.patientEmergencyContact, 'create').mockResolvedValue(expectedEmergencyContact);
+      jest
+        .spyOn(prisma.patientEmergencyContact, 'create')
+        .mockResolvedValue(expectedEmergencyContact);
 
-      const result = await service.addEmergencyContact('1', emergencyContactData);
+      const result = await service.addEmergencyContact(
+        '1',
+        emergencyContactData,
+      );
       expect(result).toEqual(expectedEmergencyContact);
       expect(prisma.patientEmergencyContact.create).toHaveBeenCalledWith({
         data: {

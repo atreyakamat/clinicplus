@@ -15,6 +15,7 @@ const passport_1 = require("@nestjs/passport");
 const passport_jwt_1 = require("passport-jwt");
 const config_1 = require("@nestjs/config");
 const users_service_1 = require("../../users/users.service");
+const access_utils_1 = require("../access.utils");
 let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
     configService;
     usersService;
@@ -32,12 +33,21 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
         if (!user) {
             return null;
         }
+        const roles = payload.roles?.length
+            ? payload.roles
+            : (0, access_utils_1.extractRoleNames)(user.roles);
+        const permissions = payload.permissions?.length
+            ? payload.permissions
+            : (0, access_utils_1.extractPermissionNames)(user.roles);
         return {
             id: user.id,
             email: user.email,
-            roles: user.roles,
+            roles,
+            permissions,
             organizationId: user.organizationId,
-            branchId: user.branchId
+            branchId: user.branchId,
+            firstName: user.firstName,
+            lastName: user.lastName,
         };
     }
 };

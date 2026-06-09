@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { faker } from '@faker-js/faker';
 
@@ -6,7 +10,13 @@ import { faker } from '@faker-js/faker';
 export class StaffInvitationsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(data: { email: string; phone?: string; roleId: string; organizationId: string; branchId: string }) {
+  async create(data: {
+    email: string;
+    phone?: string;
+    roleId: string;
+    organizationId: string;
+    branchId: string;
+  }) {
     const existingUser = await this.prisma.user.findFirst({
       where: { email: data.email, organizationId: data.organizationId },
     });
@@ -55,14 +65,22 @@ export class StaffInvitationsService {
     return invitation;
   }
 
-  async accept(token: string, userData: { firstName: string; lastName: string; passwordHash: string }) {
+  async accept(
+    token: string,
+    userData: { firstName: string; lastName: string; passwordHash: string },
+  ) {
     const invitation = await this.findByToken(token);
 
     return this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
           organizationId: invitation.organizationId,
-          branchId: (await tx.branch.findFirst({ where: { organizationId: invitation.organizationId } }))?.id || '',
+          branchId:
+            (
+              await tx.branch.findFirst({
+                where: { organizationId: invitation.organizationId },
+              })
+            )?.id || '',
           email: invitation.email,
           firstName: userData.firstName,
           lastName: userData.lastName,

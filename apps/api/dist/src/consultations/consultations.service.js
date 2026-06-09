@@ -22,12 +22,23 @@ let ConsultationsService = class ConsultationsService {
             data,
         });
     }
-    async findAllByPatient(patientId, organizationId) {
+    async findAll(organizationId, branchId, patientId) {
         return this.prisma.consultation.findMany({
-            where: { patientId, organizationId },
+            where: {
+                organizationId,
+                branchId,
+                ...(patientId ? { patientId } : {}),
+            },
             include: {
                 diagnoses: true,
                 vitals: true,
+                patient: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                    },
+                },
                 doctor: { select: { firstName: true, lastName: true } },
             },
             orderBy: { consultationDate: 'desc' },
@@ -61,13 +72,23 @@ let ConsultationsService = class ConsultationsService {
                 await tx.vital.upsert({
                     where: { id: vitals.id || 'none' },
                     update: vitals,
-                    create: { ...vitals, consultationId: id, organizationId: updated.organizationId, branchId: updated.branchId },
+                    create: {
+                        ...vitals,
+                        consultationId: id,
+                        organizationId: updated.organizationId,
+                        branchId: updated.branchId,
+                    },
                 });
             }
             if (diagnoses && Array.isArray(diagnoses)) {
                 await tx.diagnosis.deleteMany({ where: { consultationId: id } });
                 await tx.diagnosis.createMany({
-                    data: diagnoses.map(d => ({ ...d, consultationId: id, organizationId: updated.organizationId, branchId: updated.branchId })),
+                    data: diagnoses.map((d) => ({
+                        ...d,
+                        consultationId: id,
+                        organizationId: updated.organizationId,
+                        branchId: updated.branchId,
+                    })),
                 });
             }
             return updated;

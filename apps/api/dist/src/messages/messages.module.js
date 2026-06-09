@@ -16,7 +16,7 @@ exports.MessagesModule = MessagesModule;
 exports.MessagesModule = MessagesModule = __decorate([
     (0, common_1.Module)({
         controllers: [messages_controller_1.MessagesController],
-        providers: [messages_service_1.MessagesService]
+        providers: [messages_service_1.MessagesService],
     })
 ], MessagesModule);
 //# sourceMappingURL=messages.module.js.map

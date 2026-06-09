@@ -1,4 +1,16 @@
-import { Controller, Post, Get, Body, UseGuards, Request, Res, Query, Param, Patch, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  UseGuards,
+  Request,
+  Res,
+  Query,
+  Param,
+  Patch,
+  Delete,
+} from '@nestjs/common';
 import { PatientsService } from './patients.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -20,35 +32,28 @@ export class PatientsController {
   @Post()
   create(@Body() data: any, @Request() req) {
     return this.patientsService.create({
-        ...data,
-        organizationId: req.user.organizationId,
-        branchId: req.user.branchId,
-        createdBy: req.user.id
+      ...data,
+      organizationId: req.user.organizationId,
+      branchId: req.user.branchId,
+      createdBy: req.user.id,
     });
   }
 
   @Get()
   findAll(@Request() req) {
-    return this.patientsService.findAll(req.user.organizationId, req.user.branchId);
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string, @Request() req) {
-    return this.patientsService.findOne(id, req.user.organizationId, req.user.branchId);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() data: any, @Request() req) {
-    return this.patientsService.update(id, {
-        ...data,
-        updatedBy: req.user.id
-    }, req.user.organizationId, req.user.branchId);
+    return this.patientsService.findAll(
+      req.user.organizationId,
+      req.user.branchId,
+    );
   }
 
   @Get('export/csv')
   async exportCsv(@Request() req, @Res() res) {
-    const patients = await this.patientsService.findAll(req.user.organizationId, req.user.branchId);
-    
+    const patients = await this.patientsService.findAll(
+      req.user.organizationId,
+      req.user.branchId,
+    );
+
     const csvData = stringify(patients, {
       header: true,
       columns: [
@@ -70,8 +75,35 @@ export class PatientsController {
     return res.send(csvData);
   }
 
+  @Get(':id')
+  findOne(@Param('id') id: string, @Request() req) {
+    return this.patientsService.findOne(
+      id,
+      req.user.organizationId,
+      req.user.branchId,
+    );
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() data: any, @Request() req) {
+    return this.patientsService.update(
+      id,
+      {
+        ...data,
+        updatedBy: req.user.id,
+      },
+      req.user.organizationId,
+      req.user.branchId,
+    );
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req) {
-    return this.patientsService.remove(id, req.user.organizationId, req.user.branchId, req.user.id);
+    return this.patientsService.remove(
+      id,
+      req.user.organizationId,
+      req.user.branchId,
+      req.user.id,
+    );
   }
 }

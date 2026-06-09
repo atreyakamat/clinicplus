@@ -23,7 +23,10 @@ let ImportService = class ImportService {
         data.forEach((row, index) => {
             if (entity === 'patient') {
                 if (!row.firstName || !row.lastName) {
-                    errors.push({ row: index + 1, message: 'First name and Last name are required' });
+                    errors.push({
+                        row: index + 1,
+                        message: 'First name and Last name are required',
+                    });
                 }
             }
         });
@@ -31,7 +34,7 @@ let ImportService = class ImportService {
             total: data.length,
             preview,
             errors: errors.length > 0 ? errors.slice(0, 20) : null,
-            errorCount: errors.length
+            errorCount: errors.length,
         };
     }
     async processImport(entity, data, context) {
@@ -44,9 +47,9 @@ let ImportService = class ImportService {
                             organizationId: context.organizationId,
                             OR: [
                                 { email: row.email || 'none' },
-                                { phone: row.phone || 'none' }
-                            ]
-                        }
+                                { phone: row.phone || 'none' },
+                            ],
+                        },
                     });
                     if (!existing) {
                         await tx.patient.create({
@@ -54,8 +57,8 @@ let ImportService = class ImportService {
                                 ...row,
                                 organizationId: context.organizationId,
                                 branchId: context.branchId,
-                                createdBy: context.userId
-                            }
+                                createdBy: context.userId,
+                            },
                         });
                         importedCount++;
                     }

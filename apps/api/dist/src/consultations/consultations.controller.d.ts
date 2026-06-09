@@ -23,7 +23,12 @@ export declare class ConsultationsController {
         consultationDate: Date;
         appointmentId: string | null;
     }>;
-    findAllByPatient(patientId: string, req: any): Promise<({
+    findAll(patientId: string | undefined, req: any): Promise<({
+        patient: {
+            id: string;
+            firstName: string;
+            lastName: string;
+        };
         doctor: {
             firstName: string;
             lastName: string;

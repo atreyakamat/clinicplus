@@ -1,4 +1,34 @@
-import { Controller } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UsersService } from './users.service';
 
-@Controller('users')
-export class UsersController {}
+@Controller('api/v1/users')
+@UseGuards(JwtAuthGuard)
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Get()
+  findAll(@Request() req, @Query('role') role?: string) {
+    return this.usersService.findAll(
+      req.user.organizationId,
+      req.user.branchId,
+      role,
+    );
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string, @Request() req) {
+    return this.usersService.findOne(
+      id,
+      req.user.organizationId,
+      req.user.branchId,
+    );
+  }
+}

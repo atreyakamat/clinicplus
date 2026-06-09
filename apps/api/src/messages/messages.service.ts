@@ -8,12 +8,19 @@ export class MessagesService {
   async findAll(organizationId: string, branchId: string) {
     return this.prisma.message.findMany({
       where: { organizationId, branchId },
-      include: { patient: { select: { firstName: true, lastName: true, phone: true } } },
+      include: {
+        patient: { select: { firstName: true, lastName: true, phone: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async sendWhatsApp(patientId: string, content: string, organizationId: string, branchId: string) {
+  async sendWhatsApp(
+    patientId: string,
+    content: string,
+    organizationId: string,
+    branchId: string,
+  ) {
     let attempts = 0;
     const maxAttempts = 3;
     let success = false;
@@ -37,13 +44,13 @@ export class MessagesService {
         deliveryStatus: success ? 'SENT' : 'FAILED',
         organizationId,
         branchId,
-      }
+      },
     });
   }
 
   async getTemplates(organizationId: string) {
     return this.prisma.template.findMany({
-      where: { organizationId, channel: 'WHATSAPP' }
+      where: { organizationId, channel: 'WHATSAPP' },
     });
   }
 }

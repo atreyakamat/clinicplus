@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { FeedbackService } from './feedback.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -20,7 +29,15 @@ export class FeedbackController {
   }
 
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body('status') status: string, @Request() req) {
-    return this.feedbackService.updateStatus(id, status, req.user.organizationId);
+  updateStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+    @Request() req,
+  ) {
+    return this.feedbackService.updateStatus(
+      id,
+      status,
+      req.user.organizationId,
+    );
   }
 }

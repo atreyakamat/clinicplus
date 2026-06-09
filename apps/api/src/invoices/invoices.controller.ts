@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Request,
+  Res,
+} from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -18,36 +27,61 @@ export class InvoicesController {
   ) {}
 
   @Post()
-  @Roles('super-admin', 'organization-owner', 'clinic-admin', 'doctor', 'receptionist', 'accountant')
+  @Roles(
+    'super-admin',
+    'organization-owner',
+    'clinic-admin',
+    'doctor',
+    'receptionist',
+    'accountant',
+  )
   @Permissions('invoices:create')
   create(@Body() data: any, @Request() req) {
-    return this.invoicesService.create(data, req.user.organizationId, req.user.branchId, req.user.id);
+    return this.invoicesService.create(
+      data,
+      req.user.organizationId,
+      req.user.branchId,
+      req.user.id,
+    );
   }
 
   @Get(':id/download')
   async download(@Param('id') id: string, @Request() req, @Res() res) {
-    const invoice = await this.invoicesService.findOne(id, req.user.organizationId, req.user.branchId);
-    const org = await this.organizationsService.findOne(req.user.organizationId);
-    
+    const invoice = await this.invoicesService.findOne(
+      id,
+      req.user.organizationId,
+      req.user.branchId,
+    );
+    const org = await this.organizationsService.findOne(
+      req.user.organizationId,
+    );
+
     const buffer = await this.pdfService.generateInvoicePdf(invoice, org);
-    
+
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="invoice-${invoice.invoiceNumber}.pdf"`,
       'Content-Length': buffer.length,
     });
-    
+
     res.end(buffer);
   }
 
   @Get()
   findAll(@Request() req) {
-    return this.invoicesService.findAll(req.user.organizationId, req.user.branchId);
+    return this.invoicesService.findAll(
+      req.user.organizationId,
+      req.user.branchId,
+    );
   }
 
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req) {
-    return this.invoicesService.findOne(id, req.user.organizationId, req.user.branchId);
+    return this.invoicesService.findOne(
+      id,
+      req.user.organizationId,
+      req.user.branchId,
+    );
   }
 
   @Post(':id/payments')
@@ -55,6 +89,11 @@ export class InvoicesController {
     data.organizationId = req.user.organizationId;
     data.branchId = req.user.branchId;
     data.createdBy = req.user.id;
-    return this.invoicesService.addPayment(id, data, req.user.organizationId, req.user.branchId);
+    return this.invoicesService.addPayment(
+      id,
+      data,
+      req.user.organizationId,
+      req.user.branchId,
+    );
   }
 }

@@ -31,9 +31,12 @@ let TimelineService = class TimelineService {
             },
         });
     }
-    async findAllByPatient(patientId) {
+    async findAllByPatient(patientId, organizationId) {
         return this.prisma.timelineEvent.findMany({
-            where: { patientId },
+            where: {
+                patientId,
+                organizationId,
+            },
             orderBy: { createdAt: 'desc' },
         });
     }

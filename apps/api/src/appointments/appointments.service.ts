@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { AuditService } from '../common/services/audit.service';
@@ -10,7 +14,12 @@ export class AppointmentsService {
     private auditService: AuditService,
   ) {}
 
-  async create(data: Prisma.AppointmentUncheckedCreateInput, organizationId: string, branchId: string, createdBy: string) {
+  async create(
+    data: Prisma.AppointmentUncheckedCreateInput,
+    organizationId: string,
+    branchId: string,
+    createdBy: string,
+  ) {
     // Check if slot is available
     const overlapping = await this.prisma.appointment.findFirst({
       where: {
@@ -27,12 +36,14 @@ export class AppointmentsService {
             scheduledStart: { lt: data.scheduledEnd },
             scheduledEnd: { gte: data.scheduledEnd },
           },
-        ]
+        ],
       },
     });
 
     if (overlapping) {
-      throw new BadRequestException('Doctor is already booked for this time slot');
+      throw new BadRequestException(
+        'Doctor is already booked for this time slot',
+      );
     }
 
     const appointment = await this.prisma.appointment.create({
@@ -59,7 +70,7 @@ export class AppointmentsService {
         scheduledEnd: appointment.scheduledEnd,
         status: appointment.status,
         organizationId: appointment.organizationId,
-        branchId: appointment.branchId
+        branchId: appointment.branchId,
       },
     });
 
@@ -78,7 +89,7 @@ export class AppointmentsService {
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
-      
+
       where.scheduledStart = {
         gte: startOfDay,
         lte: endOfDay,
@@ -89,11 +100,11 @@ export class AppointmentsService {
       where,
       include: {
         patient: {
-          select: { id: true, firstName: true, lastName: true, phone: true }
+          select: { id: true, firstName: true, lastName: true, phone: true },
         },
         doctor: {
-          select: { id: true, firstName: true, lastName: true }
-        }
+          select: { id: true, firstName: true, lastName: true },
+        },
       },
       orderBy: {
         scheduledStart: 'asc',
@@ -107,26 +118,32 @@ export class AppointmentsService {
       include: {
         patient: true,
         doctor: {
-          select: { id: true, firstName: true, lastName: true }
-        }
+          select: { id: true, firstName: true, lastName: true },
+        },
       },
     });
     if (!appointment) throw new NotFoundException('Appointment not found');
     return appointment;
   }
 
-  async update(id: string, data: Prisma.AppointmentUpdateInput, organizationId: string, branchId: string, updatedBy: string) {
+  async update(
+    id: string,
+    data: Prisma.AppointmentUpdateInput,
+    organizationId: string,
+    branchId: string,
+    updatedBy: string,
+  ) {
     // First get the old data for audit
     const oldAppointment = await this.prisma.appointment.findUnique({
       where: { id, organizationId, branchId },
       include: {
         patient: {
-          select: { id: true, firstName: true, lastName: true }
+          select: { id: true, firstName: true, lastName: true },
         },
         doctor: {
-          select: { id: true, firstName: true, lastName: true }
-        }
-      }
+          select: { id: true, firstName: true, lastName: true },
+        },
+      },
     });
 
     if (!oldAppointment) {
@@ -152,18 +169,23 @@ export class AppointmentsService {
     return appointment;
   }
 
-  async remove(id: string, organizationId: string, branchId: string, removedBy: string) {
+  async remove(
+    id: string,
+    organizationId: string,
+    branchId: string,
+    removedBy: string,
+  ) {
     // First get the old data for audit
     const oldAppointment = await this.prisma.appointment.findUnique({
       where: { id, organizationId, branchId },
       include: {
         patient: {
-          select: { id: true, firstName: true, lastName: true }
+          select: { id: true, firstName: true, lastName: true },
         },
         doctor: {
-          select: { id: true, firstName: true, lastName: true }
-        }
-      }
+          select: { id: true, firstName: true, lastName: true },
+        },
+      },
     });
 
     if (!oldAppointment) {

@@ -16,7 +16,7 @@ exports.ConsultationsModule = ConsultationsModule;
 exports.ConsultationsModule = ConsultationsModule = __decorate([
     (0, common_1.Module)({
         controllers: [consultations_controller_1.ConsultationsController],
-        providers: [consultations_service_1.ConsultationsService]
+        providers: [consultations_service_1.ConsultationsService],
     })
 ], ConsultationsModule);
 //# sourceMappingURL=consultations.module.js.map

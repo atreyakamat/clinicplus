@@ -34,10 +34,13 @@ describe('Evidence-Based Verification: Multi-Tenant & RBAC (E2E)', () => {
 
     // 1. Setup Organization A
     orgA = await prisma.organization.create({
-      data: { name: 'Tenant A Hospital', slug: `org-a-${Math.random().toString(36).substring(7)}` }
+      data: {
+        name: 'Tenant A Hospital',
+        slug: `org-a-${Math.random().toString(36).substring(7)}`,
+      },
     });
     const branchA = await prisma.branch.create({
-      data: { name: 'Branch A', organizationId: orgA.id }
+      data: { name: 'Branch A', organizationId: orgA.id },
     });
     doctorA = await prisma.user.create({
       data: {
@@ -46,24 +49,27 @@ describe('Evidence-Based Verification: Multi-Tenant & RBAC (E2E)', () => {
         lastName: 'A',
         organizationId: orgA.id,
         branchId: branchA.id,
-      }
+      },
     });
-    
-    tokenA = jwtService.sign({ 
-        sub: doctorA.id, 
-        email: doctorA.email, 
-        organizationId: orgA.id, 
-        branchId: branchA.id,
-        roles: ['Organization Owner'],
-        permissions: [] 
+
+    tokenA = jwtService.sign({
+      sub: doctorA.id,
+      email: doctorA.email,
+      organizationId: orgA.id,
+      branchId: branchA.id,
+      roles: ['Organization Owner'],
+      permissions: [],
     });
 
     // 2. Setup Organization B
     orgB = await prisma.organization.create({
-      data: { name: 'Tenant B Clinic', slug: `org-b-${Math.random().toString(36).substring(7)}` }
+      data: {
+        name: 'Tenant B Clinic',
+        slug: `org-b-${Math.random().toString(36).substring(7)}`,
+      },
     });
     const branchB = await prisma.branch.create({
-      data: { name: 'Branch B', organizationId: orgB.id }
+      data: { name: 'Branch B', organizationId: orgB.id },
     });
     doctorB = await prisma.user.create({
       data: {
@@ -72,15 +78,15 @@ describe('Evidence-Based Verification: Multi-Tenant & RBAC (E2E)', () => {
         lastName: 'B',
         organizationId: orgB.id,
         branchId: branchB.id,
-      }
+      },
     });
-    tokenB = jwtService.sign({ 
-        sub: doctorB.id, 
-        email: doctorB.email, 
-        organizationId: orgB.id, 
-        branchId: branchB.id,
-        roles: ['Organization Owner'],
-        permissions: [] 
+    tokenB = jwtService.sign({
+      sub: doctorB.id,
+      email: doctorB.email,
+      organizationId: orgB.id,
+      branchId: branchB.id,
+      roles: ['Organization Owner'],
+      permissions: [],
     });
 
     // 3. Create a patient in Org A
@@ -90,21 +96,33 @@ describe('Evidence-Based Verification: Multi-Tenant & RBAC (E2E)', () => {
         lastName: 'Patient',
         organizationId: orgA.id,
         branchId: branchA.id,
-      }
+      },
     });
   });
 
   afterAll(async () => {
     // Cleanup
     if (orgA?.id && orgB?.id) {
-        const orgIds = [orgA.id, orgB.id];
-        await prisma.timelineEvent.deleteMany({ where: { organizationId: { in: orgIds } } });
-        await prisma.auditLog.deleteMany({ where: { organizationId: { in: orgIds } } });
-        await prisma.patient.deleteMany({ where: { organizationId: { in: orgIds } } });
-        await prisma.userRole.deleteMany({ where: { organizationId: { in: orgIds } } });
-        await prisma.user.deleteMany({ where: { organizationId: { in: orgIds } } });
-        await prisma.branch.deleteMany({ where: { organizationId: { in: orgIds } } });
-        await prisma.organization.deleteMany({ where: { id: { in: orgIds } } });
+      const orgIds = [orgA.id, orgB.id];
+      await prisma.timelineEvent.deleteMany({
+        where: { organizationId: { in: orgIds } },
+      });
+      await prisma.auditLog.deleteMany({
+        where: { organizationId: { in: orgIds } },
+      });
+      await prisma.patient.deleteMany({
+        where: { organizationId: { in: orgIds } },
+      });
+      await prisma.userRole.deleteMany({
+        where: { organizationId: { in: orgIds } },
+      });
+      await prisma.user.deleteMany({
+        where: { organizationId: { in: orgIds } },
+      });
+      await prisma.branch.deleteMany({
+        where: { organizationId: { in: orgIds } },
+      });
+      await prisma.organization.deleteMany({ where: { id: { in: orgIds } } });
     }
     await app.close();
   });
@@ -114,7 +132,7 @@ describe('Evidence-Based Verification: Multi-Tenant & RBAC (E2E)', () => {
       const response = await request(app.getHttpServer())
         .get(`/api/v1/patients/${patientA.id}`)
         .set('Authorization', `Bearer ${tokenB}`);
-      
+
       expect(response.status).toBe(404);
     });
 
@@ -122,10 +140,12 @@ describe('Evidence-Based Verification: Multi-Tenant & RBAC (E2E)', () => {
       const response = await request(app.getHttpServer())
         .get(`/api/v1/patients/${patientA.id}`)
         .set('Authorization', `Bearer ${tokenA}`);
-      
+
       expect(response.status).toBe(200);
       // Accessing response.body.id if using old format, or response.body.data.id if using TransformInterceptor
-      const patientId = response.body.data ? response.body.data.id : response.body.id;
+      const patientId = response.body.data
+        ? response.body.data.id
+        : response.body.id;
       expect(patientId).toBe(patientA.id);
     });
   });
@@ -133,7 +153,7 @@ describe('Evidence-Based Verification: Multi-Tenant & RBAC (E2E)', () => {
   describe('Audit Log Evidence Verification', () => {
     it('PROVE: Patient update generates audit log with state capture', async () => {
       const updateData = { lastName: 'UpdatedName' };
-      
+
       await request(app.getHttpServer())
         .patch(`/api/v1/patients/${patientA.id}`)
         .set('Authorization', `Bearer ${tokenA}`)
@@ -142,7 +162,7 @@ describe('Evidence-Based Verification: Multi-Tenant & RBAC (E2E)', () => {
 
       const auditLog = await prisma.auditLog.findFirst({
         where: { entityId: patientA.id, action: 'PATCH' },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       });
 
       expect(auditLog).toBeDefined();

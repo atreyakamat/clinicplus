@@ -1,11 +1,17 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
+import { ensureOrganizationAccess } from './access.bootstrap';
+import { extractPermissionNames, extractRoleNames } from './access.utils';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +23,11 @@ export class AuthService {
 
   async validateUser(email: string, password: string): Promise<any> {
     const user = await this.usersService.findByEmail(email);
-    if (user && user.passwordHash && (await compare(password, user.passwordHash))) {
+    if (
+      user &&
+      user.passwordHash &&
+      (await compare(password, user.passwordHash))
+    ) {
       const { passwordHash, ...result } = user;
       return result;
     }
@@ -47,27 +57,23 @@ export class AuthService {
         status: 'SUCCESS',
       },
     });
-    
+
     // Fetch roles and permissions
-    const userRoles = await this.prisma.userRole.findMany({
-      where: { userId: user.id },
-      include: { role: { include: { rolePermissions: { include: { permission: true } } } } },
-    });
+    const userRoles = user.roles ?? [];
+    const roles = extractRoleNames(userRoles);
+    const permissions = extractPermissionNames(userRoles);
 
-    const roles = userRoles.map(ur => ur.role.name);
-    const permissions = userRoles.flatMap(ur => ur.role.rolePermissions.map(rp => `${rp.permission.module}.${rp.permission.action}`));
-
-    const payload = { 
-      email: user.email, 
-      sub: user.id, 
-      organizationId: user.organizationId, 
+    const payload = {
+      email: user.email,
+      sub: user.id,
+      organizationId: user.organizationId,
       branchId: user.branchId,
       roles,
-      permissions
+      permissions,
     };
 
     const accessToken = this.jwtService.sign(payload);
-    const refreshToken = uuidv4();
+    const refreshToken = randomUUID();
     const refreshTokenHash = await hash(refreshToken, 10);
 
     // Create session (F-003)
@@ -89,7 +95,7 @@ export class AuthService {
       user: {
         ...user,
         roles,
-        permissions
+        permissions,
       },
     };
   }
@@ -100,12 +106,16 @@ export class AuthService {
       include: { user: true },
     });
 
-    if (!session || !session.refreshTokenHash || !(await compare(refreshToken, session.refreshTokenHash))) {
+    if (
+      !session ||
+      !session.refreshTokenHash ||
+      !(await compare(refreshToken, session.refreshTokenHash))
+    ) {
       throw new UnauthorizedException('Invalid refresh token or session');
     }
 
     // Rotate refresh token (Security Hardening)
-    const newRefreshToken = uuidv4();
+    const newRefreshToken = randomUUID();
     const newRefreshTokenHash = await hash(newRefreshToken, 10);
 
     await this.prisma.userSession.update({
@@ -113,22 +123,22 @@ export class AuthService {
       data: { refreshTokenHash: newRefreshTokenHash },
     });
 
-    const user = session.user;
-    const userRoles = await this.prisma.userRole.findMany({
-      where: { userId: user.id },
-      include: { role: { include: { rolePermissions: { include: { permission: true } } } } },
-    });
+    const user = await this.usersService.findByEmail(session.user.email);
 
-    const roles = userRoles.map(ur => ur.role.name);
-    const permissions = userRoles.flatMap(ur => ur.role.rolePermissions.map(rp => `${rp.permission.module}.${rp.permission.action}`));
+    if (!user) {
+      throw new UnauthorizedException('User no longer exists');
+    }
 
-    const payload = { 
-      email: user.email, 
-      sub: user.id, 
-      organizationId: user.organizationId, 
+    const roles = extractRoleNames(user.roles);
+    const permissions = extractPermissionNames(user.roles);
+
+    const payload = {
+      email: user.email,
+      sub: user.id,
+      organizationId: user.organizationId,
       branchId: user.branchId,
       roles,
-      permissions
+      permissions,
     };
 
     return {
@@ -187,6 +197,8 @@ export class AuthService {
         },
       });
 
+      const access = await ensureOrganizationAccess(tx, org.id);
+
       // 3. Create Owner User
       const user = await tx.user.create({
         data: {
@@ -199,6 +211,26 @@ export class AuthService {
           phone: registerDto.phone,
         },
       });
+
+      const ownerRole = access.rolesByName.get('Organization Owner');
+
+      if (ownerRole) {
+        await tx.userRole.upsert({
+          where: {
+            userId_roleId: {
+              userId: user.id,
+              roleId: ownerRole.id,
+            },
+          },
+          update: {},
+          create: {
+            organizationId: org.id,
+            branchId: branch.id,
+            userId: user.id,
+            roleId: ownerRole.id,
+          },
+        });
+      }
 
       return {
         message: 'Clinic registered successfully',

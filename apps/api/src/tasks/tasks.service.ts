@@ -6,7 +6,12 @@ import { Prisma } from '@prisma/client';
 export class TasksService {
   constructor(private prisma: PrismaService) {}
 
-  async create(data: Prisma.TaskUncheckedCreateInput, organizationId: string, branchId: string, createdBy: string) {
+  async create(
+    data: Prisma.TaskUncheckedCreateInput,
+    organizationId: string,
+    branchId: string,
+    createdBy: string,
+  ) {
     return this.prisma.task.create({
       data: {
         ...data,
@@ -25,11 +30,11 @@ export class TasksService {
       },
       include: {
         assignee: {
-          select: { id: true, firstName: true, lastName: true }
+          select: { id: true, firstName: true, lastName: true },
         },
         patient: {
-          select: { id: true, firstName: true, lastName: true }
-        }
+          select: { id: true, firstName: true, lastName: true },
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -42,11 +47,11 @@ export class TasksService {
       where: { id, organizationId, branchId },
       include: {
         assignee: {
-          select: { id: true, firstName: true, lastName: true }
+          select: { id: true, firstName: true, lastName: true },
         },
         patient: {
-          select: { id: true, firstName: true, lastName: true }
-        }
+          select: { id: true, firstName: true, lastName: true },
+        },
       },
     });
     if (!task) {
@@ -55,10 +60,15 @@ export class TasksService {
     return task;
   }
 
-  async update(id: string, data: Prisma.TaskUpdateInput, organizationId: string, branchId: string) {
+  async update(
+    id: string,
+    data: Prisma.TaskUpdateInput,
+    organizationId: string,
+    branchId: string,
+  ) {
     // Verify task belongs to org/branch first
     await this.findOne(id, organizationId, branchId);
-    
+
     return this.prisma.task.update({
       where: { id },
       data: {
@@ -71,7 +81,7 @@ export class TasksService {
   async remove(id: string, organizationId: string, branchId: string) {
     // Verify task belongs to org/branch first
     await this.findOne(id, organizationId, branchId);
-    
+
     // Soft delete
     return this.prisma.task.update({
       where: { id },

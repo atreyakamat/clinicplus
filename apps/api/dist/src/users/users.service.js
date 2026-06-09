@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UsersService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const access_utils_1 = require("../auth/access.utils");
 let UsersService = class UsersService {
     prisma;
     constructor(prisma) {
@@ -19,14 +20,61 @@ let UsersService = class UsersService {
     }
     async findByEmail(email) {
         return this.prisma.user.findFirst({
-            where: { email },
+            where: { email, status: 'ACTIVE' },
             include: {
                 roles: {
                     include: {
-                        role: true
-                    }
-                }
-            }
+                        role: {
+                            include: {
+                                rolePermissions: {
+                                    include: {
+                                        permission: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
+    async findAll(organizationId, branchId, role) {
+        const users = await this.prisma.user.findMany({
+            where: {
+                organizationId,
+                branchId,
+                status: 'ACTIVE',
+            },
+            include: {
+                roles: {
+                    include: {
+                        role: true,
+                    },
+                },
+            },
+            orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+        });
+        if (!role) {
+            return users;
+        }
+        const normalizedRole = (0, access_utils_1.normalizeRoleName)(role);
+        return users.filter((user) => user.roles.some((entry) => (0, access_utils_1.normalizeRoleName)(entry.role.name) === normalizedRole));
+    }
+    async findOne(id, organizationId, branchId) {
+        return this.prisma.user.findFirst({
+            where: {
+                id,
+                organizationId,
+                branchId,
+                status: 'ACTIVE',
+            },
+            include: {
+                roles: {
+                    include: {
+                        role: true,
+                    },
+                },
+            },
         });
     }
 };

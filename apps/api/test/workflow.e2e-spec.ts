@@ -26,12 +26,12 @@ describe('Production Readiness: E2E Workflow Validation', () => {
 
     // Setup Test Environment
     const org = await prisma.organization.create({
-      data: { name: 'QA Test Clinic', slug: `qa-test-${faker.string.uuid()}` }
+      data: { name: 'QA Test Clinic', slug: `qa-test-${faker.string.uuid()}` },
     });
     orgId = org.id;
 
     const branch = await prisma.branch.create({
-      data: { name: 'QA Main', organizationId: orgId }
+      data: { name: 'QA Main', organizationId: orgId },
     });
     branchId = branch.id;
 
@@ -42,8 +42,8 @@ describe('Production Readiness: E2E Workflow Validation', () => {
         firstName: 'QA',
         lastName: 'Doctor',
         organizationId: orgId,
-        branchId: branchId
-      }
+        branchId: branchId,
+      },
     });
     doctorId = doctor.id;
 
@@ -67,8 +67,13 @@ describe('Production Readiness: E2E Workflow Validation', () => {
       const patientRes = await request(app.getHttpServer())
         .post('/api/v1/patients')
         .set('Authorization', `Bearer ${authToken}`)
-        .send({ firstName: 'Workflow', lastName: 'One', phone: '9999999999', gender: 'Male' });
-      
+        .send({
+          firstName: 'Workflow',
+          lastName: 'One',
+          phone: '9999999999',
+          gender: 'Male',
+        });
+
       const patientId = patientRes.body.id;
 
       // 2. Book Appointment
@@ -81,7 +86,7 @@ describe('Production Readiness: E2E Workflow Validation', () => {
           scheduledStart: new Date().toISOString(),
           scheduledEnd: new Date(Date.now() + 1800000).toISOString(),
         });
-      
+
       const appointmentId = apptRes.body.id;
 
       // 3. Check-In
@@ -95,7 +100,7 @@ describe('Production Readiness: E2E Workflow Validation', () => {
         .post('/api/v1/consultations')
         .set('Authorization', `Bearer ${authToken}`)
         .send({ patientId, appointmentId, chiefComplaint: 'Checkup' });
-      
+
       const consultId = consultRes.body.id;
 
       // 5. Prescription
@@ -105,7 +110,7 @@ describe('Production Readiness: E2E Workflow Validation', () => {
         .send({
           patientId,
           consultationId: consultId,
-          items: [{ medicineName: 'Paracetamol', dosage: '500mg' }]
+          items: [{ medicineName: 'Paracetamol', dosage: '500mg' }],
         });
 
       // 6. Billing
@@ -116,9 +121,16 @@ describe('Production Readiness: E2E Workflow Validation', () => {
           patientId,
           invoiceNumber: `INV-WF1-${faker.string.alphanumeric(4)}`,
           total: 50,
-          items: [{ itemName: 'Consultation', quantity: 1, unitPrice: 50, amount: 50 }]
+          items: [
+            {
+              itemName: 'Consultation',
+              quantity: 1,
+              unitPrice: 50,
+              amount: 50,
+            },
+          ],
         });
-      
+
       const invoiceId = invRes.body.id;
 
       // 7. Payment
@@ -131,12 +143,20 @@ describe('Production Readiness: E2E Workflow Validation', () => {
       await request(app.getHttpServer())
         .post('/api/v1/follow-ups')
         .set('Authorization', `Bearer ${authToken}`)
-        .send({ patientId, scheduledDate: new Date(Date.now() + 604800000).toISOString() });
+        .send({
+          patientId,
+          scheduledDate: new Date(Date.now() + 604800000).toISOString(),
+        });
 
       // Verification
       const finalPatient = await prisma.patient.findUnique({
         where: { id: patientId },
-        include: { appointments: true, consultations: true, invoices: true, followUps: true }
+        include: {
+          appointments: true,
+          consultations: true,
+          invoices: true,
+          followUps: true,
+        },
       });
 
       expect(finalPatient?.appointments.length).toBe(1);
@@ -150,7 +170,12 @@ describe('Production Readiness: E2E Workflow Validation', () => {
     it('should NOT allow Organization B to access Organization A patients', async () => {
       // 1. Create Patient in Org A
       const patientA = await prisma.patient.create({
-        data: { firstName: 'Org', lastName: 'A Patient', organizationId: orgId, branchId: branchId }
+        data: {
+          firstName: 'Org',
+          lastName: 'A Patient',
+          organizationId: orgId,
+          branchId: branchId,
+        },
       });
 
       // 2. Try to fetch this patient using Org B token (simulated)

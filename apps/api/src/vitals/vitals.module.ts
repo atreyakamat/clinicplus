@@ -4,6 +4,6 @@ import { VitalsService } from './vitals.service';
 
 @Module({
   controllers: [VitalsController],
-  providers: [VitalsService]
+  providers: [VitalsService],
 })
 export class VitalsModule {}

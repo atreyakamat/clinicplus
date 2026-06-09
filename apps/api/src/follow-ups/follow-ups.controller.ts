@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { FollowUpsService } from './follow-ups.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -17,12 +26,23 @@ export class FollowUpsController {
 
   @Get()
   findAll(@Request() req) {
-    return this.followUpsService.findAll(req.user.organizationId, req.user.branchId);
+    return this.followUpsService.findAll(
+      req.user.organizationId,
+      req.user.branchId,
+    );
   }
 
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body('status') status: string, @Request() req) {
-    return this.followUpsService.updateStatus(id, status, req.user.organizationId);
+  updateStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+    @Request() req,
+  ) {
+    return this.followUpsService.updateStatus(
+      id,
+      status,
+      req.user.organizationId,
+    );
   }
 
   @Post(':id/outcomes')

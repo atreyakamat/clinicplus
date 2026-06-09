@@ -26,10 +26,27 @@ interface Appointment {
 
 export const AppointmentsPage = () => {
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const { data: appointments, isLoading, error } = useQuery<Appointment[]>({
     queryKey: ['appointments', selectedDate],
     queryFn: () => api.get(`/appointments?date=${selectedDate}`),
+  });
+
+  const filteredAppointments = appointments?.filter((appointment) => {
+    const haystack = [
+      appointment.patient?.firstName,
+      appointment.patient?.lastName,
+      appointment.patient?.phone,
+      appointment.doctor?.firstName,
+      appointment.doctor?.lastName,
+      appointment.appointmentType,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
+    return haystack.includes(searchTerm.toLowerCase());
   });
 
   const getStatusColor = (status: string) => {
@@ -87,6 +104,8 @@ export const AppointmentsPage = () => {
             type="text"
             placeholder="Search appointments..."
             className="w-full pl-10 pr-4 h-10 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-[#1FA971] focus:ring-1 focus:ring-[#1FA971]"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
@@ -101,18 +120,18 @@ export const AppointmentsPage = () => {
         <div className="p-8 text-center text-red-500 bg-red-50 rounded-xl">
           Failed to load appointments. Please try again.
         </div>
-      ) : !appointments?.length ? (
+      ) : !filteredAppointments?.length ? (
         <div className="p-12 text-center bg-white rounded-xl border border-slate-200 shadow-sm">
           <CalendarIcon className="mx-auto text-slate-300 mb-4" size={48} />
-          <h3 className="text-lg font-medium text-slate-900 mb-2">No appointments scheduled</h3>
-          <p className="text-slate-500 mb-6">There are no appointments on {new Date(selectedDate).toLocaleDateString()}.</p>
+          <h3 className="text-lg font-medium text-slate-900 mb-2">No appointments found</h3>
+          <p className="text-slate-500 mb-6">Try another day or clear the search to see more bookings.</p>
           <Link to="/appointments/new">
             <Button>Schedule Appointment</Button>
           </Link>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {appointments.map((appointment) => (
+          {filteredAppointments.map((appointment) => (
             <div key={appointment.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start mb-4">
                 <div>

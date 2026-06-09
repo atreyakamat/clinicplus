@@ -1,5 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
-import { HealthCheckService, HttpHealthIndicator, HealthCheck, PrismaHealthIndicator, MemoryHealthIndicator, DiskHealthIndicator } from '@nestjs/terminus';
+import {
+  HealthCheckService,
+  HttpHealthIndicator,
+  HealthCheck,
+  PrismaHealthIndicator,
+  MemoryHealthIndicator,
+  DiskHealthIndicator,
+} from '@nestjs/terminus';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('health')
@@ -20,7 +27,8 @@ export class HealthController {
       () => this.http.pingCheck('api-docs', 'http://localhost:3000/api/v1'), // Simplified ping
       () => this.prisma.pingCheck('database', this.prismaService),
       () => this.memory.checkHeap('memory_heap', 150 * 1024 * 1024),
-      () => this.disk.checkStorage('storage', { path: '/', thresholdPercent: 0.9 }),
+      () =>
+        this.disk.checkStorage('storage', { path: '/', thresholdPercent: 0.9 }),
     ]);
   }
 }

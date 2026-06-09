@@ -13,16 +13,14 @@ exports.PermissionsGuard = void 0;
 const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
 const permissions_decorator_1 = require("../decorators/permissions.decorator");
+const access_utils_1 = require("../access.utils");
 let PermissionsGuard = class PermissionsGuard {
     reflector;
     constructor(reflector) {
         this.reflector = reflector;
     }
     canActivate(context) {
-        const requiredPermissions = this.reflector.getAllAndOverride(permissions_decorator_1.PERMISSIONS_KEY, [
-            context.getHandler(),
-            context.getClass(),
-        ]);
+        const requiredPermissions = this.reflector.getAllAndOverride(permissions_decorator_1.PERMISSIONS_KEY, [context.getHandler(), context.getClass()]);
         if (!requiredPermissions) {
             return true;
         }
@@ -30,7 +28,10 @@ let PermissionsGuard = class PermissionsGuard {
         if (!user || !user.permissions) {
             return false;
         }
-        return requiredPermissions.every((permission) => user.permissions.includes(permission));
+        const grantedPermissions = new Set(user.permissions.map(access_utils_1.normalizePermission));
+        return requiredPermissions
+            .map(access_utils_1.normalizePermission)
+            .every((permission) => grantedPermissions.has(permission));
     }
 };
 exports.PermissionsGuard = PermissionsGuard;
