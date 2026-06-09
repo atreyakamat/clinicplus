@@ -88,7 +88,6 @@ export class InvoicesController {
   addPayment(@Param('id') id: string, @Body() data: any, @Request() req) {
     data.organizationId = req.user.organizationId;
     data.branchId = req.user.branchId;
-    data.createdBy = req.user.id;
     return this.invoicesService.addPayment(
       id,
       data,

@@ -14,8 +14,9 @@ export class TimelineService {
     description?: string;
     metadata?: any;
     createdBy?: string;
-  }) {
-    return this.prisma.timelineEvent.create({
+  }, tx?: any) {
+    const db = tx || this.prisma;
+    return db.timelineEvent.create({
       data: {
         organizationId: data.organizationId,
         patientId: data.patientId,

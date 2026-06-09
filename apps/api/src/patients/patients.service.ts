@@ -65,7 +65,7 @@ export class PatientsService {
         title: 'Patient Registered',
         description: `Patient ${patient.firstName} ${patient.lastName} was registered in the system.`,
         createdBy: data.createdBy,
-      });
+      }, tx);
 
       // 4. Audit Log
       await this.auditService.log({

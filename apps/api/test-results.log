@@ -1,0 +1,167 @@
+
+> api@0.0.1 test
+> jest
+
+PASS src/app.controller.spec.ts
+FAIL src/patients/__tests__/patients.service.spec.ts
+  ΓùÅ PatientsService ΓÇ║ create ΓÇ║ should create a patient
+
+    TypeError: this.prisma.patient.count is not a function
+
+      43 |
+      44 |     // 2. Patient ID Generation (F-007)
+    > 45 |     const count = await this.prisma.patient.count({
+         |                                             ^
+      46 |       where: { organizationId },
+      47 |     });
+      48 |     const patientCode =
+
+      at PatientsService.create (patients/patients.service.ts:45:45)
+      at Object.<anonymous> (patients/__tests__/patients.service.spec.ts:85:22)
+
+  ΓùÅ PatientsService ΓÇ║ findOne ΓÇ║ should return a patient by ID
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    - Expected
+    + Received
+
+      Object {
+        "include": Object {
+          "addresses": true,
+    +     "appointments": Object {
+    +       "include": Object {
+    +         "doctor": Object {
+    +           "select": Object {
+    +             "firstName": true,
+    +             "id": true,
+    +             "lastName": true,
+    +           },
+    +         },
+    +       },
+    +       "orderBy": Object {
+    +         "scheduledStart": "desc",
+    +       },
+    +     },
+    +     "consultations": Object {
+    +       "include": Object {
+    +         "diagnoses": true,
+    +         "doctor": Object {
+    +           "select": Object {
+    +             "firstName": true,
+    +             "id": true,
+    +             "lastName": true,
+    +           },
+    +         },
+    +       },
+    +       "orderBy": Object {
+    +         "consultationDate": "desc",
+    +       },
+    +     },
+    +     "documents": Object {
+    +       "include": Object {
+    +         "uploader": Object {
+    +           "select": Object {
+    +             "firstName": true,
+    +             "id": true,
+    +             "lastName": true,
+    +           },
+    +         },
+    +       },
+    +       "orderBy": Object {
+    +         "createdAt": "desc",
+    +       },
+    +     },
+          "emergencyContacts": true,
+    +     "familyMembers": true,
+    +     "invoices": Object {
+    +       "include": Object {
+    +         "items": true,
+    +         "payments": true,
+    +       },
+    +       "orderBy": Object {
+    +         "createdAt": "desc",
+            },
+    +     },
+    +     "notes": true,
+    +     "prescriptions": Object {
+    +       "include": Object {
+    +         "doctor": Object {
+    +           "select": Object {
+    +             "firstName": true,
+    +             "id": true,
+    +             "lastName": true,
+    +           },
+    +         },
+    +         "items": true,
+    +       },
+    +       "orderBy": Object {
+    +         "issuedAt": "desc",
+    +       },
+    +     },
+    +     "tags": true,
+    +   },
+        "where": Object {
+    +     "branchId": undefined,
+          "id": "550e8400-e29b-41d4-a716-446655440000",
+    +     "organizationId": undefined,
+        },
+      },
+
+    Number of calls: 1
+
+      151 |       const result = await service.findOne(VALID_UUID);
+      152 |       expect(result).toEqual(expectedPatient);
+    > 153 |       expect(prisma.patient.findUnique).toHaveBeenCalledWith({
+          |                                         ^
+      154 |         where: { id: VALID_UUID },
+      155 |         include: {
+      156 |           addresses: true,
+
+      at Object.<anonymous> (patients/__tests__/patients.service.spec.ts:153:41)
+
+  ΓùÅ PatientsService ΓÇ║ update ΓÇ║ should update a patient
+
+    TypeError: this.timeline.record is not a function
+
+      196 |     });
+      197 |
+    > 198 |     await this.timeline.record({
+          |                         ^
+      199 |       organizationId: patient.organizationId,
+      200 |       patientId: patient.id,
+      201 |       eventType: 'PATIENT_UPDATED',
+
+      at PatientsService.update (patients/patients.service.ts:198:25)
+      at Object.<anonymous> (patients/__tests__/patients.service.spec.ts:190:22)
+
+  ΓùÅ PatientsService ΓÇ║ remove ΓÇ║ should soft delete a patient
+
+    NotFoundException: Patient with ID 550e8400-e29b-41d4-a716-446655440000 not found
+
+      175 |     });
+      176 |     if (!patient) {
+    > 177 |       throw new NotFoundException(`Patient with ID ${id} not found`);
+          |             ^
+      178 |     }
+      179 |     return patient;
+      180 |   }
+
+      at PatientsService.findOne (patients/patients.service.ts:177:13)
+      at PatientsService.remove (patients/patients.service.ts:231:24)
+      at Object.<anonymous> (patients/__tests__/patients.service.spec.ts:227:22)
+
+PASS src/auth/auth.controller.spec.ts
+
+Test Suites: 1 failed, 2 passed, 3 total
+Tests:       4 failed, 7 passed, 11 total
+Snapshots:   0 total
+Time:        4.192 s
+Ran all test suites.
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path C:\Projects\clinicplus\apps\api
+npm error workspace api@0.0.1
+npm error location C:\Projects\clinicplus\apps\api
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c jest

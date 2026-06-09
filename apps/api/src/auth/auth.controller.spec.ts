@@ -35,15 +35,17 @@ describe('AuthController', () => {
   describe('login', () => {
     it('should return a user and access token', async () => {
       const loginDto = { email: 'test@clinicos.com', password: 'password' };
-      const req = { user: { id: '1', email: 'test@clinicos.com', roles: [] } };
+      const ip = '127.0.0.1';
+      const userAgent = 'Mozilla/5.0';
 
-      const result = await controller.login(loginDto, req);
+      const result = await controller.login(loginDto, ip, userAgent);
 
       expect(result).toEqual({
         accessToken: 'test_token',
         user: { id: '1', email: 'test@clinicos.com', roles: [] },
       });
-      expect(authService.login).toHaveBeenCalledWith(loginDto);
+      expect(authService.login).toHaveBeenCalledWith(loginDto, ip, userAgent);
     });
   });
 });
+

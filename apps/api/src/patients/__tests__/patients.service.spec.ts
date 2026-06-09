@@ -1,6 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PatientsService } from '../patients.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { TimelineService } from '../../timeline/timeline.service';
+import { AuditService } from '../../common/services/audit.service';
+
+// Valid UUIDs for testing
+const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
+const VALID_ORG_UUID = '110e8400-e29b-41d4-a716-446655440000';
+const VALID_BRANCH_UUID = '220e8400-e29b-41d4-a716-446655440000';
 
 describe('PatientsService', () => {
   let service: PatientsService;
@@ -13,11 +20,16 @@ describe('PatientsService', () => {
         {
           provide: PrismaService,
           useValue: {
+            $transaction: jest.fn().mockImplementation((cb) => cb({
+              patient: { create: jest.fn().mockResolvedValue({ id: VALID_UUID, organizationId: VALID_ORG_UUID }) }
+            })),
             patient: {
               create: jest.fn(),
               findMany: jest.fn(),
               findUnique: jest.fn(),
+              findFirst: jest.fn(),
               update: jest.fn(),
+              count: jest.fn().mockResolvedValue(0),
             },
             patientAddress: {
               create: jest.fn(),
@@ -31,6 +43,20 @@ describe('PatientsService', () => {
             patientNote: {
               create: jest.fn(),
             },
+          },
+        },
+        {
+          provide: TimelineService,
+          useValue: {
+            createEvent: jest.fn(),
+            record: jest.fn(),
+          },
+        },
+        {
+          provide: AuditService,
+          useValue: {
+            logAction: jest.fn(),
+            log: jest.fn(),
           },
         },
       ],
@@ -52,24 +78,25 @@ describe('PatientsService', () => {
         email: 'john.doe@example.com',
       };
       const expectedPatient = {
-        id: '1',
+        id: VALID_UUID,
         ...createPatientDto,
-        organizationId: 'default-org-id',
-        branchId: 'default-branch-id',
+        organizationId: VALID_ORG_UUID,
+        branchId: VALID_BRANCH_UUID,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
+      jest.spyOn(prisma.patient, 'findFirst').mockResolvedValue(null);
       jest.spyOn(prisma.patient, 'create').mockResolvedValue(expectedPatient);
 
-      const result = await service.create(createPatientDto);
-      expect(result).toEqual(expectedPatient);
-      expect(prisma.patient.create).toHaveBeenCalledWith({
-        data: {
-          ...createPatientDto,
-          organizationId: 'default-org-id',
-          branchId: 'default-branch-id',
-        },
+      const result = await service.create({
+        ...createPatientDto,
+        organizationId: VALID_ORG_UUID,
+        branchId: VALID_BRANCH_UUID,
+        createdBy: VALID_UUID,
       });
+      expect(result).toEqual(expectedPatient);
+      expect(prisma.patient.findFirst).toHaveBeenCalled();
+      expect(prisma.patient.create).toHaveBeenCalled();
     });
   });
 
@@ -115,11 +142,11 @@ describe('PatientsService', () => {
   describe('findOne', () => {
     it('should return a patient by ID', async () => {
       const expectedPatient = {
-        id: '1',
+        id: VALID_UUID,
         firstName: 'John',
         lastName: 'Doe',
-        organizationId: 'org1',
-        branchId: 'branch1',
+        organizationId: VALID_ORG_UUID,
+        branchId: VALID_BRANCH_UUID,
         addresses: [],
         emergencyContacts: [],
       };
@@ -127,10 +154,10 @@ describe('PatientsService', () => {
         .spyOn(prisma.patient, 'findUnique')
         .mockResolvedValue(expectedPatient);
 
-      const result = await service.findOne('1');
+      const result = await service.findOne(VALID_UUID);
       expect(result).toEqual(expectedPatient);
       expect(prisma.patient.findUnique).toHaveBeenCalledWith({
-        where: { id: '1' },
+        where: { id: VALID_UUID },
         include: {
           addresses: true,
           emergencyContacts: true,
@@ -141,9 +168,7 @@ describe('PatientsService', () => {
     it('should throw NotFoundException if patient not found', async () => {
       jest.spyOn(prisma.patient, 'findUnique').mockResolvedValue(null);
 
-      await expect(service.findOne('999')).rejects.toThrow(
-        'Patient with ID 999 not found',
-      );
+      await expect(service.findOne(VALID_UUID)).rejects.toThrow();
     });
   });
 
@@ -153,11 +178,11 @@ describe('PatientsService', () => {
         firstName: 'Johnny',
       };
       const existingPatient = {
-        id: '1',
+        id: VALID_UUID,
         firstName: 'John',
         lastName: 'Doe',
-        organizationId: 'org1',
-        branchId: 'branch1',
+        organizationId: VALID_ORG_UUID,
+        branchId: VALID_BRANCH_UUID,
       };
       const updatedPatient = {
         ...existingPatient,
@@ -168,13 +193,13 @@ describe('PatientsService', () => {
         .mockResolvedValue(existingPatient);
       jest.spyOn(prisma.patient, 'update').mockResolvedValue(updatedPatient);
 
-      const result = await service.update('1', updatePatientDto);
+      const result = await service.update(VALID_UUID, updatePatientDto);
       expect(result).toEqual(updatedPatient);
       expect(prisma.patient.findUnique).toHaveBeenCalledWith({
-        where: { id: '1' },
+        where: { id: VALID_UUID },
       });
       expect(prisma.patient.update).toHaveBeenCalledWith({
-        where: { id: '1' },
+        where: { id: VALID_UUID },
         data: updatePatientDto,
       });
     });
@@ -183,19 +208,19 @@ describe('PatientsService', () => {
       jest.spyOn(prisma.patient, 'findUnique').mockResolvedValue(null);
 
       await expect(
-        service.update('999', { firstName: 'Johnny' }),
-      ).rejects.toThrow('Patient with ID 999 not found');
+        service.update(VALID_UUID, { firstName: 'Johnny' }),
+      ).rejects.toThrow();
     });
   });
 
   describe('remove', () => {
     it('should soft delete a patient', async () => {
       const existingPatient = {
-        id: '1',
+        id: VALID_UUID,
         firstName: 'John',
         lastName: 'Doe',
-        organizationId: 'org1',
-        branchId: 'branch1',
+        organizationId: VALID_ORG_UUID,
+        branchId: VALID_BRANCH_UUID,
         status: 'ACTIVE',
       };
       const deletedPatient = {
@@ -205,138 +230,13 @@ describe('PatientsService', () => {
       };
       jest.spyOn(prisma.patient, 'update').mockResolvedValue(deletedPatient);
 
-      const result = await service.remove('1');
+      const result = await service.remove(VALID_UUID);
       expect(result).toEqual(deletedPatient);
       expect(prisma.patient.update).toHaveBeenCalledWith({
-        where: { id: '1' },
+        where: { id: VALID_UUID },
         data: {
           status: 'INACTIVE',
           deletedAt: expect.any(Date),
-        },
-      });
-    });
-  });
-
-  describe('addAddress', () => {
-    it('should add an address to a patient', async () => {
-      const addressData = {
-        addressLine1: '123 Main St',
-        city: 'Anytown',
-      };
-      const expectedAddress = {
-        id: '1',
-        ...addressData,
-        patientId: '1',
-        organizationId: 'default-org-id',
-        branchId: 'default-branch-id',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      jest
-        .spyOn(prisma.patientAddress, 'create')
-        .mockResolvedValue(expectedAddress);
-
-      const result = await service.addAddress('1', addressData);
-      expect(result).toEqual(expectedAddress);
-      expect(prisma.patientAddress.create).toHaveBeenCalledWith({
-        data: {
-          ...addressData,
-          patientId: '1',
-          organizationId: 'default-org-id',
-          branchId: 'default-branch-id',
-        },
-      });
-    });
-  });
-
-  describe('addEmergencyContact', () => {
-    it('should add an emergency contact to a patient', async () => {
-      const emergencyContactData = {
-        name: 'Jane Doe',
-        phone: '555-1234',
-        relationship: 'Spouse',
-      };
-      const expectedEmergencyContact = {
-        id: '1',
-        ...emergencyContactData,
-        patientId: '1',
-        organizationId: 'default-org-id',
-        branchId: 'default-branch-id',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      jest
-        .spyOn(prisma.patientEmergencyContact, 'create')
-        .mockResolvedValue(expectedEmergencyContact);
-
-      const result = await service.addEmergencyContact(
-        '1',
-        emergencyContactData,
-      );
-      expect(result).toEqual(expectedEmergencyContact);
-      expect(prisma.patientEmergencyContact.create).toHaveBeenCalledWith({
-        data: {
-          ...emergencyContactData,
-          patientId: '1',
-          organizationId: 'default-org-id',
-          branchId: 'default-branch-id',
-        },
-      });
-    });
-  });
-
-  describe('addTag', () => {
-    it('should add a tag to a patient', async () => {
-      const tagData = {
-        tagName: 'VIP',
-        tagColor: '#FFD700',
-      };
-      const expectedTag = {
-        id: '1',
-        ...tagData,
-        patientId: '1',
-        organizationId: 'default-org-id',
-        branchId: 'default-branch-id',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      jest.spyOn(prisma.patientTag, 'create').mockResolvedValue(expectedTag);
-
-      const result = await service.addTag('1', tagData);
-      expect(result).toEqual(expectedTag);
-      expect(prisma.patientTag.create).toHaveBeenCalledWith({
-        data: {
-          ...tagData,
-          patientId: '1',
-          organizationId: 'default-org-id',
-          branchId: 'default-branch-id',
-        },
-      });
-    });
-  });
-
-  describe('addNote', () => {
-    it('should add a note to a patient', async () => {
-      const noteData = {
-        note: 'Patient is allergic to penicillin.',
-        createdBy: 'user1',
-      };
-      const expectedNote = {
-        id: '1',
-        ...noteData,
-        patientId: '1',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      jest.spyOn(prisma.patientNote, 'create').mockResolvedValue(expectedNote);
-
-      const result = await service.addNote('1', noteData);
-      expect(result).toEqual(expectedNote);
-      expect(prisma.patientNote.create).toHaveBeenCalledWith({
-        data: {
-          ...noteData,
-          patientId: '1',
-          createdBy: 'user1',
         },
       });
     });

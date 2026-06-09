@@ -1,13 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
+import { JwtService } from '@nestjs/jwt';
 import { faker } from '@faker-js/faker';
 
 describe('Production Readiness: E2E Workflow Validation', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let jwtService: JwtService;
   let authToken: string;
   let orgId: string;
   let branchId: string;
@@ -20,6 +22,7 @@ describe('Production Readiness: E2E Workflow Validation', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
+    jwtService = app.get<JwtService>(JwtService);
     await app.init();
 
     prisma = app.get<PrismaService>(PrismaService);
@@ -47,14 +50,31 @@ describe('Production Readiness: E2E Workflow Validation', () => {
     });
     doctorId = doctor.id;
 
-    // Simulate login and get token
-    // In a real test, we'd use a real login or a JWT utility
-    // For now, let's bypass with a mock or assume a helper generates it
-    // authToken = ...
+    authToken = jwtService.sign({
+      sub: doctor.id,
+      email: doctor.email,
+      organizationId: orgId,
+      branchId: branchId,
+      roles: ['organization-owner', 'Organization Owner'],
+      permissions: ['invoices:create', 'invoices:read', 'invoices.create', 'appointments:create'],
+    });
   });
 
   afterAll(async () => {
+    await prisma.timelineEvent.deleteMany({ where: { organizationId: orgId } });
+    await prisma.prescriptionItem.deleteMany({ where: { organizationId: orgId } });
+    await prisma.prescription.deleteMany({ where: { organizationId: orgId } });
+    await prisma.consultation.deleteMany({ where: { organizationId: orgId } });
+    await prisma.queueEntry.deleteMany({ where: { organizationId: orgId } });
+    await prisma.queue.deleteMany({ where: { organizationId: orgId } });
+    await prisma.appointment.deleteMany({ where: { organizationId: orgId } });
+    await prisma.payment.deleteMany({ where: { organizationId: orgId } });
+    await prisma.invoiceItem.deleteMany({ where: { organizationId: orgId } });
+    await prisma.invoice.deleteMany({ where: { organizationId: orgId } });
+    await prisma.followUp.deleteMany({ where: { organizationId: orgId } });
     await prisma.patient.deleteMany({ where: { organizationId: orgId } });
+    await prisma.userSession.deleteMany({});
+    await prisma.auditLog.deleteMany({ where: { organizationId: orgId } });
     await prisma.user.deleteMany({ where: { organizationId: orgId } });
     await prisma.branch.deleteMany({ where: { organizationId: orgId } });
     await prisma.organization.delete({ where: { id: orgId } });
@@ -131,6 +151,7 @@ describe('Production Readiness: E2E Workflow Validation', () => {
           ],
         });
 
+      console.log('Invoice Response:', invRes.body, invRes.status);
       const invoiceId = invRes.body.id;
 
       // 7. Payment
