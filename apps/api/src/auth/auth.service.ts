@@ -101,7 +101,7 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string, sessionId: string) {
-    const session = await this.prisma.userSession.findUnique({
+    const session = await this.prisma.userSession.findFirst({
       where: { id: sessionId, status: 'ACTIVE' },
       include: { user: true },
     });
@@ -197,7 +197,7 @@ export class AuthService {
         },
       });
 
-      const access = await ensureOrganizationAccess(tx, org.id);
+      const access = await ensureOrganizationAccess(tx, org.id, branch.id);
 
       // 3. Create Owner User
       const user = await tx.user.create({

@@ -27,7 +27,6 @@ describe('Production Readiness: E2E Workflow Validation', () => {
 
     prisma = app.get<PrismaService>(PrismaService);
 
-    // Setup Test Environment
     const org = await prisma.organization.create({
       data: { name: 'QA Test Clinic', slug: `qa-test-${faker.string.uuid()}` },
     });
@@ -55,8 +54,8 @@ describe('Production Readiness: E2E Workflow Validation', () => {
       email: doctor.email,
       organizationId: orgId,
       branchId: branchId,
-      roles: ['organization-owner', 'Organization Owner'],
-      permissions: ['invoices:create', 'invoices:read', 'invoices.create', 'appointments:create'],
+      roles: ['Organization Owner'],
+      permissions: ['invoices:create', 'invoices:read', 'appointments:create'],
     });
   });
 
@@ -71,6 +70,7 @@ describe('Production Readiness: E2E Workflow Validation', () => {
     await prisma.payment.deleteMany({ where: { organizationId: orgId } });
     await prisma.invoiceItem.deleteMany({ where: { organizationId: orgId } });
     await prisma.invoice.deleteMany({ where: { organizationId: orgId } });
+    await prisma.followUpOutcome.deleteMany({ where: { organizationId: orgId } });
     await prisma.followUp.deleteMany({ where: { organizationId: orgId } });
     await prisma.patient.deleteMany({ where: { organizationId: orgId } });
     await prisma.userSession.deleteMany({});
@@ -83,7 +83,6 @@ describe('Production Readiness: E2E Workflow Validation', () => {
 
   describe('Workflow 1: New Patient Journey', () => {
     it('should complete registration -> appointment -> consultation -> billing -> follow-up', async () => {
-      // 1. Register Patient
       const patientRes = await request(app.getHttpServer())
         .post('/api/v1/patients')
         .set('Authorization', `Bearer ${authToken}`)
@@ -94,9 +93,8 @@ describe('Production Readiness: E2E Workflow Validation', () => {
           gender: 'Male',
         });
 
-      const patientId = patientRes.body.id;
+      const patientId = patientRes.body.id || patientRes.body.data?.id;
 
-      // 2. Book Appointment
       const apptRes = await request(app.getHttpServer())
         .post('/api/v1/appointments')
         .set('Authorization', `Bearer ${authToken}`)
@@ -107,23 +105,20 @@ describe('Production Readiness: E2E Workflow Validation', () => {
           scheduledEnd: new Date(Date.now() + 1800000).toISOString(),
         });
 
-      const appointmentId = apptRes.body.id;
+      const appointmentId = apptRes.body.id || apptRes.body.data?.id;
 
-      // 3. Check-In
       await request(app.getHttpServer())
         .post('/api/v1/queues/check-in')
         .set('Authorization', `Bearer ${authToken}`)
         .send({ appointmentId });
 
-      // 4. Consultation
       const consultRes = await request(app.getHttpServer())
         .post('/api/v1/consultations')
         .set('Authorization', `Bearer ${authToken}`)
         .send({ patientId, appointmentId, chiefComplaint: 'Checkup' });
 
-      const consultId = consultRes.body.id;
+      const consultId = consultRes.body.id || consultRes.body.data?.id;
 
-      // 5. Prescription
       await request(app.getHttpServer())
         .post('/api/v1/prescriptions')
         .set('Authorization', `Bearer ${authToken}`)
@@ -133,7 +128,6 @@ describe('Production Readiness: E2E Workflow Validation', () => {
           items: [{ medicineName: 'Paracetamol', dosage: '500mg' }],
         });
 
-      // 6. Billing
       const invRes = await request(app.getHttpServer())
         .post('/api/v1/invoices')
         .set('Authorization', `Bearer ${authToken}`)
@@ -151,16 +145,13 @@ describe('Production Readiness: E2E Workflow Validation', () => {
           ],
         });
 
-      console.log('Invoice Response:', invRes.body, invRes.status);
-      const invoiceId = invRes.body.id;
+      const invoiceId = invRes.body.id || invRes.body.data?.id;
 
-      // 7. Payment
       await request(app.getHttpServer())
         .post(`/api/v1/invoices/${invoiceId}/payments`)
         .set('Authorization', `Bearer ${authToken}`)
         .send({ amount: 50, paymentMethod: 'CASH', paymentStatus: 'PAID' });
 
-      // 8. Follow-up
       await request(app.getHttpServer())
         .post('/api/v1/follow-ups')
         .set('Authorization', `Bearer ${authToken}`)
@@ -169,13 +160,12 @@ describe('Production Readiness: E2E Workflow Validation', () => {
           scheduledDate: new Date(Date.now() + 604800000).toISOString(),
         });
 
-      // Verification
       const finalPatient = await prisma.patient.findUnique({
         where: { id: patientId },
         include: {
           appointments: true,
           consultations: true,
-          invoices: true,
+          invoices: { include: { payments: true } },
           followUps: true,
         },
       });
@@ -183,25 +173,47 @@ describe('Production Readiness: E2E Workflow Validation', () => {
       expect(finalPatient?.appointments.length).toBe(1);
       expect(finalPatient?.consultations.length).toBe(1);
       expect(finalPatient?.invoices.length).toBe(1);
+      expect(finalPatient?.invoices[0]?.payments.length).toBe(1);
       expect(finalPatient?.followUps.length).toBe(1);
     });
   });
 
   describe('Workflow 2: Multi-Tenant Isolation', () => {
-    it('should NOT allow Organization B to access Organization A patients', async () => {
-      // 1. Create Patient in Org A
-      const patientA = await prisma.patient.create({
+    it('should NOT allow Organization B to access Organization A patients (real request)', async () => {
+      const orgB = await prisma.organization.create({
+        data: { name: 'Org B Isolation', slug: `iso-b-${Date.now()}` },
+      });
+      const branchB = await prisma.branch.create({
+        data: { name: 'Branch B', organizationId: orgB.id },
+      });
+      const userB = await prisma.user.create({
         data: {
-          firstName: 'Org',
-          lastName: 'A Patient',
-          organizationId: orgId,
-          branchId: branchId,
+          email: `iso-b-${Date.now()}@test.com`,
+          passwordHash: 'hash',
+          firstName: 'Isolation',
+          lastName: 'B',
+          organizationId: orgB.id,
+          branchId: branchB.id,
         },
       });
+      const tokenB = jwtService.sign({
+        sub: userB.id,
+        email: userB.email,
+        organizationId: orgB.id,
+        branchId: branchB.id,
+        roles: ['Organization Owner'],
+        permissions: [],
+      });
 
-      // 2. Try to fetch this patient using Org B token (simulated)
-      // request(app.getHttpServer()).get(`/api/v1/patients/${patientA.id}`).set('Authorization', `Bearer ${tokenB}`).expect(404 or 403)
-      // This requires the controller to actually check orgId, which we implemented.
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/patients/${(await prisma.patient.findFirst({ where: { organizationId: orgId } }))?.id}`)
+        .set('Authorization', `Bearer ${tokenB}`);
+
+      expect(res.status).toBe(404);
+
+      await prisma.user.delete({ where: { id: userB.id } });
+      await prisma.branch.delete({ where: { id: branchB.id } });
+      await prisma.organization.delete({ where: { id: orgB.id } });
     });
   });
 });

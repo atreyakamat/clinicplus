@@ -48,15 +48,15 @@ export async function ensureOrganizationAccess(
           organizationId_name_branchId: {
             organizationId,
             name: roleName,
-            branchId: null,
+            branchId: branchId ?? '',
           },
         },
         update: {
-          branchId: null,
+          branchId: branchId,
         },
         create: {
           organizationId,
-          branchId: null,
+          branchId: branchId,
           name: roleName,
         },
       }),

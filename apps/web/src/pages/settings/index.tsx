@@ -60,7 +60,19 @@ export const SettingsPage = () => {
           </Card>
         </Link>
 
-        <Card className="p-6">
+        <Link to="/settings/profile">
+          <Card className="h-full p-6 transition-shadow hover:shadow-md">
+            <div className="mb-4 rounded-xl bg-purple-100 p-3 text-purple-600 w-fit">
+              <Users size={20} />
+            </div>
+            <h3 className="font-semibold text-slate-900">My Profile</h3>
+            <p className="mt-2 text-sm text-slate-500">
+              Manage your personal details, qualifications, and digital signature.
+            </p>
+          </Card>
+        </Link>
+
+        <Card className="p-6 lg:col-span-3">
           <div className="mb-4 rounded-xl bg-emerald-100 p-3 text-emerald-600 w-fit">
             <Shield size={20} />
           </div>

@@ -1,7 +1,9 @@
 import {
+  Body,
   Controller,
   Get,
   Param,
+  Patch,
   Query,
   Request,
   UseGuards,
@@ -27,6 +29,16 @@ export class UsersController {
   findOne(@Param('id') id: string, @Request() req) {
     return this.usersService.findOne(
       id,
+      req.user.organizationId,
+      req.user.branchId,
+    );
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() data: any, @Request() req) {
+    return this.usersService.update(
+      id,
+      data,
       req.user.organizationId,
       req.user.branchId,
     );

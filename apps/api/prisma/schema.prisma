@@ -230,6 +230,7 @@ model User {
   experienceYears    Int?         @map("experience_years")
   bio                String?      @db.Text
   consultationFee    Decimal?     @default(0) @map("consultation_fee") @db.Decimal(12, 2)
+  signatureUrl       String?      @map("signature_url")
 
   createdAt           DateTime             @default(now()) @map("created_at")
   updatedAt           DateTime             @updatedAt @map("updated_at")
