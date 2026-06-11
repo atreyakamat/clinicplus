@@ -42,25 +42,20 @@ export async function ensureOrganizationAccess(
   );
 
   const roles = await Promise.all(
-    Object.keys(DEFAULT_ROLE_PERMISSIONS).map((roleName) =>
-      db.role.upsert({
-        where: {
-          organizationId_name_branchId: {
-            organizationId,
-            name: roleName,
-            branchId: branchId ?? '',
-          },
-        },
-        update: {
-          branchId: branchId,
-        },
-        create: {
-          organizationId,
-          branchId: branchId,
-          name: roleName,
-        },
-      }),
-    ),
+    Object.keys(DEFAULT_ROLE_PERMISSIONS).map(async (roleName) => {
+      const existing = await db.role.findFirst({
+        where: { organizationId, name: roleName, branchId: branchId },
+      });
+      if (existing) {
+        return db.role.update({
+          where: { id: existing.id },
+          data: { branchId: branchId },
+        });
+      }
+      return db.role.create({
+        data: { organizationId, branchId: branchId, name: roleName },
+      });
+    }),
   );
 
   const rolesByName = new Map(roles.map((role) => [role.name, role]));

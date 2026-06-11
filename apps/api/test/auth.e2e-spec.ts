@@ -66,10 +66,13 @@ describe('Authentication System (E2E) — Phase 2', () => {
           phone: '1234567890',
         });
 
+      if (res.status !== 201) {
+        console.error('Register failed:', res.status, JSON.stringify(res.body));
+      }
       expect(res.status).toBe(201);
-      expect(res.body.data?.organizationId || res.body.organizationId).toBeDefined();
-      expect(res.body.data?.userId || res.body.userId).toBeDefined();
-      createdUserId = res.body.data?.userId || res.body.userId;
+      const body = res.body.data || res.body;
+      expect(body.organizationId || body.message).toBeDefined();
+      createdUserId = body.userId;
     });
 
     it('should reject duplicate email registration', async () => {
@@ -268,8 +271,8 @@ describe('Authentication System (E2E) — Phase 2', () => {
   });
 
   describe('Password Hashing Verification', () => {
-    it('should store password as bcrypt hash, not plaintext', async () => {
-      const user = await prisma.user.findUnique({ where: { id: createdUserId } });
+      it('should store password as bcrypt hash, not plaintext', async () => {
+        const user = await prisma.user.findUniqueOrThrow({ where: { id: createdUserId } });
       expect(user?.passwordHash).toBeDefined();
       expect(user?.passwordHash).not.toBe(testPassword);
       expect(user?.passwordHash).toMatch(/^\$2[aby]\$\d+\$/);

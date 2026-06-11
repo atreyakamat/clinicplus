@@ -101,6 +101,14 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string, sessionId: string) {
+    if (!sessionId || !refreshToken) {
+      throw new UnauthorizedException('Invalid refresh token or session');
+    }
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(sessionId)) {
+      throw new UnauthorizedException('Invalid refresh token or session');
+    }
+
     const session = await this.prisma.userSession.findFirst({
       where: { id: sessionId, status: 'ACTIVE' },
       include: { user: true },
