@@ -20,16 +20,18 @@ import { Permissions } from '../auth/decorators/permissions.decorator';
 import { stringify } from 'csv-stringify/sync';
 
 @Controller('api/v1/patients')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
   @Get('search')
+  @Permissions('patients:read')
   async search(@Request() req, @Query('q') query: string) {
     return this.patientsService.search(req.user.organizationId, query);
   }
 
   @Post()
+  @Permissions('patients:create')
   create(@Body() data: any, @Request() req) {
     return this.patientsService.create({
       ...data,
@@ -40,6 +42,7 @@ export class PatientsController {
   }
 
   @Get()
+  @Permissions('patients:read')
   findAll(@Request() req) {
     return this.patientsService.findAll(
       req.user.organizationId,
@@ -48,6 +51,7 @@ export class PatientsController {
   }
 
   @Get('export/csv')
+  @Permissions('patients:export')
   async exportCsv(@Request() req, @Res() res) {
     const patients = await this.patientsService.findAll(
       req.user.organizationId,
@@ -76,6 +80,7 @@ export class PatientsController {
   }
 
   @Get(':id')
+  @Permissions('patients:read')
   findOne(@Param('id') id: string, @Request() req) {
     return this.patientsService.findOne(
       id,
@@ -85,6 +90,7 @@ export class PatientsController {
   }
 
   @Patch(':id')
+  @Permissions('patients:update')
   update(@Param('id') id: string, @Body() data: any, @Request() req) {
     return this.patientsService.update(
       id,
@@ -98,6 +104,7 @@ export class PatientsController {
   }
 
   @Delete(':id')
+  @Permissions('patients:delete')
   remove(@Param('id') id: string, @Request() req) {
     return this.patientsService.remove(
       id,
@@ -107,3 +114,4 @@ export class PatientsController {
     );
   }
 }
+

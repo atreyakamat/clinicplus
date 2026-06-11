@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">14.28% </span>
+                <span class="strong">12.5% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>3/21</span>
+                <span class='fraction'>3/24</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/13</span>
+                <span class='fraction'>0/15</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">15% </span>
+                <span class="strong">13.04% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>3/20</span>
+                <span class='fraction'>3/23</span>
             </div>
         
             
@@ -168,12 +168,7 @@
 <a name='L103'></a><a href='#L103'>103</a>
 <a name='L104'></a><a href='#L104'>104</a>
 <a name='L105'></a><a href='#L105'>105</a>
-<a name='L106'></a><a href='#L106'>106</a>
-<a name='L107'></a><a href='#L107'>107</a>
-<a name='L108'></a><a href='#L108'>108</a>
-<a name='L109'></a><a href='#L109'>109</a>
-<a name='L110'></a><a href='#L110'>110</a>
-<a name='L111'></a><a href='#L111'>111</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">2x</span>
+<a name='L106'></a><a href='#L106'>106</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -221,18 +216,13 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -327,25 +317,20 @@ export async function <span class="fstat-no" title="function not covered" >ensur
   );
 &nbsp;
   const roles = <span class="cstat-no" title="statement not covered" >await Promise.all(</span>
-    Object.keys(DEFAULT_ROLE_PERMISSIONS).map(<span class="fstat-no" title="function not covered" >(r</span>oleName) =&gt;
-<span class="cstat-no" title="statement not covered" >      db.role.upsert({</span>
-        where: {
-          organizationId_name_branchId: {
-            organizationId,
-            name: roleName,
-            branchId: null,
-          },
-        },
-        update: {
-          branchId: null,
-        },
-        create: {
-          organizationId,
-          branchId: null,
-          name: roleName,
-        },
-      }),
-    ),
+    Object.keys(DEFAULT_ROLE_PERMISSIONS).map(<span class="fstat-no" title="function not covered" >async </span>(roleName) =&gt; {
+      const existing = <span class="cstat-no" title="statement not covered" >await db.role.findFirst({</span>
+        where: { organizationId, name: roleName, branchId: branchId },
+      });
+<span class="cstat-no" title="statement not covered" >      if (existing) {</span>
+<span class="cstat-no" title="statement not covered" >        return db.role.update({</span>
+          where: { id: existing.id },
+          data: { branchId: branchId },
+        });
+      }
+<span class="cstat-no" title="statement not covered" >      return db.role.create({</span>
+        data: { organizationId, branchId: branchId, name: roleName },
+      });
+    }),
   );
 &nbsp;
   const rolesByName = <span class="cstat-no" title="statement not covered" >new Map(roles.map(<span class="fstat-no" title="function not covered" >(r</span>ole) =&gt; <span class="cstat-no" title="statement not covered" >[role.name, role])</span>);</span>
@@ -400,7 +385,7 @@ export async function <span class="fstat-no" title="function not covered" >ensur
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-06-10T04:12:36.764Z
+                at 2026-06-11T01:38:05.658Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
