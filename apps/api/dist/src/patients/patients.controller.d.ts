@@ -1,4 +1,5 @@
 import { PatientsService } from './patients.service';
+import { CreatePatientDto } from './dto/create-patient.dto';
 export declare class PatientsController {
     private readonly patientsService;
     constructor(patientsService: PatientsService);
@@ -27,7 +28,7 @@ export declare class PatientsController {
         occupation: string | null;
         abhaNumber: string | null;
     }[]>;
-    create(data: any, req: any): Promise<{
+    create(data: CreatePatientDto, req: any): Promise<{
         id: string;
         email: string | null;
         phone: string | null;

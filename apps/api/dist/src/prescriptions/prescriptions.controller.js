@@ -16,6 +16,9 @@ exports.PrescriptionsController = void 0;
 const common_1 = require("@nestjs/common");
 const prescriptions_service_1 = require("./prescriptions.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const roles_guard_1 = require("../auth/guards/roles.guard");
+const permissions_guard_1 = require("../auth/guards/permissions.guard");
+const permissions_decorator_1 = require("../auth/decorators/permissions.decorator");
 const pdf_service_1 = require("../common/services/pdf.service");
 const organizations_service_1 = require("../organizations/organizations.service");
 let PrescriptionsController = class PrescriptionsController {
@@ -54,6 +57,7 @@ let PrescriptionsController = class PrescriptionsController {
 exports.PrescriptionsController = PrescriptionsController;
 __decorate([
     (0, common_1.Post)(),
+    (0, permissions_decorator_1.Permissions)('prescriptions:create'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -62,6 +66,7 @@ __decorate([
 ], PrescriptionsController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(':id/download'),
+    (0, permissions_decorator_1.Permissions)('prescriptions:read'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __param(2, (0, common_1.Res)()),
@@ -71,6 +76,7 @@ __decorate([
 ], PrescriptionsController.prototype, "download", null);
 __decorate([
     (0, common_1.Get)(),
+    (0, permissions_decorator_1.Permissions)('prescriptions:read'),
     __param(0, (0, common_1.Query)('patientId')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -79,6 +85,7 @@ __decorate([
 ], PrescriptionsController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, permissions_decorator_1.Permissions)('prescriptions:read'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -87,7 +94,7 @@ __decorate([
 ], PrescriptionsController.prototype, "findOne", null);
 exports.PrescriptionsController = PrescriptionsController = __decorate([
     (0, common_1.Controller)('api/v1/prescriptions'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard, permissions_guard_1.PermissionsGuard),
     __metadata("design:paramtypes", [prescriptions_service_1.PrescriptionsService,
         pdf_service_1.PdfService,
         organizations_service_1.OrganizationsService])

@@ -18,6 +18,7 @@ const messages_service_1 = require("./messages.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const permissions_guard_1 = require("../auth/guards/permissions.guard");
+const permissions_decorator_1 = require("../auth/decorators/permissions.decorator");
 let MessagesController = class MessagesController {
     messagesService;
     constructor(messagesService) {
@@ -36,6 +37,7 @@ let MessagesController = class MessagesController {
 exports.MessagesController = MessagesController;
 __decorate([
     (0, common_1.Get)(),
+    (0, permissions_decorator_1.Permissions)('messages:read'),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -43,6 +45,7 @@ __decorate([
 ], MessagesController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Post)('whatsapp'),
+    (0, permissions_decorator_1.Permissions)('messages:create'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -51,6 +54,7 @@ __decorate([
 ], MessagesController.prototype, "sendWhatsApp", null);
 __decorate([
     (0, common_1.Get)('templates'),
+    (0, permissions_decorator_1.Permissions)('messages:read'),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),

@@ -22,10 +22,10 @@ export class TimelineInterceptor implements NestInterceptor {
       tap((data) => {
         // Automatically detect and record timeline events
         if (['POST', 'PATCH', 'PUT'].includes(method)) {
-          const patientId =
-            body.patientId ||
-            data?.patientId ||
-            (url.includes('patients/') ? url.split('/')[4] : null);
+          let patientId: string | null = null;
+          if (body && body.patientId) patientId = body.patientId;
+          else if (data && data.patientId) patientId = data.patientId;
+          else if (url && url.includes('patients/')) patientId = url.split('/')[4];
 
           if (patientId && patientId.length === 36) {
             // Basic UUID check

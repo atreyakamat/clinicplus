@@ -45,8 +45,7 @@ let ConsultationsService = class ConsultationsService {
         });
     }
     async findOne(id, organizationId, branchId) {
-        const consultation = await this.prisma.consultation.findUnique({
-            where: { id, organizationId, branchId },
+        const consultation = await this.prisma.consultation.findFirst({ where: { id, organizationId, branchId },
             include: {
                 patient: true,
                 diagnoses: true,

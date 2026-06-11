@@ -77,6 +77,12 @@ let UsersService = class UsersService {
             },
         });
     }
+    async update(id, data, organizationId, branchId) {
+        return this.prisma.user.update({
+            where: { id, organizationId, branchId },
+            data,
+        });
+    }
 };
 exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([

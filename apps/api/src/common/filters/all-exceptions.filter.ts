@@ -6,6 +6,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { Prisma } from '@prisma/client';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -14,15 +15,34 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const status =
+    let status =
       exception instanceof HttpException
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
+    let message =
       exception instanceof HttpException
         ? exception.getResponse()
         : 'Internal server error';
+
+    if (exception instanceof Prisma.PrismaClientValidationError) {
+      status = HttpStatus.BAD_REQUEST;
+      message = 'Database validation error: Missing or invalid fields.';
+    } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      if (exception.code === 'P2002') {
+        status = HttpStatus.CONFLICT;
+        message = 'Unique constraint failed.';
+      } else if (exception.code === 'P2003') {
+        status = HttpStatus.BAD_REQUEST;
+        message = 'Foreign key constraint failed. Invalid reference.';
+      } else if (exception.code === 'P2025') {
+        status = HttpStatus.NOT_FOUND;
+        message = 'Record not found.';
+      } else {
+        status = HttpStatus.BAD_REQUEST;
+        message = 'Database request error.';
+      }
+    }
 
     const errorResponse = {
       statusCode: status,
@@ -34,10 +54,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
     };
 
     // Log the error (In real app, send to Sentry/CloudWatch)
-    console.error(
-      `[Error] ${request.method} ${request.url} - Status: ${status}`,
-      exception,
-    );
+    if (status >= 500) {
+      console.error(
+        `[Error] ${request.method} ${request.url} - Status: ${status}`,
+        exception,
+      );
+    }
 
     response.status(status).json(errorResponse);
   }

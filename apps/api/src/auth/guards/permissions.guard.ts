@@ -23,6 +23,10 @@ export class PermissionsGuard implements CanActivate {
       (user.permissions as string[]).map(normalizePermission),
     );
 
+    if (grantedPermissions.has('*')) {
+      return true;
+    }
+
     return requiredPermissions
       .map(normalizePermission)
       .every((permission) => grantedPermissions.has(permission));

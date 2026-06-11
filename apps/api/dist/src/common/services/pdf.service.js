@@ -10,6 +10,16 @@ exports.PdfService = void 0;
 const common_1 = require("@nestjs/common");
 const PDFDocument = require('pdfkit');
 let PdfService = class PdfService {
+    addImageFromBase64(doc, base64String, x, y, options = {}) {
+        try {
+            const base64Data = base64String.replace(/^data:image\/\w+;base64,/, "");
+            const buffer = Buffer.from(base64Data, 'base64');
+            doc.image(buffer, x, y, options);
+        }
+        catch (e) {
+            console.error('Failed to embed image', e);
+        }
+    }
     async generatePrescriptionPdf(prescription, organization) {
         return new Promise((resolve, reject) => {
             const doc = new PDFDocument({ size: 'A4', margin: 50 });
@@ -18,18 +28,29 @@ let PdfService = class PdfService {
             doc.on('end', () => resolve(Buffer.concat(buffers)));
             doc.on('error', reject);
             const primaryColor = organization.primaryColor || '#1FA971';
-            doc.rect(0, 0, 595.28, 100).fill(primaryColor);
-            doc
-                .fillColor('#FFFFFF')
-                .fontSize(24)
-                .text('ClinicOS', 50, 30, { bold: true });
-            doc.fontSize(10).text(organization.name, 50, 60);
-            doc
-                .fillColor('#FFFFFF')
-                .fontSize(14)
-                .text(`Dr. ${prescription.doctor.firstName} ${prescription.doctor.lastName}`, 400, 30, { align: 'right' });
-            doc.fontSize(8).text('Medical Practitioner', 400, 50, { align: 'right' });
-            doc.moveDown(6);
+            if (organization.letterheadUrl) {
+                this.addImageFromBase64(doc, organization.letterheadUrl, 0, 0, { width: 595.28 });
+                doc.moveDown(4);
+            }
+            else {
+                doc.rect(0, 0, 595.28, 100).fill(primaryColor);
+                if (organization.logoUrl) {
+                    this.addImageFromBase64(doc, organization.logoUrl, 50, 20, { height: 60 });
+                }
+                else {
+                    doc
+                        .fillColor('#FFFFFF')
+                        .fontSize(24)
+                        .text('ClinicOS', 50, 30, { bold: true });
+                }
+                doc.fillColor('#FFFFFF').fontSize(10).text(organization.name, 50, 80);
+                doc
+                    .fillColor('#FFFFFF')
+                    .fontSize(14)
+                    .text(`Dr. ${prescription.doctor.firstName} ${prescription.doctor.lastName}`, 400, 30, { align: 'right' });
+                doc.fontSize(8).text(prescription.doctor.qualification || 'Medical Practitioner', 400, 50, { align: 'right' });
+            }
+            doc.y = 120;
             doc
                 .fillColor('#444444')
                 .fontSize(10)
@@ -68,6 +89,12 @@ let PdfService = class PdfService {
                     currentY += 45;
                 }
             });
+            const signatureY = 700;
+            if (prescription.doctor.signatureUrl) {
+                this.addImageFromBase64(doc, prescription.doctor.signatureUrl, 400, signatureY - 40, { height: 40 });
+            }
+            doc.moveTo(400, signatureY).lineTo(545, signatureY).stroke('#CCCCCC');
+            doc.fillColor('#333333').fontSize(10).text(`Dr. ${prescription.doctor.firstName} ${prescription.doctor.lastName}`, 400, signatureY + 5);
             doc
                 .fontSize(8)
                 .fillColor('#999999')
@@ -86,15 +113,27 @@ let PdfService = class PdfService {
             doc.on('end', () => resolve(Buffer.concat(buffers)));
             doc.on('error', reject);
             const primaryColor = organization.primaryColor || '#1FA971';
-            doc
-                .fillColor(primaryColor)
-                .fontSize(20)
-                .text('INVOICE', 50, 50, { bold: true });
+            if (organization.letterheadUrl) {
+                this.addImageFromBase64(doc, organization.letterheadUrl, 0, 0, { width: 595.28 });
+                doc.moveDown(4);
+            }
+            else {
+                if (organization.logoUrl) {
+                    this.addImageFromBase64(doc, organization.logoUrl, 50, 30, { height: 40 });
+                }
+                else {
+                    doc
+                        .fillColor(primaryColor)
+                        .fontSize(20)
+                        .text(organization.name || 'INVOICE', 50, 30, { bold: true });
+                }
+            }
+            doc.y = 100;
             doc
                 .fillColor('#444444')
                 .fontSize(10)
-                .text(`Invoice #: ${invoice.invoiceNumber}`, 50, 75);
-            doc.text(`Date: ${new Date(invoice.createdAt).toLocaleDateString()}`, 50, 90);
+                .text(`Invoice #: ${invoice.invoiceNumber}`, 50, 100);
+            doc.text(`Date: ${new Date(invoice.createdAt).toLocaleDateString()}`, 50, 115);
             doc.end();
         });
     }

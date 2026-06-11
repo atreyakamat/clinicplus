@@ -2,6 +2,7 @@ import { IsEmail, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreatePatientDto {
   @IsString()
+  @IsOptional()
   patientCode?: string;
 
   @IsString()

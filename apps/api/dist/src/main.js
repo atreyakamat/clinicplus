@@ -40,6 +40,7 @@ const all_exceptions_filter_1 = require("./common/filters/all-exceptions.filter"
 const transform_interceptor_1 = require("./common/interceptors/transform.interceptor");
 const Sentry = __importStar(require("@sentry/nestjs"));
 const profiling_node_1 = require("@sentry/profiling-node");
+const express_1 = require("express");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     Sentry.init({
@@ -49,6 +50,8 @@ async function bootstrap() {
         profilesSampleRate: 1.0,
         environment: process.env.NODE_ENV || 'development',
     });
+    app.use((0, express_1.json)({ limit: '10mb' }));
+    app.use((0, express_1.urlencoded)({ extended: true, limit: '10mb' }));
     app.useGlobalPipes(new common_1.ValidationPipe({ whitelist: true, transform: true }));
     app.useGlobalFilters(new all_exceptions_filter_1.AllExceptionsFilter());
     app.useGlobalInterceptors(new transform_interceptor_1.TransformInterceptor());

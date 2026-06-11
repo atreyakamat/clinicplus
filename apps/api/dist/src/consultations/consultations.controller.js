@@ -16,6 +16,9 @@ exports.ConsultationsController = void 0;
 const common_1 = require("@nestjs/common");
 const consultations_service_1 = require("./consultations.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const roles_guard_1 = require("../auth/guards/roles.guard");
+const permissions_guard_1 = require("../auth/guards/permissions.guard");
+const permissions_decorator_1 = require("../auth/decorators/permissions.decorator");
 let ConsultationsController = class ConsultationsController {
     consultationsService;
     constructor(consultationsService) {
@@ -45,6 +48,7 @@ let ConsultationsController = class ConsultationsController {
 exports.ConsultationsController = ConsultationsController;
 __decorate([
     (0, common_1.Post)(),
+    (0, permissions_decorator_1.Permissions)('consultations:create'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -53,6 +57,7 @@ __decorate([
 ], ConsultationsController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
+    (0, permissions_decorator_1.Permissions)('consultations:read'),
     __param(0, (0, common_1.Query)('patientId')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -61,6 +66,7 @@ __decorate([
 ], ConsultationsController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, permissions_decorator_1.Permissions)('consultations:read'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -69,6 +75,7 @@ __decorate([
 ], ConsultationsController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
+    (0, permissions_decorator_1.Permissions)('consultations:update'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -78,6 +85,7 @@ __decorate([
 ], ConsultationsController.prototype, "update", null);
 __decorate([
     (0, common_1.Post)(':id/complete'),
+    (0, permissions_decorator_1.Permissions)('consultations:update'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -86,7 +94,7 @@ __decorate([
 ], ConsultationsController.prototype, "complete", null);
 exports.ConsultationsController = ConsultationsController = __decorate([
     (0, common_1.Controller)('api/v1/consultations'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard, permissions_guard_1.PermissionsGuard),
     __metadata("design:paramtypes", [consultations_service_1.ConsultationsService])
 ], ConsultationsController);
 //# sourceMappingURL=consultations.controller.js.map

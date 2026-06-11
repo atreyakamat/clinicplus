@@ -16,6 +16,9 @@ exports.StaffInvitationsController = void 0;
 const common_1 = require("@nestjs/common");
 const staff_invitations_service_1 = require("./staff-invitations.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const roles_guard_1 = require("../auth/guards/roles.guard");
+const permissions_guard_1 = require("../auth/guards/permissions.guard");
+const permissions_decorator_1 = require("../auth/decorators/permissions.decorator");
 let StaffInvitationsController = class StaffInvitationsController {
     staffInvitationsService;
     constructor(staffInvitationsService) {
@@ -39,7 +42,8 @@ let StaffInvitationsController = class StaffInvitationsController {
 exports.StaffInvitationsController = StaffInvitationsController;
 __decorate([
     (0, common_1.Post)('invite'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard, permissions_guard_1.PermissionsGuard),
+    (0, permissions_decorator_1.Permissions)('staff:invite'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -48,7 +52,8 @@ __decorate([
 ], StaffInvitationsController.prototype, "invite", null);
 __decorate([
     (0, common_1.Get)(),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard, permissions_guard_1.PermissionsGuard),
+    (0, permissions_decorator_1.Permissions)('staff:read'),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),

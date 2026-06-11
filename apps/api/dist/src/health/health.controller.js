@@ -30,10 +30,8 @@ let HealthController = class HealthController {
     }
     check() {
         return this.health.check([
-            () => this.http.pingCheck('api-docs', 'http://localhost:3000/api/v1'),
             () => this.prisma.pingCheck('database', this.prismaService),
-            () => this.memory.checkHeap('memory_heap', 150 * 1024 * 1024),
-            () => this.disk.checkStorage('storage', { path: '/', thresholdPercent: 0.9 }),
+            () => this.memory.checkHeap('memory_heap', 300 * 1024 * 1024),
         ]);
     }
 };

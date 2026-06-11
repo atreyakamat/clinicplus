@@ -1,0 +1,17 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 10
+      arrivalRate: 100
+      name: "100 CCU"
+    - duration: 10
+      arrivalRate: 250
+      name: "250 CCU"
+    - duration: 10
+      arrivalRate: 500
+      name: "500 CCU"
+scenarios:
+  - name: "Health Check (DB Ping)"
+    flow:
+      - get:
+          url: "/health"

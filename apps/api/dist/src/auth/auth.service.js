@@ -93,7 +93,14 @@ let AuthService = class AuthService {
         };
     }
     async refresh(refreshToken, sessionId) {
-        const session = await this.prisma.userSession.findUnique({
+        if (!sessionId || !refreshToken) {
+            throw new common_1.UnauthorizedException('Invalid refresh token or session');
+        }
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(sessionId)) {
+            throw new common_1.UnauthorizedException('Invalid refresh token or session');
+        }
+        const session = await this.prisma.userSession.findFirst({
             where: { id: sessionId, status: 'ACTIVE' },
             include: { user: true },
         });
@@ -167,7 +174,7 @@ let AuthService = class AuthService {
                     country: registerDto.country,
                 },
             });
-            const access = await (0, access_bootstrap_1.ensureOrganizationAccess)(tx, org.id);
+            const access = await (0, access_bootstrap_1.ensureOrganizationAccess)(tx, org.id, branch.id);
             const user = await tx.user.create({
                 data: {
                     organizationId: org.id,

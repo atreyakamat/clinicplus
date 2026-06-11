@@ -16,6 +16,9 @@ exports.AppointmentsController = void 0;
 const common_1 = require("@nestjs/common");
 const appointments_service_1 = require("./appointments.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const roles_guard_1 = require("../auth/guards/roles.guard");
+const permissions_guard_1 = require("../auth/guards/permissions.guard");
+const permissions_decorator_1 = require("../auth/decorators/permissions.decorator");
 const sync_1 = require("csv-stringify/sync");
 let AppointmentsController = class AppointmentsController {
     appointmentsService;
@@ -63,6 +66,7 @@ let AppointmentsController = class AppointmentsController {
 exports.AppointmentsController = AppointmentsController;
 __decorate([
     (0, common_1.Post)(),
+    (0, permissions_decorator_1.Permissions)('appointments:create'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -71,6 +75,7 @@ __decorate([
 ], AppointmentsController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)('export/csv'),
+    (0, permissions_decorator_1.Permissions)('appointments:export'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Res)()),
     __metadata("design:type", Function),
@@ -79,6 +84,7 @@ __decorate([
 ], AppointmentsController.prototype, "exportCsv", null);
 __decorate([
     (0, common_1.Get)(),
+    (0, permissions_decorator_1.Permissions)('appointments:read'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('date')),
     __metadata("design:type", Function),
@@ -87,6 +93,7 @@ __decorate([
 ], AppointmentsController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, permissions_decorator_1.Permissions)('appointments:read'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -95,6 +102,7 @@ __decorate([
 ], AppointmentsController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
+    (0, permissions_decorator_1.Permissions)('appointments:update'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -104,6 +112,7 @@ __decorate([
 ], AppointmentsController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, permissions_decorator_1.Permissions)('appointments:delete'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -112,7 +121,7 @@ __decorate([
 ], AppointmentsController.prototype, "remove", null);
 exports.AppointmentsController = AppointmentsController = __decorate([
     (0, common_1.Controller)('api/v1/appointments'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard, permissions_guard_1.PermissionsGuard),
     __metadata("design:paramtypes", [appointments_service_1.AppointmentsService])
 ], AppointmentsController);
 //# sourceMappingURL=appointments.controller.js.map

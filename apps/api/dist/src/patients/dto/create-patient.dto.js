@@ -28,6 +28,7 @@ class CreatePatientDto {
 exports.CreatePatientDto = CreatePatientDto;
 __decorate([
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], CreatePatientDto.prototype, "patientCode", void 0);
 __decorate([

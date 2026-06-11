@@ -96,8 +96,7 @@ export class PatientsService {
 
   async findOne(id: string, organizationId: string, branchId: string) {
     this.validateUuid(id);
-    const patient = await this.prisma.patient.findUnique({
-      where: { id, organizationId, branchId },
+    const patient = await this.prisma.patient.findFirst({ where: { id, organizationId, branchId },
       include: {
         addresses: true,
         emergencyContacts: true,

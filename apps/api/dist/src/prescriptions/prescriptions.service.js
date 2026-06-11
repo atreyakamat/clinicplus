@@ -18,7 +18,7 @@ let PrescriptionsService = class PrescriptionsService {
         this.prisma = prisma;
     }
     async create(data) {
-        const { items, ...prescriptionData } = data;
+        const { items = [], ...prescriptionData } = data;
         return this.prisma.prescription.create({
             data: {
                 ...prescriptionData,
@@ -61,8 +61,7 @@ let PrescriptionsService = class PrescriptionsService {
         });
     }
     async findOne(id, organizationId, branchId) {
-        const prescription = await this.prisma.prescription.findUnique({
-            where: { id, organizationId, branchId },
+        const prescription = await this.prisma.prescription.findFirst({ where: { id, organizationId, branchId },
             include: {
                 items: true,
                 patient: true,

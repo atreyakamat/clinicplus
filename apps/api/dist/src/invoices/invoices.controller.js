@@ -54,7 +54,6 @@ let InvoicesController = class InvoicesController {
     addPayment(id, data, req) {
         data.organizationId = req.user.organizationId;
         data.branchId = req.user.branchId;
-        data.createdBy = req.user.id;
         return this.invoicesService.addPayment(id, data, req.user.organizationId, req.user.branchId);
     }
 };
@@ -71,6 +70,7 @@ __decorate([
 ], InvoicesController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(':id/download'),
+    (0, permissions_decorator_1.Permissions)('invoices:read'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __param(2, (0, common_1.Res)()),
@@ -80,6 +80,7 @@ __decorate([
 ], InvoicesController.prototype, "download", null);
 __decorate([
     (0, common_1.Get)(),
+    (0, permissions_decorator_1.Permissions)('invoices:read'),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -87,6 +88,7 @@ __decorate([
 ], InvoicesController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, permissions_decorator_1.Permissions)('invoices:read'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -95,6 +97,7 @@ __decorate([
 ], InvoicesController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Post)(':id/payments'),
+    (0, permissions_decorator_1.Permissions)('invoices:update'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),

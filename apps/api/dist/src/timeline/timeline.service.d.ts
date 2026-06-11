@@ -11,18 +11,7 @@ export declare class TimelineService {
         description?: string;
         metadata?: any;
         createdBy?: string;
-    }): Promise<{
-        id: string;
-        createdAt: Date;
-        createdBy: string | null;
-        organizationId: string;
-        description: string | null;
-        patientId: string;
-        eventType: string;
-        eventCategory: string;
-        title: string;
-        metadata: import("@prisma/client/runtime/library").JsonValue | null;
-    }>;
+    }, tx?: any): Promise<any>;
     findAllByPatient(patientId: string, organizationId: string): Promise<{
         id: string;
         createdAt: Date;

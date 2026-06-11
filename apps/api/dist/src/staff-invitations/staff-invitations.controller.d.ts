@@ -88,6 +88,7 @@ export declare class StaffInvitationsController {
         experienceYears: number | null;
         bio: string | null;
         consultationFee: import("@prisma/client/runtime/library").Decimal | null;
+        signatureUrl: string | null;
         branchId: string;
     }>;
 }

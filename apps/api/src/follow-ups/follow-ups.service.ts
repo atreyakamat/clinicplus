@@ -46,8 +46,7 @@ export class FollowUpsService {
 
   async updateStatus(id: string, status: string, organizationId: string) {
     // Verify followUp belongs to org
-    const followUp = await this.prisma.followUp.findUnique({
-      where: { id, organizationId },
+    const followUp = await this.prisma.followUp.findFirst({ where: { id, organizationId },
     });
     if (!followUp) throw new NotFoundException('Follow-up not found');
 

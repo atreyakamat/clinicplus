@@ -17,8 +17,9 @@ let TimelineService = class TimelineService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async record(data) {
-        return this.prisma.timelineEvent.create({
+    async record(data, tx) {
+        const db = tx || this.prisma;
+        return db.timelineEvent.create({
             data: {
                 organizationId: data.organizationId,
                 patientId: data.patientId,

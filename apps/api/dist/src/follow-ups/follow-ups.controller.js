@@ -16,6 +16,9 @@ exports.FollowUpsController = void 0;
 const common_1 = require("@nestjs/common");
 const follow_ups_service_1 = require("./follow-ups.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const roles_guard_1 = require("../auth/guards/roles.guard");
+const permissions_guard_1 = require("../auth/guards/permissions.guard");
+const permissions_decorator_1 = require("../auth/decorators/permissions.decorator");
 let FollowUpsController = class FollowUpsController {
     followUpsService;
     constructor(followUpsService) {
@@ -42,6 +45,7 @@ let FollowUpsController = class FollowUpsController {
 exports.FollowUpsController = FollowUpsController;
 __decorate([
     (0, common_1.Post)(),
+    (0, permissions_decorator_1.Permissions)('followups:create'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -50,6 +54,7 @@ __decorate([
 ], FollowUpsController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
+    (0, permissions_decorator_1.Permissions)('followups:read'),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -57,6 +62,7 @@ __decorate([
 ], FollowUpsController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Patch)(':id/status'),
+    (0, permissions_decorator_1.Permissions)('followups:update'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)('status')),
     __param(2, (0, common_1.Request)()),
@@ -66,6 +72,7 @@ __decorate([
 ], FollowUpsController.prototype, "updateStatus", null);
 __decorate([
     (0, common_1.Post)(':id/outcomes'),
+    (0, permissions_decorator_1.Permissions)('followups:update'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -75,7 +82,7 @@ __decorate([
 ], FollowUpsController.prototype, "addOutcome", null);
 exports.FollowUpsController = FollowUpsController = __decorate([
     (0, common_1.Controller)('api/v1/follow-ups'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard, permissions_guard_1.PermissionsGuard),
     __metadata("design:paramtypes", [follow_ups_service_1.FollowUpsService])
 ], FollowUpsController);
 //# sourceMappingURL=follow-ups.controller.js.map

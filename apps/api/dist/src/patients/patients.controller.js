@@ -17,7 +17,10 @@ const common_1 = require("@nestjs/common");
 const patients_service_1 = require("./patients.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
+const permissions_guard_1 = require("../auth/guards/permissions.guard");
+const permissions_decorator_1 = require("../auth/decorators/permissions.decorator");
 const sync_1 = require("csv-stringify/sync");
+const create_patient_dto_1 = require("./dto/create-patient.dto");
 let PatientsController = class PatientsController {
     patientsService;
     constructor(patientsService) {
@@ -73,6 +76,7 @@ let PatientsController = class PatientsController {
 exports.PatientsController = PatientsController;
 __decorate([
     (0, common_1.Get)('search'),
+    (0, permissions_decorator_1.Permissions)('patients:read'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('q')),
     __metadata("design:type", Function),
@@ -81,14 +85,16 @@ __decorate([
 ], PatientsController.prototype, "search", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, permissions_decorator_1.Permissions)('patients:create'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [create_patient_dto_1.CreatePatientDto, Object]),
     __metadata("design:returntype", void 0)
 ], PatientsController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
+    (0, permissions_decorator_1.Permissions)('patients:read'),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -96,6 +102,7 @@ __decorate([
 ], PatientsController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('export/csv'),
+    (0, permissions_decorator_1.Permissions)('patients:export'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Res)()),
     __metadata("design:type", Function),
@@ -104,6 +111,7 @@ __decorate([
 ], PatientsController.prototype, "exportCsv", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, permissions_decorator_1.Permissions)('patients:read'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -112,6 +120,7 @@ __decorate([
 ], PatientsController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
+    (0, permissions_decorator_1.Permissions)('patients:update'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -121,6 +130,7 @@ __decorate([
 ], PatientsController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, permissions_decorator_1.Permissions)('patients:delete'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -129,7 +139,7 @@ __decorate([
 ], PatientsController.prototype, "remove", null);
 exports.PatientsController = PatientsController = __decorate([
     (0, common_1.Controller)('api/v1/patients'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard, permissions_guard_1.PermissionsGuard),
     __metadata("design:paramtypes", [patients_service_1.PatientsService])
 ], PatientsController);
 //# sourceMappingURL=patients.controller.js.map

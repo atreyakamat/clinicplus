@@ -18,6 +18,7 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { stringify } from 'csv-stringify/sync';
+import { CreatePatientDto } from './dto/create-patient.dto';
 
 @Controller('api/v1/patients')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -32,7 +33,7 @@ export class PatientsController {
 
   @Post()
   @Permissions('patients:create')
-  create(@Body() data: any, @Request() req) {
+  create(@Body() data: CreatePatientDto, @Request() req) {
     return this.patientsService.create({
       ...data,
       organizationId: req.user.organizationId,

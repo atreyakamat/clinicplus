@@ -113,8 +113,7 @@ export class AppointmentsService {
   }
 
   async findOne(id: string, organizationId: string, branchId: string) {
-    const appointment = await this.prisma.appointment.findUnique({
-      where: { id, organizationId, branchId },
+    const appointment = await this.prisma.appointment.findFirst({ where: { id, organizationId, branchId },
       include: {
         patient: true,
         doctor: {
@@ -134,8 +133,7 @@ export class AppointmentsService {
     updatedBy: string,
   ) {
     // First get the old data for audit
-    const oldAppointment = await this.prisma.appointment.findUnique({
-      where: { id, organizationId, branchId },
+    const oldAppointment = await this.prisma.appointment.findFirst({ where: { id, organizationId, branchId },
       include: {
         patient: {
           select: { id: true, firstName: true, lastName: true },
@@ -176,8 +174,7 @@ export class AppointmentsService {
     removedBy: string,
   ) {
     // First get the old data for audit
-    const oldAppointment = await this.prisma.appointment.findUnique({
-      where: { id, organizationId, branchId },
+    const oldAppointment = await this.prisma.appointment.findFirst({ where: { id, organizationId, branchId },
       include: {
         patient: {
           select: { id: true, firstName: true, lastName: true },

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
+import { AllExceptionsFilter } from './../src/common/filters/all-exceptions.filter';
 import { PrismaService } from './../src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 
@@ -28,6 +29,7 @@ describe('Evidence-Based Verification: Multi-Tenant & RBAC (E2E)', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
+    app.useGlobalFilters(new AllExceptionsFilter());
     jwtService = app.get<JwtService>(JwtService);
     prisma = app.get<PrismaService>(PrismaService);
     await app.init();
@@ -58,7 +60,7 @@ describe('Evidence-Based Verification: Multi-Tenant & RBAC (E2E)', () => {
       organizationId: orgA.id,
       branchId: branchA.id,
       roles: ['Organization Owner'],
-      permissions: [],
+      permissions: ['*'],
     });
 
     // 2. Setup Organization B
@@ -86,7 +88,7 @@ describe('Evidence-Based Verification: Multi-Tenant & RBAC (E2E)', () => {
       organizationId: orgB.id,
       branchId: branchB.id,
       roles: ['Organization Owner'],
-      permissions: [],
+      permissions: ['*'],
     });
 
     // 3. Create a patient in Org A
@@ -101,29 +103,13 @@ describe('Evidence-Based Verification: Multi-Tenant & RBAC (E2E)', () => {
   });
 
   afterAll(async () => {
-    // Cleanup
-    if (orgA?.id && orgB?.id) {
-      const orgIds = [orgA.id, orgB.id];
-      await prisma.timelineEvent.deleteMany({
-        where: { organizationId: { in: orgIds } },
-      });
-      await prisma.auditLog.deleteMany({
-        where: { organizationId: { in: orgIds } },
-      });
-      await prisma.patient.deleteMany({
-        where: { organizationId: { in: orgIds } },
-      });
-      await prisma.userRole.deleteMany({
-        where: { organizationId: { in: orgIds } },
-      });
-      await prisma.user.deleteMany({
-        where: { organizationId: { in: orgIds } },
-      });
-      await prisma.branch.deleteMany({
-        where: { organizationId: { in: orgIds } },
-      });
-      await prisma.organization.deleteMany({ where: { id: { in: orgIds } } });
-    }
+    try {
+      const tablenames = await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
+      const tables = tablenames.map(({ tablename }) => tablename).filter(name => name !== '_prisma_migrations').map(name => `"public"."${name}"`).join(', ');
+      if (tables.length > 0) {
+        await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
+      }
+    } catch (e) { console.error(e); }
     await app.close();
   });
 

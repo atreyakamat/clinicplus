@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
+import { AllExceptionsFilter } from './../src/common/filters/all-exceptions.filter';
 import { PrismaService } from './../src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { performance } from 'perf_hooks';
@@ -23,6 +24,7 @@ describe('Evidence-Based Verification: Performance & Security (E2E)', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
+    app.useGlobalFilters(new AllExceptionsFilter());
     jwtService = app.get<JwtService>(JwtService);
     prisma = app.get<PrismaService>(PrismaService);
     await app.init();
@@ -51,6 +53,7 @@ describe('Evidence-Based Verification: Performance & Security (E2E)', () => {
       organizationId: org.id,
       branchId: branch.id,
       roles: ['Organization Owner'],
+      permissions: ['*'],
     });
 
     // Create one patient for individual tests
@@ -74,28 +77,13 @@ describe('Evidence-Based Verification: Performance & Security (E2E)', () => {
   });
 
   afterAll(async () => {
-    if (org?.id) {
-      const orgIds = [org.id];
-      await prisma.timelineEvent.deleteMany({
-        where: { organizationId: { in: orgIds } },
-      });
-      await prisma.auditLog.deleteMany({
-        where: { organizationId: { in: orgIds } },
-      });
-      await prisma.patient.deleteMany({
-        where: { organizationId: { in: orgIds } },
-      });
-      await prisma.userRole.deleteMany({
-        where: { organizationId: { in: orgIds } },
-      });
-      await prisma.user.deleteMany({
-        where: { organizationId: { in: orgIds } },
-      });
-      await prisma.branch.deleteMany({
-        where: { organizationId: { in: orgIds } },
-      });
-      await prisma.organization.deleteMany({ where: { id: { in: orgIds } } });
-    }
+    try {
+      const tablenames = await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
+      const tables = tablenames.map(({ tablename }) => tablename).filter(name => name !== '_prisma_migrations').map(name => `"public"."${name}"`).join(', ');
+      if (tables.length > 0) {
+        await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
+      }
+    } catch (e) { console.error(e); }
     await app.close();
   });
 
@@ -139,6 +127,7 @@ describe('Evidence-Based Verification: Performance & Security (E2E)', () => {
         organizationId: org.id,
         branchId: doctor.branchId,
         roles: ['Doctor'],
+        permissions: ['*'],
       });
 
       const response = await request(app.getHttpServer())

@@ -25,8 +25,7 @@ export class FeedbackService {
 
   async updateStatus(id: string, status: string, organizationId: string) {
     // Verify feedback belongs to org
-    const feedback = await this.prisma.feedback.findUnique({
-      where: { id, organizationId },
+    const feedback = await this.prisma.feedback.findFirst({ where: { id, organizationId },
     });
 
     if (!feedback) throw new NotFoundException('Feedback not found');

@@ -18,7 +18,7 @@ let InvoicesService = class InvoicesService {
         this.prisma = prisma;
     }
     async create(data, organizationId, branchId, createdBy) {
-        const { items, ...invoiceData } = data;
+        const { items = [], ...invoiceData } = data;
         return this.prisma.invoice.create({
             data: {
                 ...invoiceData,
@@ -33,7 +33,9 @@ let InvoicesService = class InvoicesService {
                     })),
                 },
             },
-            include: { items: true },
+            include: {
+                items: true,
+            },
         });
     }
     async findAll(organizationId, branchId) {
@@ -47,8 +49,7 @@ let InvoicesService = class InvoicesService {
         });
     }
     async findOne(id, organizationId, branchId) {
-        const invoice = await this.prisma.invoice.findUnique({
-            where: { id, organizationId, branchId },
+        const invoice = await this.prisma.invoice.findFirst({ where: { id, organizationId, branchId },
             include: { items: true, patient: true, payments: true },
         });
         if (!invoice)

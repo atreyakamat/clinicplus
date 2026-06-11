@@ -15,6 +15,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TimelineController = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const roles_guard_1 = require("../auth/guards/roles.guard");
+const permissions_guard_1 = require("../auth/guards/permissions.guard");
+const permissions_decorator_1 = require("../auth/decorators/permissions.decorator");
 const timeline_service_1 = require("./timeline.service");
 let TimelineController = class TimelineController {
     timelineService;
@@ -28,6 +31,7 @@ let TimelineController = class TimelineController {
 exports.TimelineController = TimelineController;
 __decorate([
     (0, common_1.Get)(),
+    (0, permissions_decorator_1.Permissions)('timeline:read'),
     __param(0, (0, common_1.Query)('patientId')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -36,7 +40,7 @@ __decorate([
 ], TimelineController.prototype, "findAllByPatient", null);
 exports.TimelineController = TimelineController = __decorate([
     (0, common_1.Controller)('api/v1/timeline'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard, permissions_guard_1.PermissionsGuard),
     __metadata("design:paramtypes", [timeline_service_1.TimelineService])
 ], TimelineController);
 //# sourceMappingURL=timeline.controller.js.map

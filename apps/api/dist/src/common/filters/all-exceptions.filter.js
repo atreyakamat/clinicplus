@@ -8,17 +8,40 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AllExceptionsFilter = void 0;
 const common_1 = require("@nestjs/common");
+const client_1 = require("@prisma/client");
 let AllExceptionsFilter = class AllExceptionsFilter {
     catch(exception, host) {
         const ctx = host.switchToHttp();
         const response = ctx.getResponse();
         const request = ctx.getRequest();
-        const status = exception instanceof common_1.HttpException
+        let status = exception instanceof common_1.HttpException
             ? exception.getStatus()
             : common_1.HttpStatus.INTERNAL_SERVER_ERROR;
-        const message = exception instanceof common_1.HttpException
+        let message = exception instanceof common_1.HttpException
             ? exception.getResponse()
             : 'Internal server error';
+        if (exception instanceof client_1.Prisma.PrismaClientValidationError) {
+            status = common_1.HttpStatus.BAD_REQUEST;
+            message = 'Database validation error: Missing or invalid fields.';
+        }
+        else if (exception instanceof client_1.Prisma.PrismaClientKnownRequestError) {
+            if (exception.code === 'P2002') {
+                status = common_1.HttpStatus.CONFLICT;
+                message = 'Unique constraint failed.';
+            }
+            else if (exception.code === 'P2003') {
+                status = common_1.HttpStatus.BAD_REQUEST;
+                message = 'Foreign key constraint failed. Invalid reference.';
+            }
+            else if (exception.code === 'P2025') {
+                status = common_1.HttpStatus.NOT_FOUND;
+                message = 'Record not found.';
+            }
+            else {
+                status = common_1.HttpStatus.BAD_REQUEST;
+                message = 'Database request error.';
+            }
+        }
         const errorResponse = {
             statusCode: status,
             timestamp: new Date().toISOString(),
@@ -27,7 +50,9 @@ let AllExceptionsFilter = class AllExceptionsFilter {
             message: typeof message === 'object' ? message.message : message,
             error: typeof message === 'object' ? message.error : 'Error',
         };
-        console.error(`[Error] ${request.method} ${request.url} - Status: ${status}`, exception);
+        if (status >= 500) {
+            console.error(`[Error] ${request.method} ${request.url} - Status: ${status}`, exception);
+        }
         response.status(status).json(errorResponse);
     }
 };

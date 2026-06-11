@@ -59,7 +59,7 @@ let PatientsService = class PatientsService {
                 title: 'Patient Registered',
                 description: `Patient ${patient.firstName} ${patient.lastName} was registered in the system.`,
                 createdBy: data.createdBy,
-            });
+            }, tx);
             await this.auditService.log({
                 organizationId: patient.organizationId,
                 userId: data.createdBy,
@@ -85,8 +85,7 @@ let PatientsService = class PatientsService {
     }
     async findOne(id, organizationId, branchId) {
         this.validateUuid(id);
-        const patient = await this.prisma.patient.findUnique({
-            where: { id, organizationId, branchId },
+        const patient = await this.prisma.patient.findFirst({ where: { id, organizationId, branchId },
             include: {
                 addresses: true,
                 emergencyContacts: true,

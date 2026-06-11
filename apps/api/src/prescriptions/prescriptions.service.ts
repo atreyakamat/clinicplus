@@ -7,7 +7,7 @@ export class PrescriptionsService {
   constructor(private prisma: PrismaService) {}
 
   async create(data: any) {
-    const { items, ...prescriptionData } = data;
+    const { items = [], ...prescriptionData } = data;
     return this.prisma.prescription.create({
       data: {
         ...prescriptionData,
@@ -52,8 +52,7 @@ export class PrescriptionsService {
   }
 
   async findOne(id: string, organizationId: string, branchId: string) {
-    const prescription = await this.prisma.prescription.findUnique({
-      where: { id, organizationId, branchId },
+    const prescription = await this.prisma.prescription.findFirst({ where: { id, organizationId, branchId },
       include: {
         items: true,
         patient: true,

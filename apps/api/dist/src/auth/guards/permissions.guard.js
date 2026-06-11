@@ -29,6 +29,9 @@ let PermissionsGuard = class PermissionsGuard {
             return false;
         }
         const grantedPermissions = new Set(user.permissions.map(access_utils_1.normalizePermission));
+        if (grantedPermissions.has('*')) {
+            return true;
+        }
         return requiredPermissions
             .map(access_utils_1.normalizePermission)
             .every((permission) => grantedPermissions.has(permission));

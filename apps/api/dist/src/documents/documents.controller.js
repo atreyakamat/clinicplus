@@ -16,6 +16,9 @@ exports.DocumentsController = void 0;
 const common_1 = require("@nestjs/common");
 const documents_service_1 = require("./documents.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const roles_guard_1 = require("../auth/guards/roles.guard");
+const permissions_guard_1 = require("../auth/guards/permissions.guard");
+const permissions_decorator_1 = require("../auth/decorators/permissions.decorator");
 const platform_express_1 = require("@nestjs/platform-express");
 const file_validation_pipe_1 = require("../common/pipes/file-validation.pipe");
 let DocumentsController = class DocumentsController {
@@ -56,6 +59,7 @@ let DocumentsController = class DocumentsController {
 exports.DocumentsController = DocumentsController;
 __decorate([
     (0, common_1.Post)('upload'),
+    (0, permissions_decorator_1.Permissions)('documents:create'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
     __param(0, (0, common_1.UploadedFile)(file_validation_pipe_1.FileValidationPipe)),
     __param(1, (0, common_1.Body)()),
@@ -66,6 +70,7 @@ __decorate([
 ], DocumentsController.prototype, "uploadFile", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, permissions_decorator_1.Permissions)('documents:create'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -74,6 +79,7 @@ __decorate([
 ], DocumentsController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
+    (0, permissions_decorator_1.Permissions)('documents:read'),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -81,6 +87,7 @@ __decorate([
 ], DocumentsController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, permissions_decorator_1.Permissions)('documents:read'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -89,6 +96,7 @@ __decorate([
 ], DocumentsController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
+    (0, permissions_decorator_1.Permissions)('documents:update'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -98,6 +106,7 @@ __decorate([
 ], DocumentsController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, permissions_decorator_1.Permissions)('documents:delete'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -106,7 +115,7 @@ __decorate([
 ], DocumentsController.prototype, "remove", null);
 exports.DocumentsController = DocumentsController = __decorate([
     (0, common_1.Controller)('api/v1/documents'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard, permissions_guard_1.PermissionsGuard),
     __metadata("design:paramtypes", [documents_service_1.DocumentsService])
 ], DocumentsController);
 //# sourceMappingURL=documents.controller.js.map

@@ -18,6 +18,7 @@ const queues_service_1 = require("./queues.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const permissions_guard_1 = require("../auth/guards/permissions.guard");
+const permissions_decorator_1 = require("../auth/decorators/permissions.decorator");
 let QueuesController = class QueuesController {
     queuesService;
     constructor(queuesService) {
@@ -36,6 +37,7 @@ let QueuesController = class QueuesController {
 exports.QueuesController = QueuesController;
 __decorate([
     (0, common_1.Get)('live'),
+    (0, permissions_decorator_1.Permissions)('queues:read'),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -43,6 +45,7 @@ __decorate([
 ], QueuesController.prototype, "getLiveQueue", null);
 __decorate([
     (0, common_1.Post)('check-in'),
+    (0, permissions_decorator_1.Permissions)('queues:update'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -51,6 +54,7 @@ __decorate([
 ], QueuesController.prototype, "checkIn", null);
 __decorate([
     (0, common_1.Patch)('entries/:id/status'),
+    (0, permissions_decorator_1.Permissions)('queues:update'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
