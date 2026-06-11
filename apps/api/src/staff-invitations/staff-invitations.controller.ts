@@ -9,6 +9,9 @@ import {
 } from '@nestjs/common';
 import { StaffInvitationsService } from './staff-invitations.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
 
 @Controller('api/v1/staff-invitations')
 export class StaffInvitationsController {
@@ -17,7 +20,8 @@ export class StaffInvitationsController {
   ) {}
 
   @Post('invite')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Permissions('staff:invite')
   async invite(@Body() data: any, @Request() req) {
     data.organizationId = req.user.organizationId;
     data.branchId = req.user.branchId;
@@ -25,7 +29,8 @@ export class StaffInvitationsController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Permissions('staff:read')
   async findAll(@Request() req) {
     return this.staffInvitationsService.findAll(req.user.organizationId);
   }

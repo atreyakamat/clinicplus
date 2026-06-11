@@ -21,6 +21,7 @@ export class QueuesController {
   constructor(private readonly queuesService: QueuesService) {}
 
   @Get('live')
+  @Permissions('queues:read')
   getLiveQueue(@Request() req) {
     return this.queuesService.getLiveQueue(
       req.user.organizationId,
@@ -29,6 +30,7 @@ export class QueuesController {
   }
 
   @Post('check-in')
+  @Permissions('queues:update')
   checkIn(@Body() data: { appointmentId: string }, @Request() req) {
     return this.queuesService.checkIn(
       data.appointmentId,
@@ -38,6 +40,7 @@ export class QueuesController {
   }
 
   @Patch('entries/:id/status')
+  @Permissions('queues:update')
   updateStatus(
     @Param('id') id: string,
     @Body()

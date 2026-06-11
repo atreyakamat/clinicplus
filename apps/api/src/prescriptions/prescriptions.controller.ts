@@ -11,11 +11,14 @@ import {
 } from '@nestjs/common';
 import { PrescriptionsService } from './prescriptions.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
 import { PdfService } from '../common/services/pdf.service';
 import { OrganizationsService } from '../organizations/organizations.service';
 
 @Controller('api/v1/prescriptions')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class PrescriptionsController {
   constructor(
     private readonly prescriptionsService: PrescriptionsService,
@@ -24,6 +27,7 @@ export class PrescriptionsController {
   ) {}
 
   @Post()
+  @Permissions('prescriptions:create')
   create(@Body() data: any, @Request() req) {
     data.organizationId = req.user.organizationId;
     data.branchId = req.user.branchId;
@@ -32,6 +36,7 @@ export class PrescriptionsController {
   }
 
   @Get(':id/download')
+  @Permissions('prescriptions:read')
   async download(@Param('id') id: string, @Request() req, @Res() res) {
     const rx = await this.prescriptionsService.findOne(
       id,
@@ -54,6 +59,7 @@ export class PrescriptionsController {
   }
 
   @Get()
+  @Permissions('prescriptions:read')
   findAll(@Query('patientId') patientId: string | undefined, @Request() req) {
     return this.prescriptionsService.findAll(
       req.user.organizationId,
@@ -63,6 +69,7 @@ export class PrescriptionsController {
   }
 
   @Get(':id')
+  @Permissions('prescriptions:read')
   findOne(@Param('id') id: string, @Request() req) {
     return this.prescriptionsService.findOne(
       id,

@@ -19,6 +19,7 @@ export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
 
   @Get()
+  @Permissions('messages:read')
   findAll(@Request() req) {
     return this.messagesService.findAll(
       req.user.organizationId,
@@ -27,6 +28,7 @@ export class MessagesController {
   }
 
   @Post('whatsapp')
+  @Permissions('messages:create')
   sendWhatsApp(
     @Body() data: { patientId: string; content: string },
     @Request() req,
@@ -40,6 +42,7 @@ export class MessagesController {
   }
 
   @Get('templates')
+  @Permissions('messages:read')
   getTemplates(@Request() req) {
     return this.messagesService.getTemplates(req.user.organizationId);
   }

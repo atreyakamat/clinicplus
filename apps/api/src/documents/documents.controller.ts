@@ -13,15 +13,19 @@ import {
 } from '@nestjs/common';
 import { DocumentsService } from './documents.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FileValidationPipe } from '../common/pipes/file-validation.pipe';
 
 @Controller('api/v1/documents')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) {}
 
   @Post('upload')
+  @Permissions('documents:create')
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(
     @UploadedFile(FileValidationPipe) file: Express.Multer.File,
@@ -51,6 +55,7 @@ export class DocumentsController {
   }
 
   @Post()
+  @Permissions('documents:create')
   create(@Body() data: any, @Request() req) {
     return this.documentsService.create(
       data,
@@ -61,6 +66,7 @@ export class DocumentsController {
   }
 
   @Get()
+  @Permissions('documents:read')
   findAll(@Request() req) {
     return this.documentsService.findAll(
       req.user.organizationId,
@@ -69,6 +75,7 @@ export class DocumentsController {
   }
 
   @Get(':id')
+  @Permissions('documents:read')
   findOne(@Param('id') id: string, @Request() req) {
     return this.documentsService.findOne(
       id,
@@ -78,6 +85,7 @@ export class DocumentsController {
   }
 
   @Patch(':id')
+  @Permissions('documents:update')
   update(@Param('id') id: string, @Body() data: any, @Request() req) {
     return this.documentsService.update(
       id,
@@ -88,6 +96,7 @@ export class DocumentsController {
   }
 
   @Delete(':id')
+  @Permissions('documents:delete')
   remove(@Param('id') id: string, @Request() req) {
     return this.documentsService.remove(
       id,

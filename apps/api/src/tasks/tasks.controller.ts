@@ -41,6 +41,7 @@ export class TasksController {
   }
 
   @Get()
+  @Permissions('tasks:read')
   findAll(@Request() req) {
     return this.tasksService.findAll(
       req.user.organizationId,
@@ -49,6 +50,7 @@ export class TasksController {
   }
 
   @Get(':id')
+  @Permissions('tasks:read')
   findOne(@Param('id') id: string, @Request() req) {
     return this.tasksService.findOne(
       id,
@@ -58,6 +60,7 @@ export class TasksController {
   }
 
   @Patch(':id')
+  @Permissions('tasks:update')
   update(@Param('id') id: string, @Body() data: any, @Request() req) {
     data.updatedBy = req.user.id;
     return this.tasksService.update(
@@ -69,6 +72,7 @@ export class TasksController {
   }
 
   @Delete(':id')
+  @Permissions('tasks:delete')
   remove(@Param('id') id: string, @Request() req) {
     return this.tasksService.remove(
       id,

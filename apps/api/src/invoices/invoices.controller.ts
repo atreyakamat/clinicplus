@@ -46,6 +46,7 @@ export class InvoicesController {
   }
 
   @Get(':id/download')
+  @Permissions('invoices:read')
   async download(@Param('id') id: string, @Request() req, @Res() res) {
     const invoice = await this.invoicesService.findOne(
       id,
@@ -68,6 +69,7 @@ export class InvoicesController {
   }
 
   @Get()
+  @Permissions('invoices:read')
   findAll(@Request() req) {
     return this.invoicesService.findAll(
       req.user.organizationId,
@@ -76,6 +78,7 @@ export class InvoicesController {
   }
 
   @Get(':id')
+  @Permissions('invoices:read')
   findOne(@Param('id') id: string, @Request() req) {
     return this.invoicesService.findOne(
       id,
@@ -85,6 +88,7 @@ export class InvoicesController {
   }
 
   @Post(':id/payments')
+  @Permissions('invoices:update')
   addPayment(@Param('id') id: string, @Body() data: any, @Request() req) {
     data.organizationId = req.user.organizationId;
     data.branchId = req.user.branchId;

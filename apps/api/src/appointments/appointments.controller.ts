@@ -14,14 +14,18 @@ import {
 import { AppointmentsService } from './appointments.service';
 import { Prisma } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
 import { stringify } from 'csv-stringify/sync';
 
 @Controller('api/v1/appointments')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
 
   @Post()
+  @Permissions('appointments:create')
   create(@Body() data: any, @Request() req) {
     data.organizationId = req.user.organizationId;
     data.branchId = req.user.branchId;
@@ -35,6 +39,7 @@ export class AppointmentsController {
   }
 
   @Get('export/csv')
+  @Permissions('appointments:export')
   async exportCsv(@Request() req, @Res() res) {
     const appointments = await this.appointmentsService.findAll(
       req.user.organizationId,
@@ -62,6 +67,7 @@ export class AppointmentsController {
   }
 
   @Get()
+  @Permissions('appointments:read')
   findAll(@Request() req, @Query('date') date?: string) {
     return this.appointmentsService.findAll(
       req.user.organizationId,
@@ -71,6 +77,7 @@ export class AppointmentsController {
   }
 
   @Get(':id')
+  @Permissions('appointments:read')
   findOne(@Param('id') id: string, @Request() req) {
     return this.appointmentsService.findOne(
       id,
@@ -80,6 +87,7 @@ export class AppointmentsController {
   }
 
   @Patch(':id')
+  @Permissions('appointments:update')
   update(@Param('id') id: string, @Body() data: any, @Request() req) {
     return this.appointmentsService.update(
       id,
@@ -91,6 +99,7 @@ export class AppointmentsController {
   }
 
   @Delete(':id')
+  @Permissions('appointments:delete')
   remove(@Param('id') id: string, @Request() req) {
     return this.appointmentsService.remove(
       id,
