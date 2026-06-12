@@ -101,7 +101,7 @@ export const OrganizationDashboard = () => {
           <Card className="p-6">
             <h3 className="mb-4 flex items-center gap-2 font-semibold text-slate-900">
               <Activity size={18} className="text-orange-500" />
-              Execution Watch
+              Open Tasks
             </h3>
             <div className="space-y-3">
               {openTasks.slice(0, 4).map((task) => (

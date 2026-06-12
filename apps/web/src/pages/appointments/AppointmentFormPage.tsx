@@ -52,6 +52,11 @@ export const AppointmentFormPage = () => {
     mutationFn: (values: AppointmentFormValues) => {
       const scheduledStart = new Date(`${values.date}T${values.startTime}`);
       const scheduledEnd = new Date(`${values.date}T${values.endTime}`);
+      
+      if (scheduledStart < new Date()) {
+        throw new Error('Cannot book an appointment in the past');
+      }
+
       return api.post('/appointments', {
         patientId: values.patientId,
         doctorId: values.doctorId,
@@ -73,6 +78,11 @@ export const AppointmentFormPage = () => {
   });
 
   const onSubmit = (data: AppointmentFormValues) => {
+    const scheduledStart = new Date(`${data.date}T${data.startTime}`);
+    if (scheduledStart < new Date()) {
+      setServerError('Cannot book an appointment in the past');
+      return;
+    }
     setServerError(null);
     mutation.mutate(data);
   };

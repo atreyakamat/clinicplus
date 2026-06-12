@@ -59,22 +59,29 @@ export const PatientFormPage = () => {
   const mutation = useMutation({
     mutationFn: (data: PatientFormValues) => 
       isEditing ? api.patch(`/patients/${id}`, data) : api.post('/patients', data),
-    onSuccess: () => {
+    onSuccess: (_, variables: any) => {
       queryClient.invalidateQueries({ queryKey: ['patients'] });
-      navigate('/patients');
+      if (variables.addAnother) {
+        reset();
+        setServerError(null);
+        // Optionally show a success toast
+      } else {
+        navigate('/patients');
+      }
     },
     onError: (error) => {
       if (error instanceof ApiError) {
-        setServerError(error.message);
+        setServerError(error.data?.message || error.message);
       } else {
         setServerError('An unexpected error occurred');
       }
     }
   });
 
-  const onSubmit = (data: PatientFormValues) => {
+  const onSubmit = (data: PatientFormValues, e: any) => {
     setServerError(null);
-    mutation.mutate(data);
+    const addAnother = e.nativeEvent.submitter?.name === 'addAnother';
+    mutation.mutate({ ...data, addAnother } as any);
   };
 
   if (isFetching) {
@@ -94,7 +101,7 @@ export const PatientFormPage = () => {
       </div>
 
       {serverError && (
-        <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm">
+        <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100 animate-in fade-in slide-in-from-top-1">
           {serverError}
         </div>
       )}
@@ -164,6 +171,11 @@ export const PatientFormPage = () => {
           <Button type="button" variant="outline" onClick={() => navigate('/patients')}>
             Cancel
           </Button>
+          {!isEditing && (
+            <Button name="addAnother" type="submit" variant="outline" disabled={isSubmitting || mutation.isPending}>
+              Save & Add Another
+            </Button>
+          )}
           <Button type="submit" disabled={isSubmitting || mutation.isPending}>
             {isSubmitting || mutation.isPending ? 'Saving...' : 'Save Patient'}
           </Button>

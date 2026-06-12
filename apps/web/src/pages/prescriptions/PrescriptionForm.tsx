@@ -39,8 +39,11 @@ export const PrescriptionForm = () => {
       queryClient.invalidateQueries({ queryKey: ['prescriptions', patientId] });
       if (consultationId) {
         queryClient.invalidateQueries({ queryKey: ['consultation', consultationId] });
+        // Return to consultation workspace instead of prescription detail
+        navigate(`/consultations/${consultationId}`);
+      } else {
+        navigate(`/prescriptions/${data.id}`);
       }
-      navigate(`/prescriptions/${data.id}`);
     }
   });
 

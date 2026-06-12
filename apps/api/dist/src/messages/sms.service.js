@@ -21,21 +21,40 @@ let SmsService = class SmsService {
         if (!to || !content) {
             throw new common_1.BadRequestException('Phone number and content are required');
         }
-        return true;
+        const isSuccessful = Math.random() > 0.1;
+        if (isSuccessful) {
+            const messageId = `sm_${Math.random().toString(36).substr(2, 9)}`;
+            return { success: true, messageId };
+        }
+        else {
+            return { success: false, error: 'Simulated SMS gateway failure' };
+        }
     }
     async sendAndRecord(patientId, content, organizationId, branchId) {
-        const success = await this.sendSms('', content, organizationId, branchId);
-        return this.prisma.message.create({
+        const patient = await this.prisma.patient.findUnique({
+            where: { id: patientId },
+            select: { phone: true },
+        });
+        if (!patient?.phone) {
+            throw new common_1.BadRequestException('Patient phone number not found');
+        }
+        const smsResult = await this.sendSms(patient.phone, content, organizationId, branchId);
+        const message = await this.prisma.message.create({
             data: {
                 patientId,
                 messageBody: content,
                 channel: 'SMS',
                 direction: 'OUTBOUND',
-                deliveryStatus: success ? 'SENT' : 'FAILED',
+                deliveryStatus: smsResult.success ? 'SENT' : 'FAILED',
                 organizationId,
                 branchId,
             },
         });
+        return {
+            ...message,
+            gatewayMessageId: smsResult.messageId,
+            gatewayError: smsResult.error
+        };
     }
 };
 exports.SmsService = SmsService;

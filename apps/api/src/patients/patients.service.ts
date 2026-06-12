@@ -28,17 +28,36 @@ export class PatientsService {
     const organizationId = data.organizationId;
 
     // 1. Duplicate Detection (F-007)
-    const existing = await this.prisma.patient.findFirst({
-      where: {
-        organizationId,
-        OR: [{ email: data.email || 'none' }, { phone: data.phone || 'none' }],
-      },
-    });
+    const duplicateCriteria: any[] = [];
+    if (data.email) duplicateCriteria.push({ email: data.email });
+    if (data.phone) duplicateCriteria.push({ phone: data.phone });
+    
+    // Also check Name + Phone combination as requested in Acceptance Test
+    if (data.firstName && data.lastName && data.phone) {
+      duplicateCriteria.push({
+        AND: [
+          { firstName: data.firstName },
+          { lastName: data.lastName },
+          { phone: data.phone }
+        ]
+      });
+    }
 
-    if (existing) {
-      throw new ConflictException(
-        'Patient with this email or phone already exists in this clinic',
-      );
+    if (duplicateCriteria.length > 0) {
+      const existing = await this.prisma.patient.findFirst({
+        where: {
+          organizationId,
+          status: 'ACTIVE',
+          OR: duplicateCriteria,
+        },
+      });
+
+      if (existing) {
+        const field = existing.email === data.email ? 'email' : (existing.phone === data.phone ? 'phone' : 'name/phone combination');
+        throw new ConflictException(
+          `Patient with this ${field} already exists in this clinic`,
+        );
+      }
     }
 
     // 2. Patient ID Generation (F-007)

@@ -4,8 +4,8 @@ import { FollowUpsService } from './follow-ups.service';
 import { FollowUpReminderModule } from './follow-up-reminder.module';
 
 @Module({
+  imports: [FollowUpReminderModule],
   controllers: [FollowUpsController],
   providers: [FollowUpsService],
-  imports: [FollowUpReminderModule],
 })
 export class FollowUpsModule {}

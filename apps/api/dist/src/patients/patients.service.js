@@ -31,14 +31,32 @@ let PatientsService = class PatientsService {
     }
     async create(data) {
         const organizationId = data.organizationId;
-        const existing = await this.prisma.patient.findFirst({
-            where: {
-                organizationId,
-                OR: [{ email: data.email || 'none' }, { phone: data.phone || 'none' }],
-            },
-        });
-        if (existing) {
-            throw new common_1.ConflictException('Patient with this email or phone already exists in this clinic');
+        const duplicateCriteria = [];
+        if (data.email)
+            duplicateCriteria.push({ email: data.email });
+        if (data.phone)
+            duplicateCriteria.push({ phone: data.phone });
+        if (data.firstName && data.lastName && data.phone) {
+            duplicateCriteria.push({
+                AND: [
+                    { firstName: data.firstName },
+                    { lastName: data.lastName },
+                    { phone: data.phone }
+                ]
+            });
+        }
+        if (duplicateCriteria.length > 0) {
+            const existing = await this.prisma.patient.findFirst({
+                where: {
+                    organizationId,
+                    status: 'ACTIVE',
+                    OR: duplicateCriteria,
+                },
+            });
+            if (existing) {
+                const field = existing.email === data.email ? 'email' : (existing.phone === data.phone ? 'phone' : 'name/phone combination');
+                throw new common_1.ConflictException(`Patient with this ${field} already exists in this clinic`);
+            }
         }
         const count = await this.prisma.patient.count({
             where: { organizationId },

@@ -17,6 +17,7 @@ import { ReviewsPage } from '../pages/reviews';
 import { AnalyticsPage } from '../pages/analytics';
 import { TasksPage } from '../pages/tasks';
 import { SettingsPage } from '../pages/settings';
+import { RootRoute } from './RootRoute';
 
 import { ProtectedRoute } from './layouts/ProtectedRoute';
 
@@ -56,7 +57,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/',
-    element: <ProtectedRoute />,
+    element: <RootRoute />,
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'patients', element: <PatientsPage /> },
@@ -88,4 +89,3 @@ export const router = createBrowserRouter([
     ],
   },
 ]);
-

@@ -16,9 +16,9 @@ let FollowUpsModule = class FollowUpsModule {
 exports.FollowUpsModule = FollowUpsModule;
 exports.FollowUpsModule = FollowUpsModule = __decorate([
     (0, common_1.Module)({
+        imports: [follow_up_reminder_module_1.FollowUpReminderModule],
         controllers: [follow_ups_controller_1.FollowUpsController],
         providers: [follow_ups_service_1.FollowUpsService],
-        imports: [follow_up_reminder_module_1.FollowUpReminderModule],
     })
 ], FollowUpsModule);
 //# sourceMappingURL=follow-ups.module.js.map

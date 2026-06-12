@@ -21,33 +21,41 @@ let AuditInterceptor = class AuditInterceptor {
     intercept(context, next) {
         const request = context.switchToHttp().getRequest();
         const { user, method, url, body } = request;
-        return next.handle().pipe((0, operators_1.tap)((data) => {
+        return next.handle().pipe((0, operators_1.tap)((response) => {
+            const data = response?.data || response;
             if (url.includes('/auth/login') && method === 'POST') {
-                this.auditService.log({
-                    organizationId: data?.user?.organizationId || 'SYSTEM',
-                    userId: data?.user?.id || 'ANONYMOUS',
-                    action: 'LOGIN',
-                    resource: 'auth',
-                    resourceId: data?.user?.id,
-                    afterData: { email: body.email },
-                    ipAddress: request.ip,
-                    userAgent: request.get('user-agent'),
-                });
+                const orgId = data?.user?.organizationId;
+                const actorId = data?.user?.id;
+                if (orgId && orgId.length === 36) {
+                    this.auditService.log({
+                        organizationId: orgId,
+                        userId: actorId && actorId.length === 36 ? actorId : undefined,
+                        action: 'LOGIN',
+                        resource: 'auth',
+                        resourceId: actorId,
+                        afterData: { email: body.email },
+                        ipAddress: request.ip,
+                        userAgent: request.get('user-agent'),
+                    }).catch(err => console.error('Audit logging failed:', err));
+                }
                 return;
             }
             if (!user)
                 return;
             if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
-                this.auditService.log({
-                    organizationId: user.organizationId,
-                    userId: user.id,
-                    action: method,
-                    resource: url.split('/')[3] || 'unknown',
-                    resourceId: data?.id || body?.id || url.split('/')[4],
-                    afterData: body,
-                    ipAddress: request.ip,
-                    userAgent: request.get('user-agent'),
-                });
+                const orgId = user.organizationId;
+                if (orgId && orgId.length === 36) {
+                    this.auditService.log({
+                        organizationId: orgId,
+                        userId: user.id,
+                        action: method,
+                        resource: url.split('/')[3] || 'unknown',
+                        resourceId: data?.id || body?.id || url.split('/')[4],
+                        afterData: body,
+                        ipAddress: request.ip,
+                        userAgent: request.get('user-agent'),
+                    }).catch(err => console.error('Audit logging failed:', err));
+                }
             }
         }));
     }

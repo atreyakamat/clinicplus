@@ -15,10 +15,18 @@ export const ConsultationWorkspace = () => {
     queryFn: () => api.get(`/consultations/${id}`),
   });
 
+  const { data: lastConsultation } = useQuery({
+    queryKey: ['last-consultation', consultation?.patientId],
+    queryFn: () => api.get(`/consultations?patientId=${consultation?.patientId}&limit=1&excludeId=${id}`),
+    enabled: !!consultation?.patientId,
+  });
+
+  const lastVisit = lastConsultation?.[0];
+
   const [formData, setFormData] = useState<any>(null);
 
   React.useEffect(() => {
-    if (consultation) {
+    if (consultation && !formData) {
       setFormData({
         chiefComplaint: consultation.chiefComplaint || '',
         clinicalAssessment: consultation.clinicalAssessment || '',
@@ -30,7 +38,7 @@ export const ConsultationWorkspace = () => {
         diagnoses: consultation.diagnoses || []
       });
     }
-  }, [consultation]);
+  }, [consultation, formData]);
 
   const updateMutation = useMutation({
     mutationFn: (data: any) => api.patch(`/consultations/${id}`, data),
@@ -144,10 +152,30 @@ export const ConsultationWorkspace = () => {
           <Card className="p-5">
             <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
               <Clock size={16} className="text-slate-400" />
-              Recent Visits
+              Last Visit Summary
             </h3>
             <div className="space-y-3">
-              <p className="text-xs text-slate-500 text-center py-4">No previous history available.</p>
+              {lastVisit ? (
+                <div className="space-y-3">
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Chief Complaint</p>
+                    <p className="text-xs text-slate-700 line-clamp-3">{lastVisit.chiefComplaint}</p>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Diagnoses</p>
+                    <div className="flex flex-wrap gap-1">
+                      {lastVisit.diagnoses?.map((d: any) => (
+                        <span key={d.id} className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-md font-medium">{d.diagnosisName}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <Link to={`/consultations/${lastVisit.id}`} target="_blank" className="block text-center text-xs text-[#1FA971] font-medium hover:underline">
+                    View Full History
+                  </Link>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 text-center py-4">No previous history available.</p>
+              )}
             </div>
           </Card>
         </div>

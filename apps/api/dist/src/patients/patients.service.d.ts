@@ -168,12 +168,12 @@ export declare class PatientsService {
             branchId: string;
             patientId: string;
             title: string;
+            uploadedBy: string;
             documentType: string;
             fileUrl: string;
             mimeType: string | null;
             fileSize: number | null;
             uploadedAt: Date;
-            uploadedBy: string;
         })[];
         invoices: ({
             payments: {

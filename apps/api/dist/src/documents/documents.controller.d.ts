@@ -16,12 +16,12 @@ export declare class DocumentsController {
         branchId: string;
         patientId: string;
         title: string;
+        uploadedBy: string;
         documentType: string;
         fileUrl: string;
         mimeType: string | null;
         fileSize: number | null;
         uploadedAt: Date;
-        uploadedBy: string;
     }>;
     create(data: any, req: any): Promise<{
         id: string;
@@ -31,12 +31,12 @@ export declare class DocumentsController {
         branchId: string;
         patientId: string;
         title: string;
+        uploadedBy: string;
         documentType: string;
         fileUrl: string;
         mimeType: string | null;
         fileSize: number | null;
         uploadedAt: Date;
-        uploadedBy: string;
     }>;
     findAll(req: any): Promise<({
         patient: {
@@ -57,12 +57,12 @@ export declare class DocumentsController {
         branchId: string;
         patientId: string;
         title: string;
+        uploadedBy: string;
         documentType: string;
         fileUrl: string;
         mimeType: string | null;
         fileSize: number | null;
         uploadedAt: Date;
-        uploadedBy: string;
     })[]>;
     findOne(id: string, req: any): Promise<{
         patient: {
@@ -106,12 +106,12 @@ export declare class DocumentsController {
         branchId: string;
         patientId: string;
         title: string;
+        uploadedBy: string;
         documentType: string;
         fileUrl: string;
         mimeType: string | null;
         fileSize: number | null;
         uploadedAt: Date;
-        uploadedBy: string;
     }>;
     update(id: string, data: any, req: any): Promise<{
         id: string;
@@ -121,12 +121,12 @@ export declare class DocumentsController {
         branchId: string;
         patientId: string;
         title: string;
+        uploadedBy: string;
         documentType: string;
         fileUrl: string;
         mimeType: string | null;
         fileSize: number | null;
         uploadedAt: Date;
-        uploadedBy: string;
     }>;
     remove(id: string, req: any): Promise<{
         id: string;
@@ -136,11 +136,11 @@ export declare class DocumentsController {
         branchId: string;
         patientId: string;
         title: string;
+        uploadedBy: string;
         documentType: string;
         fileUrl: string;
         mimeType: string | null;
         fileSize: number | null;
         uploadedAt: Date;
-        uploadedBy: string;
     }>;
 }

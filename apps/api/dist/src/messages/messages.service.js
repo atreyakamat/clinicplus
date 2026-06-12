@@ -63,18 +63,23 @@ let MessagesService = class MessagesService {
         if (!patient?.phone) {
             throw new common_1.BadRequestException('Patient phone number not found');
         }
-        const success = await this.smsService.sendSms(patient.phone, content, organizationId, branchId);
-        return this.prisma.message.create({
+        const smsResult = await this.smsService.sendSms(patient.phone, content, organizationId, branchId);
+        const message = await this.prisma.message.create({
             data: {
                 patientId,
                 messageBody: content,
                 channel: 'SMS',
                 direction: 'OUTBOUND',
-                deliveryStatus: success ? 'SENT' : 'FAILED',
+                deliveryStatus: smsResult.success ? 'SENT' : 'FAILED',
                 organizationId,
                 branchId,
             },
         });
+        return {
+            ...message,
+            gatewayMessageId: smsResult.messageId,
+            gatewayError: smsResult.error
+        };
     }
     async getTemplates(organizationId) {
         return this.prisma.template.findMany({

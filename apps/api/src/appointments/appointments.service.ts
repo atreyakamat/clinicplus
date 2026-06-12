@@ -20,6 +20,11 @@ export class AppointmentsService {
     branchId: string,
     createdBy: string,
   ) {
+    // Prevent booking in the past
+    if (new Date(data.scheduledStart) < new Date()) {
+      throw new BadRequestException('Cannot book an appointment in the past');
+    }
+
     // Check if slot is available
     const overlapping = await this.prisma.appointment.findFirst({
       where: {
@@ -27,16 +32,9 @@ export class AppointmentsService {
         organizationId,
         branchId,
         status: { notIn: ['CANCELLED', 'NO_SHOW'] },
-        OR: [
-          {
-            scheduledStart: { lte: data.scheduledStart },
-            scheduledEnd: { gt: data.scheduledStart },
-          },
-          {
-            scheduledStart: { lt: data.scheduledEnd },
-            scheduledEnd: { gte: data.scheduledEnd },
-          },
-        ],
+        // Standard overlapping interval logic: (StartA < EndB) AND (EndA > StartB)
+        scheduledStart: { lt: data.scheduledEnd },
+        scheduledEnd: { gt: data.scheduledStart },
       },
     });
 

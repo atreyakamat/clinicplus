@@ -21,22 +21,17 @@ let AppointmentsService = class AppointmentsService {
         this.auditService = auditService;
     }
     async create(data, organizationId, branchId, createdBy) {
+        if (new Date(data.scheduledStart) < new Date()) {
+            throw new common_1.BadRequestException('Cannot book an appointment in the past');
+        }
         const overlapping = await this.prisma.appointment.findFirst({
             where: {
                 doctorId: data.doctorId,
                 organizationId,
                 branchId,
                 status: { notIn: ['CANCELLED', 'NO_SHOW'] },
-                OR: [
-                    {
-                        scheduledStart: { lte: data.scheduledStart },
-                        scheduledEnd: { gt: data.scheduledStart },
-                    },
-                    {
-                        scheduledStart: { lt: data.scheduledEnd },
-                        scheduledEnd: { gte: data.scheduledEnd },
-                    },
-                ],
+                scheduledStart: { lt: data.scheduledEnd },
+                scheduledEnd: { gt: data.scheduledStart },
             },
         });
         if (overlapping) {

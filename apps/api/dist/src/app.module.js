@@ -40,6 +40,9 @@ const audit_module_1 = require("./common/services/audit.module");
 const audit_interceptor_1 = require("./common/interceptors/audit.interceptor");
 const timeline_interceptor_1 = require("./common/interceptors/timeline.interceptor");
 const health_module_1 = require("./health/health.module");
+const notification_module_1 = require("./notifications/notification.module");
+const task_scheduler_module_1 = require("./tasks/task-scheduler.module");
+const task_scheduler_service_1 = require("./tasks/task-scheduler.service");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -73,10 +76,13 @@ exports.AppModule = AppModule = __decorate([
             feedback_module_1.FeedbackModule,
             timeline_module_1.TimelineModule,
             health_module_1.HealthModule,
+            notification_module_1.NotificationModule,
+            task_scheduler_module_1.TaskSchedulerModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [
             app_service_1.AppService,
+            task_scheduler_service_1.TaskSchedulerService,
             {
                 provide: core_1.APP_INTERCEPTOR,
                 useClass: audit_interceptor_1.AuditInterceptor,
