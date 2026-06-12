@@ -18,11 +18,15 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FileValidationPipe } from '../common/pipes/file-validation.pipe';
+import { MalwareScannerService } from '../security/malware-scanner.service';
 
 @Controller('api/v1/documents')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class DocumentsController {
-  constructor(private readonly documentsService: DocumentsService) {}
+  constructor(
+    private readonly documentsService: DocumentsService,
+    private readonly malwareScannerService: MalwareScannerService,
+  ) {}
 
   @Post('upload')
   @Permissions('documents:create')
@@ -32,6 +36,9 @@ export class DocumentsController {
     @Body() body: { patientId: string; documentType: string; title: string },
     @Request() req,
   ) {
+    // Malware scanning hook
+    await this.malwareScannerService.scanAndValidate(file);
+
     // In a real implementation, upload to Cloudflare R2 / S3
     // For now, simulate storage and record in DB
     const fileUrl = `https://storage.clinicos.com/${req.user.organizationId}/${file.originalname}`;

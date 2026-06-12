@@ -137,4 +137,15 @@ export declare class PrescriptionsService {
         issuedAt: Date;
         consultationId: string | null;
     }>;
+    update(id: string, data: any, organizationId: string, branchId: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        organizationId: string;
+        branchId: string;
+        patientId: string;
+        doctorId: string;
+        issuedAt: Date;
+        consultationId: string | null;
+    }>;
 }

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../app/lib/api';
 import { Button, Card, Input, PageHeader } from '@clinicplus/ui';
-import { Save, CheckCircle, Clock, FileText, Activity, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Save, CheckCircle, Clock, FileText, Activity, AlertCircle, ArrowLeft, Plus, Trash2, Pill } from 'lucide-react';
 
 export const ConsultationWorkspace = () => {
   const { id } = useParams();
@@ -26,7 +26,8 @@ export const ConsultationWorkspace = () => {
         vitals: consultation.vitals?.[0] || {
           height: '', weight: '', temperature: '', pulse: '', 
           bloodPressureSystolic: '', bloodPressureDiastolic: '', spo2: ''
-        }
+        },
+        diagnoses: consultation.diagnoses || []
       });
     }
   }, [consultation]);
@@ -56,6 +57,26 @@ export const ConsultationWorkspace = () => {
       ...prev,
       vitals: { ...prev.vitals, [field]: value === '' ? null : parseFloat(value) || value }
     }));
+  };
+
+  const addDiagnosis = () => {
+    setFormData((prev: any) => ({
+      ...prev,
+      diagnoses: [...prev.diagnoses, { diagnosisName: '', icdCode: '', severity: 'NORMAL' }]
+    }));
+  };
+
+  const removeDiagnosis = (index: number) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      diagnoses: prev.diagnoses.filter((_: any, i: number) => i !== index)
+    }));
+  };
+
+  const handleDiagnosisChange = (index: number, field: string, value: string) => {
+    const newDiagnoses = [...formData.diagnoses];
+    newDiagnoses[index] = { ...newDiagnoses[index], [field]: value };
+    setFormData((prev: any) => ({ ...prev, diagnoses: newDiagnoses }));
   };
 
   return (
@@ -148,6 +169,62 @@ export const ConsultationWorkspace = () => {
                 />
               </div>
 
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                    <Activity size={16} className="text-red-500" />
+                    Diagnoses
+                  </h3>
+                  <Button variant="outline" size="sm" onClick={addDiagnosis} className="gap-1 h-8">
+                    <Plus size={14} /> Add Diagnosis
+                  </Button>
+                </div>
+                
+                <div className="space-y-3">
+                  {formData.diagnoses.map((diag: any, index: number) => (
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100 relative group">
+                      <div className="md:col-span-3">
+                        <Input 
+                          placeholder="ICD Code" 
+                          value={diag.icdCode} 
+                          onChange={(e) => handleDiagnosisChange(index, 'icdCode', e.target.value)} 
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="md:col-span-6">
+                        <Input 
+                          placeholder="Diagnosis Name" 
+                          value={diag.diagnosisName} 
+                          onChange={(e) => handleDiagnosisChange(index, 'diagnosisName', e.target.value)} 
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <select 
+                          className="w-full h-9 rounded-lg border border-slate-200 text-sm outline-none px-2"
+                          value={diag.severity}
+                          onChange={(e) => handleDiagnosisChange(index, 'severity', e.target.value)}
+                        >
+                          <option value="NORMAL">Normal</option>
+                          <option value="MILD">Mild</option>
+                          <option value="MODERATE">Moderate</option>
+                          <option value="SEVERE">Severe</option>
+                          <option value="CHRONIC">Chronic</option>
+                        </select>
+                      </div>
+                      <div className="md:col-span-1 flex items-center justify-center">
+                        <button onClick={() => removeDiagnosis(index)} className="text-slate-400 hover:text-red-500">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {formData.diagnoses.length === 0 && (
+                    <p className="text-xs text-slate-400 italic text-center py-2">No diagnoses added yet.</p>
+                  )}
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                   <FileText size={16} className="text-[#1FA971]" />
@@ -155,10 +232,42 @@ export const ConsultationWorkspace = () => {
                 </h3>
                 <textarea 
                   className="w-full min-h-[150px] p-3 rounded-xl border border-slate-200 text-sm focus:ring-1 focus:ring-[#1FA971] outline-none"
-                  placeholder="Record your clinical findings, diagnosis, and observations..."
+                  placeholder="Record your clinical findings, observations..."
                   value={formData.clinicalAssessment}
                   onChange={(e) => handleInputChange('clinicalAssessment', e.target.value)}
                 />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                    <Pill size={16} className="text-purple-500" />
+                    Prescriptions
+                  </h3>
+                  <Link to={`/prescriptions/new?patientId=${consultation.patientId}&consultationId=${consultation.id}`}>
+                    <Button variant="outline" size="sm" className="gap-1 h-8">
+                      <Plus size={14} /> Add Prescription
+                    </Button>
+                  </Link>
+                </div>
+                
+                <div className="space-y-2">
+                  {consultation.prescriptions?.length > 0 ? (
+                    consultation.prescriptions.map((p: any) => (
+                      <Card key={p.id} className="p-3 bg-slate-50 border-slate-100 flex justify-between items-center">
+                        <div>
+                          <p className="text-sm font-medium text-slate-900">Prescription #{p.id.slice(0,8)}</p>
+                          <p className="text-xs text-slate-500">{p.items.length} items • {new Date(p.issuedAt).toLocaleDateString()}</p>
+                        </div>
+                        <Link to={`/prescriptions/${p.id}`}>
+                          <Button variant="outline" size="sm">View</Button>
+                        </Link>
+                      </Card>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-400 italic text-center py-2">No prescriptions generated for this consultation.</p>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">

@@ -73,6 +73,13 @@ let PrescriptionsService = class PrescriptionsService {
             throw new common_1.NotFoundException('Prescription not found');
         return prescription;
     }
+    async update(id, data, organizationId, branchId) {
+        await this.findOne(id, organizationId, branchId);
+        return this.prisma.prescription.update({
+            where: { id },
+            data,
+        });
+    }
 };
 exports.PrescriptionsService = PrescriptionsService;
 exports.PrescriptionsService = PrescriptionsService = __decorate([

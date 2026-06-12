@@ -21,12 +21,16 @@ const permissions_guard_1 = require("../auth/guards/permissions.guard");
 const permissions_decorator_1 = require("../auth/decorators/permissions.decorator");
 const platform_express_1 = require("@nestjs/platform-express");
 const file_validation_pipe_1 = require("../common/pipes/file-validation.pipe");
+const malware_scanner_service_1 = require("../security/malware-scanner.service");
 let DocumentsController = class DocumentsController {
     documentsService;
-    constructor(documentsService) {
+    malwareScannerService;
+    constructor(documentsService, malwareScannerService) {
         this.documentsService = documentsService;
+        this.malwareScannerService = malwareScannerService;
     }
     async uploadFile(file, body, req) {
+        await this.malwareScannerService.scanAndValidate(file);
         const fileUrl = `https://storage.clinicos.com/${req.user.organizationId}/${file.originalname}`;
         return this.documentsService.create({
             patientId: body.patientId,
@@ -116,6 +120,7 @@ __decorate([
 exports.DocumentsController = DocumentsController = __decorate([
     (0, common_1.Controller)('api/v1/documents'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard, permissions_guard_1.PermissionsGuard),
-    __metadata("design:paramtypes", [documents_service_1.DocumentsService])
+    __metadata("design:paramtypes", [documents_service_1.DocumentsService,
+        malware_scanner_service_1.MalwareScannerService])
 ], DocumentsController);
 //# sourceMappingURL=documents.controller.js.map

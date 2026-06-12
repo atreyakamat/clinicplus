@@ -1,9 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SmsService } from './sms.service';
 
 @Injectable()
 export class MessagesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private smsService: SmsService,
+  ) {}
 
   async findAll(organizationId: string, branchId: string) {
     return this.prisma.message.findMany({
@@ -48,9 +52,50 @@ export class MessagesService {
     });
   }
 
+  async sendSms(
+    patientId: string,
+    content: string,
+    organizationId: string,
+    branchId: string,
+  ) {
+    // Get patient phone number
+    const patient = await this.prisma.patient.findUnique({
+      where: { id: patientId },
+      select: { phone: true },
+    });
+
+    if (!patient?.phone) {
+      throw new BadRequestException('Patient phone number not found');
+    }
+
+    const success = await this.smsService.sendSms(
+      patient.phone,
+      content,
+      organizationId,
+      branchId,
+    );
+
+    return this.prisma.message.create({
+      data: {
+        patientId,
+        messageBody: content,
+        channel: 'SMS',
+        direction: 'OUTBOUND',
+        deliveryStatus: success ? 'SENT' : 'FAILED',
+        organizationId,
+        branchId,
+      },
+    });
+  }
+
   async getTemplates(organizationId: string) {
     return this.prisma.template.findMany({
-      where: { organizationId, channel: 'WHATSAPP' },
+      where: {
+        organizationId,
+        channel: {
+          in: ['WHATSAPP', 'SMS'],
+        },
+      },
     });
   }
 }

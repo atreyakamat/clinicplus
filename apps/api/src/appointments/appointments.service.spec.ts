@@ -92,7 +92,7 @@ describe('AppointmentsService', () => {
         patient: { id: 'pat-1', firstName: 'John', lastName: 'Doe', phone: '1234567890' },
         doctor: { id: 'doc-1', firstName: 'Dr', lastName: 'Smith' },
       };
-      jest.spyOn(prisma.appointment, 'findUnique').mockResolvedValue(appointmentWithRelations as any);
+      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(appointmentWithRelations as any);
 
       const result = await service.findOne('apt-1', mockOrgId, mockBranchId);
 
@@ -344,7 +344,7 @@ describe('AppointmentsService', () => {
         doctorId: 'doc-1',
         patientId: 'pat-1',
       };
-      jest.spyOn(prisma.appointment, 'findUnique').mockResolvedValue(existing as any);
+      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(existing as any);
       jest.spyOn(prisma.appointment, 'update').mockResolvedValue(updated as any);
 
       const result = await service.update(
@@ -365,7 +365,7 @@ describe('AppointmentsService', () => {
     it('should allow transition from CONFIRMED to CHECKED_IN', async () => {
       const existing = { id: 'apt-1', status: 'CONFIRMED' };
       const updated = { id: 'apt-1', status: 'CHECKED_IN' };
-      jest.spyOn(prisma.appointment, 'findUnique').mockResolvedValue(existing as any);
+      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(existing as any);
       jest.spyOn(prisma.appointment, 'update').mockResolvedValue(updated as any);
 
       const result = await service.update('apt-1', { status: 'CHECKED_IN' }, mockOrgId, mockBranchId, mockUserId);
@@ -376,7 +376,7 @@ describe('AppointmentsService', () => {
     it('should allow transition to COMPLETED', async () => {
       const existing = { id: 'apt-1', status: 'IN_PROGRESS' };
       const updated = { id: 'apt-1', status: 'COMPLETED' };
-      jest.spyOn(prisma.appointment, 'findUnique').mockResolvedValue(existing as any);
+      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(existing as any);
       jest.spyOn(prisma.appointment, 'update').mockResolvedValue(updated as any);
 
       const result = await service.update('apt-1', { status: 'COMPLETED' }, mockOrgId, mockBranchId, mockUserId);
@@ -387,7 +387,7 @@ describe('AppointmentsService', () => {
     it('should allow transition to CANCELLED', async () => {
       const existing = { id: 'apt-1', status: 'SCHEDULED' };
       const updated = { id: 'apt-1', status: 'CANCELLED' };
-      jest.spyOn(prisma.appointment, 'findUnique').mockResolvedValue(existing as any);
+      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(existing as any);
       jest.spyOn(prisma.appointment, 'update').mockResolvedValue(updated as any);
 
       const result = await service.update('apt-1', { status: 'CANCELLED' }, mockOrgId, mockBranchId, mockUserId);
@@ -410,7 +410,7 @@ describe('AppointmentsService', () => {
         doctorId: 'doc-1',
         patientId: 'pat-1',
       };
-      jest.spyOn(prisma.appointment, 'findUnique').mockResolvedValue(existing as any);
+      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(existing as any);
       jest.spyOn(prisma.appointment, 'update').mockResolvedValue(cancelled as any);
 
       const result = await service.remove('apt-1', mockOrgId, mockBranchId, mockUserId);
@@ -442,7 +442,7 @@ describe('AppointmentsService', () => {
     });
 
     it('should handle update failure and not log audit on error', async () => {
-      jest.spyOn(prisma.appointment, 'findUnique').mockResolvedValue({ id: 'apt-1' } as any);
+      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue({ id: 'apt-1' } as any);
       jest.spyOn(prisma.appointment, 'update').mockRejectedValue(new Error('Update failed'));
 
       const updateData = { status: 'CONFIRMED' } as any;
@@ -455,7 +455,7 @@ describe('AppointmentsService', () => {
     });
 
     it('should throw NotFoundException when trying to update non-existent appointment', async () => {
-      jest.spyOn(prisma.appointment, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(null);
 
       await expect(
         service.update('apt-nonexistent', { status: 'CONFIRMED' }, mockOrgId, mockBranchId, mockUserId)
@@ -466,7 +466,7 @@ describe('AppointmentsService', () => {
     });
 
     it('should throw NotFoundException when trying to delete non-existent appointment', async () => {
-      jest.spyOn(prisma.appointment, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(null);
 
       await expect(
         service.remove('apt-nonexistent', mockOrgId, mockBranchId, mockUserId)
@@ -504,7 +504,7 @@ describe('AppointmentsService', () => {
     });
 
     it('should log audit with correct user context on update', async () => {
-      jest.spyOn(prisma.appointment, 'findUnique').mockResolvedValue({ id: 'apt-1' } as any);
+      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue({ id: 'apt-1' } as any);
       jest.spyOn(prisma.appointment, 'update').mockResolvedValue({ id: 'apt-1', status: 'CONFIRMED' } as any);
 
       const testUserId = 'user-doctor-456';
@@ -519,7 +519,7 @@ describe('AppointmentsService', () => {
     it('should include before and after data in audit trail', async () => {
       const beforeData = { id: 'apt-1', status: 'SCHEDULED', doctorId: 'doc-1' };
       const afterData = { id: 'apt-1', status: 'CONFIRMED', doctorId: 'doc-1' };
-      jest.spyOn(prisma.appointment, 'findUnique').mockResolvedValue(beforeData as any);
+      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(beforeData as any);
       jest.spyOn(prisma.appointment, 'update').mockResolvedValue(afterData as any);
 
       await service.update('apt-1', { status: 'CONFIRMED' }, mockOrgId, mockBranchId, mockUserId);

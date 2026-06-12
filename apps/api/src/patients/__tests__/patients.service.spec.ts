@@ -109,17 +109,17 @@ describe('PatientsService', () => {
         emergencyContacts: [],
       };
       
-      jest.spyOn(prisma.patient, 'findUnique').mockResolvedValue(expectedPatient as any);
+      jest.spyOn(prisma.patient, 'findFirst').mockResolvedValue(expectedPatient as any);
 
       const result = await service.findOne(VALID_UUID, VALID_ORG_UUID, VALID_BRANCH_UUID);
       expect(result).toEqual(expectedPatient);
-      expect(prisma.patient.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+      expect(prisma.patient.findFirst).toHaveBeenCalledWith(expect.objectContaining({
         where: { id: VALID_UUID, organizationId: VALID_ORG_UUID, branchId: VALID_BRANCH_UUID },
       }));
     });
 
     it('should throw NotFoundException if patient not found', async () => {
-      jest.spyOn(prisma.patient, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.patient, 'findFirst').mockResolvedValue(null);
 
       await expect(service.findOne(VALID_UUID, VALID_ORG_UUID, VALID_BRANCH_UUID)).rejects.toThrow(NotFoundException);
     });

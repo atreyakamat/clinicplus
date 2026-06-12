@@ -12,10 +12,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MessagesService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const sms_service_1 = require("./sms.service");
 let MessagesService = class MessagesService {
     prisma;
-    constructor(prisma) {
+    smsService;
+    constructor(prisma, smsService) {
         this.prisma = prisma;
+        this.smsService = smsService;
     }
     async findAll(organizationId, branchId) {
         return this.prisma.message.findMany({
@@ -52,15 +55,42 @@ let MessagesService = class MessagesService {
             },
         });
     }
+    async sendSms(patientId, content, organizationId, branchId) {
+        const patient = await this.prisma.patient.findUnique({
+            where: { id: patientId },
+            select: { phone: true },
+        });
+        if (!patient?.phone) {
+            throw new common_1.BadRequestException('Patient phone number not found');
+        }
+        const success = await this.smsService.sendSms(patient.phone, content, organizationId, branchId);
+        return this.prisma.message.create({
+            data: {
+                patientId,
+                messageBody: content,
+                channel: 'SMS',
+                direction: 'OUTBOUND',
+                deliveryStatus: success ? 'SENT' : 'FAILED',
+                organizationId,
+                branchId,
+            },
+        });
+    }
     async getTemplates(organizationId) {
         return this.prisma.template.findMany({
-            where: { organizationId, channel: 'WHATSAPP' },
+            where: {
+                organizationId,
+                channel: {
+                    in: ['WHATSAPP', 'SMS'],
+                },
+            },
         });
     }
 };
 exports.MessagesService = MessagesService;
 exports.MessagesService = MessagesService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        sms_service_1.SmsService])
 ], MessagesService);
 //# sourceMappingURL=messages.service.js.map

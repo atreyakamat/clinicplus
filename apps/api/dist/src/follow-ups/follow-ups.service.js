@@ -37,6 +37,19 @@ let FollowUpsService = class FollowUpsService {
             orderBy: { scheduledDate: 'asc' },
         });
     }
+    async findOne(id, organizationId, branchId) {
+        const followUp = await this.prisma.followUp.findFirst({
+            where: { id, organizationId, branchId },
+            include: {
+                patient: { select: { firstName: true, lastName: true, phone: true } },
+                doctor: { select: { firstName: true, lastName: true } },
+                outcomes: true,
+            },
+        });
+        if (!followUp)
+            throw new common_1.NotFoundException('Follow-up not found');
+        return followUp;
+    }
     async addOutcome(followUpId, data, organizationId) {
         const followUp = await this.prisma.followUp.findUnique({
             where: { id: followUpId, organizationId },

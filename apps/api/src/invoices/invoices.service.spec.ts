@@ -22,6 +22,10 @@ describe('InvoicesService', () => {
               create: jest.fn(),
               findMany: jest.fn(),
               findUnique: jest.fn(),
+              findFirst: jest.fn(),
+              update: jest.fn(),
+              delete: jest.fn(),
+              count: jest.fn(),
             },
             payment: {
               create: jest.fn(),
@@ -65,14 +69,14 @@ describe('InvoicesService', () => {
 
   describe('findOne', () => {
     it('should return an invoice if found', async () => {
-      jest.spyOn(prisma.invoice, 'findUnique').mockResolvedValue({ id: 'inv-1' } as any);
+      jest.spyOn(prisma.invoice, 'findFirst').mockResolvedValue({ id: 'inv-1' } as any);
       
       const result = await service.findOne('inv-1', mockOrgId, mockBranchId);
       expect(result.id).toBe('inv-1');
     });
 
     it('should throw NotFoundException if not found', async () => {
-      jest.spyOn(prisma.invoice, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.invoice, 'findFirst').mockResolvedValue(null);
       
       await expect(service.findOne('non-existent', mockOrgId, mockBranchId))
         .rejects.toThrow(NotFoundException);

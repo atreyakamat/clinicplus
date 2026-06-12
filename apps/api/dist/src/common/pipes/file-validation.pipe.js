@@ -14,9 +14,7 @@ let FileValidationPipe = class FileValidationPipe {
         'application/pdf',
         'image/jpeg',
         'image/png',
-        'image/webp',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/dicom',
     ];
     transform(file, metadata) {
         if (!file) {
@@ -26,7 +24,7 @@ let FileValidationPipe = class FileValidationPipe {
             throw new common_1.BadRequestException(`File size exceeds 10MB limit (size: ${(file.size / 1024 / 1024).toFixed(2)}MB)`);
         }
         if (!this.ALLOWED_MIMES.includes(file.mimetype)) {
-            throw new common_1.BadRequestException(`Unsupported file type: ${file.mimetype}`);
+            throw new common_1.BadRequestException(`Unsupported file type: ${file.mimetype}. Allowed types: PDF, JPG, PNG, DICOM`);
         }
         file.originalname = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
         return file;

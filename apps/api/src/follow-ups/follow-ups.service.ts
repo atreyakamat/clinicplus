@@ -27,6 +27,19 @@ export class FollowUpsService {
     });
   }
 
+  async findOne(id: string, organizationId: string, branchId: string) {
+    const followUp = await this.prisma.followUp.findFirst({
+      where: { id, organizationId, branchId },
+      include: {
+        patient: { select: { firstName: true, lastName: true, phone: true } },
+        doctor: { select: { firstName: true, lastName: true } },
+        outcomes: true,
+      },
+    });
+    if (!followUp) throw new NotFoundException('Follow-up not found');
+    return followUp;
+  }
+
   async addOutcome(followUpId: string, data: any, organizationId: string) {
     // Verify followUp belongs to org
     const followUp = await this.prisma.followUp.findUnique({

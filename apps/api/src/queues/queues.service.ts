@@ -40,6 +40,21 @@ export class QueuesService {
     return queue;
   }
 
+  async getQueueStatus(organizationId: string, branchId: string) {
+    return this.prisma.queueEntry.findMany({
+      where: { organizationId, branchId },
+      include: {
+        appointment: {
+          include: {
+            patient: true,
+            doctor: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
+      orderBy: { tokenNumber: 'asc' },
+    });
+  }
+
   async checkIn(
     appointmentId: string,
     organizationId: string,

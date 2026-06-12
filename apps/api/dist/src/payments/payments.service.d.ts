@@ -1,2 +1,193 @@
+import { PrismaService } from '../prisma/prisma.service';
+import { CreatePaymentDto } from './dto/create-payment.dto';
+import { RefundPaymentDto } from './dto/refund-payment.dto';
+import { Decimal } from '@prisma/client/runtime/library';
 export declare class PaymentsService {
+    private prisma;
+    constructor(prisma: PrismaService);
+    createPayment(createPaymentDto: CreatePaymentDto, organizationId: string, branchId: string, userId: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        organizationId: string;
+        branchId: string;
+        amount: Decimal;
+        paymentMethod: string;
+        transactionReference: string | null;
+        paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+        paidAt: Date | null;
+        isRefund: boolean;
+        originalPaymentId: string | null;
+        createdById: string | null;
+        invoiceId: string;
+    }>;
+    findPaymentById(id: string, organizationId: string, branchId: string): Promise<{
+        invoice: {
+            patient: {
+                id: string;
+                email: string | null;
+                phone: string | null;
+                status: import("@prisma/client").$Enums.RecordStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                createdBy: string | null;
+                updatedBy: string | null;
+                deletedAt: Date | null;
+                deletedBy: string | null;
+                deleteReason: string | null;
+                organizationId: string;
+                firstName: string;
+                lastName: string;
+                branchId: string;
+                patientCode: string | null;
+                middleName: string | null;
+                gender: string | null;
+                dateOfBirth: Date | null;
+                bloodGroup: string | null;
+                maritalStatus: string | null;
+                occupation: string | null;
+                abhaNumber: string | null;
+            };
+        } & {
+            id: string;
+            status: import("@prisma/client").$Enums.InvoiceStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            updatedBy: string | null;
+            deletedAt: Date | null;
+            deletedBy: string | null;
+            deleteReason: string | null;
+            organizationId: string;
+            branchId: string;
+            patientId: string;
+            invoiceNumber: string;
+            subtotal: Decimal;
+            discount: Decimal;
+            tax: Decimal;
+            total: Decimal;
+        };
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        organizationId: string;
+        branchId: string;
+        amount: Decimal;
+        paymentMethod: string;
+        transactionReference: string | null;
+        paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+        paidAt: Date | null;
+        isRefund: boolean;
+        originalPaymentId: string | null;
+        createdById: string | null;
+        invoiceId: string;
+    }>;
+    refundPayment(paymentId: string, refundPaymentDto: RefundPaymentDto, organizationId: string, branchId: string, userId: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        organizationId: string;
+        branchId: string;
+        amount: Decimal;
+        paymentMethod: string;
+        transactionReference: string | null;
+        paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+        paidAt: Date | null;
+        isRefund: boolean;
+        originalPaymentId: string | null;
+        createdById: string | null;
+        invoiceId: string;
+    }>;
+    getPaymentsByInvoice(invoiceId: string, organizationId: string, branchId: string): Promise<({
+        createdBy: {
+            id: string;
+            firstName: string;
+            lastName: string;
+        } | null;
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        organizationId: string;
+        branchId: string;
+        amount: Decimal;
+        paymentMethod: string;
+        transactionReference: string | null;
+        paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+        paidAt: Date | null;
+        isRefund: boolean;
+        originalPaymentId: string | null;
+        createdById: string | null;
+        invoiceId: string;
+    })[]>;
+    getPayments(organizationId: string, branchId: string, skip?: number, take?: number): Promise<({
+        createdBy: {
+            id: string;
+            firstName: string;
+            lastName: string;
+        } | null;
+        invoice: {
+            patient: {
+                id: string;
+                email: string | null;
+                phone: string | null;
+                status: import("@prisma/client").$Enums.RecordStatus;
+                createdAt: Date;
+                updatedAt: Date;
+                createdBy: string | null;
+                updatedBy: string | null;
+                deletedAt: Date | null;
+                deletedBy: string | null;
+                deleteReason: string | null;
+                organizationId: string;
+                firstName: string;
+                lastName: string;
+                branchId: string;
+                patientCode: string | null;
+                middleName: string | null;
+                gender: string | null;
+                dateOfBirth: Date | null;
+                bloodGroup: string | null;
+                maritalStatus: string | null;
+                occupation: string | null;
+                abhaNumber: string | null;
+            };
+        } & {
+            id: string;
+            status: import("@prisma/client").$Enums.InvoiceStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            updatedBy: string | null;
+            deletedAt: Date | null;
+            deletedBy: string | null;
+            deleteReason: string | null;
+            organizationId: string;
+            branchId: string;
+            patientId: string;
+            invoiceNumber: string;
+            subtotal: Decimal;
+            discount: Decimal;
+            tax: Decimal;
+            total: Decimal;
+        };
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        organizationId: string;
+        branchId: string;
+        amount: Decimal;
+        paymentMethod: string;
+        transactionReference: string | null;
+        paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+        paidAt: Date | null;
+        isRefund: boolean;
+        originalPaymentId: string | null;
+        createdById: string | null;
+        invoiceId: string;
+    })[]>;
+    countPayments(organizationId: string, branchId: string): Promise<number>;
+    private calculateInvoiceStatus;
 }

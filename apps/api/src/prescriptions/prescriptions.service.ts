@@ -63,4 +63,14 @@ export class PrescriptionsService {
     if (!prescription) throw new NotFoundException('Prescription not found');
     return prescription;
   }
+
+  async update(id: string, data: any, organizationId: string, branchId: string) {
+    // Verify prescription belongs to org/branch
+    await this.findOne(id, organizationId, branchId);
+
+    return this.prisma.prescription.update({
+      where: { id },
+      data,
+    });
+  }
 }

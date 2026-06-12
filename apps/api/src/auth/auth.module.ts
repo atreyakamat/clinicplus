@@ -9,6 +9,7 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { PassportModule } from '@nestjs/passport';
 import { RolesGuard } from './guards/roles.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 
 @Module({
@@ -25,6 +26,12 @@ import { APP_GUARD } from '@nestjs/core';
         },
       }),
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 900, // 15 minutes
+        limit: 5,   // 5 requests
+      },
+    ]),
   ],
   providers: [
     AuthService,

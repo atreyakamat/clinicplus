@@ -51,6 +51,9 @@ export declare class InvoicesController {
             transactionReference: string | null;
             paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
             paidAt: Date | null;
+            isRefund: boolean;
+            originalPaymentId: string | null;
+            createdById: string | null;
             invoiceId: string;
         }[];
         patient: {
@@ -88,6 +91,9 @@ export declare class InvoicesController {
             transactionReference: string | null;
             paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
             paidAt: Date | null;
+            isRefund: boolean;
+            originalPaymentId: string | null;
+            createdById: string | null;
             invoiceId: string;
         }[];
         patient: {
@@ -157,6 +163,9 @@ export declare class InvoicesController {
         transactionReference: string | null;
         paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
         paidAt: Date | null;
+        isRefund: boolean;
+        originalPaymentId: string | null;
+        createdById: string | null;
         invoiceId: string;
     }>;
 }

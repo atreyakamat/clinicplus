@@ -23,8 +23,10 @@ describe('DocumentsService', () => {
               create: jest.fn(),
               findMany: jest.fn(),
               findUnique: jest.fn(),
+              findFirst: jest.fn(),
               update: jest.fn(),
               delete: jest.fn(),
+              count: jest.fn(),
             },
           },
         },
@@ -71,15 +73,15 @@ describe('DocumentsService', () => {
         title: 'Lab Report',
         fileUrl: 'http://test.com/file.pdf',
         patient: { id: 'pat-1', firstName: 'John', lastName: 'Doe' },
-        uploadedByUser: { id: 'user-1', firstName: 'Dr', lastName: 'Smith' }
+        uploader: { id: 'user-1', firstName: 'Dr', lastName: 'Smith' }
       };
 
-      jest.spyOn(prisma.medicalDocument, 'findUnique').mockResolvedValue(document as any);
+      jest.spyOn(prisma.medicalDocument, 'findFirst').mockResolvedValue(document as any);
 
       const result = await service.findOne('doc-1', mockOrgId, mockBranchId);
 
       expect(result.patient.firstName).toBe('John');
-      expect(result.uploadedByUser.firstName).toBe('Dr');
+      expect(result.uploader.firstName).toBe('Dr');
     });
 
     it('should list all documents for organization', async () => {
@@ -204,7 +206,7 @@ describe('DocumentsService', () => {
     });
 
     it('should prevent cross-organization document access', async () => {
-      jest.spyOn(prisma.medicalDocument, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.medicalDocument, 'findFirst').mockResolvedValue(null);
 
       await expect(
         service.findOne('doc-1', mockOrgId2, mockBranchId)
@@ -225,7 +227,7 @@ describe('DocumentsService', () => {
 
   describe('TRANSACTION ROLLBACK: Error Handling', () => {
     it('should throw NotFoundException when document not found', async () => {
-      jest.spyOn(prisma.medicalDocument, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.medicalDocument, 'findFirst').mockResolvedValue(null);
 
       await expect(
         service.findOne('doc-1', mockOrgId, mockBranchId)
@@ -291,14 +293,14 @@ describe('DocumentsService', () => {
     it('should include user details in document retrieval', async () => {
       const document = {
         id: 'doc-1',
-        uploadedByUser: { id: 'user-1', firstName: 'Dr', lastName: 'Smith' }
+        uploader: { id: 'user-1', firstName: 'Dr', lastName: 'Smith' }
       };
 
-      jest.spyOn(prisma.medicalDocument, 'findUnique').mockResolvedValue(document as any);
+      jest.spyOn(prisma.medicalDocument, 'findFirst').mockResolvedValue(document as any);
 
       await service.findOne('doc-1', mockOrgId, mockBranchId);
 
-      expect(prisma.medicalDocument.findUnique).toHaveBeenCalledWith(
+      expect(prisma.medicalDocument.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
           include: expect.any(Object)
         })

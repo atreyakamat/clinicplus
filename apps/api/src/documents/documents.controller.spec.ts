@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
+import { MalwareScannerService } from '../security/malware-scanner.service';
 
 describe('DocumentsController', () => {
   let controller: DocumentsController;
@@ -26,6 +27,12 @@ describe('DocumentsController', () => {
             findOne: jest.fn(),
             update: jest.fn(),
             remove: jest.fn(),
+          },
+        },
+        {
+          provide: MalwareScannerService,
+          useValue: {
+            scanAndValidate: jest.fn().mockResolvedValue(true),
           },
         },
       ],

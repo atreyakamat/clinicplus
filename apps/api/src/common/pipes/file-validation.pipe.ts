@@ -12,9 +12,7 @@ export class FileValidationPipe implements PipeTransform {
     'application/pdf',
     'image/jpeg',
     'image/png',
-    'image/webp',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/dicom',
   ];
 
   transform(file: Express.Multer.File, metadata: ArgumentMetadata) {
@@ -29,7 +27,7 @@ export class FileValidationPipe implements PipeTransform {
     }
 
     if (!this.ALLOWED_MIMES.includes(file.mimetype)) {
-      throw new BadRequestException(`Unsupported file type: ${file.mimetype}`);
+      throw new BadRequestException(`Unsupported file type: ${file.mimetype}. Allowed types: PDF, JPG, PNG, DICOM`);
     }
 
     // Security Hardening: Basic filename sanitization

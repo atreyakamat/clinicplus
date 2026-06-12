@@ -22,7 +22,7 @@ describe('PrescriptionsService', () => {
             prescription: {
               create: jest.fn(),
               findMany: jest.fn(),
-              findUnique: jest.fn(),
+              findFirst: jest.fn(),
               update: jest.fn(),
             },
           },
@@ -86,7 +86,7 @@ describe('PrescriptionsService', () => {
         items: [{ id: 'item-1', medicineName: 'Paracetamol' }]
       };
 
-      jest.spyOn(prisma.prescription, 'findUnique').mockResolvedValue(prescription as any);
+      jest.spyOn(prisma.prescription, 'findFirst').mockResolvedValue(prescription as any);
 
       const result = await service.findOne('pres-1', mockOrgId, mockBranchId);
 
@@ -165,11 +165,11 @@ describe('PrescriptionsService', () => {
         consultation: { id: 'cons-1' }
       };
 
-      jest.spyOn(prisma.prescription, 'findUnique').mockResolvedValue(prescription as any);
+      jest.spyOn(prisma.prescription, 'findFirst').mockResolvedValue(prescription as any);
 
       await service.findOne('pres-1', mockOrgId, mockBranchId);
 
-      expect(prisma.prescription.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+      expect(prisma.prescription.findFirst).toHaveBeenCalledWith(expect.objectContaining({
         include: expect.objectContaining({
           items: true,
           patient: true,
@@ -284,7 +284,7 @@ describe('PrescriptionsService', () => {
     });
 
     it('should prevent cross-organization data access', async () => {
-      jest.spyOn(prisma.prescription, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.prescription, 'findFirst').mockResolvedValue(null);
 
       await expect(
         service.findOne('pres-1', mockOrgId2, mockBranchId)
@@ -321,7 +321,7 @@ describe('PrescriptionsService', () => {
         status: 'ACTIVE'
       };
 
-      jest.spyOn(prisma.prescription, 'findUnique').mockResolvedValue(prescription as any);
+      jest.spyOn(prisma.prescription, 'findFirst').mockResolvedValue(prescription as any);
       jest.spyOn(prisma.prescription, 'update').mockResolvedValue({
         ...prescription,
         status: 'DISPENSED'
@@ -363,13 +363,13 @@ describe('PrescriptionsService', () => {
     });
 
     it('should throw NotFoundException when prescription not found for org/branch', async () => {
-      jest.spyOn(prisma.prescription, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.prescription, 'findFirst').mockResolvedValue(null);
 
       await expect(
         service.findOne('pres-1', mockOrgId, mockBranchId)
       ).rejects.toThrow(NotFoundException);
 
-      expect(prisma.prescription.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+      expect(prisma.prescription.findFirst).toHaveBeenCalledWith(expect.objectContaining({
         where: expect.objectContaining({
           id: 'pres-1',
           organizationId: mockOrgId,
@@ -420,11 +420,11 @@ describe('PrescriptionsService', () => {
         doctor: { id: 'doc-1', firstName: 'Dr', lastName: 'Smith' }
       };
 
-      jest.spyOn(prisma.prescription, 'findUnique').mockResolvedValue(prescription as any);
+      jest.spyOn(prisma.prescription, 'findFirst').mockResolvedValue(prescription as any);
 
       await service.findOne('pres-1', mockOrgId, mockBranchId);
 
-      expect(prisma.prescription.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+      expect(prisma.prescription.findFirst).toHaveBeenCalledWith(expect.objectContaining({
         include: expect.objectContaining({
           patient: true,
           doctor: expect.any(Object)

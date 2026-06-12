@@ -41,6 +41,20 @@ export class MessagesController {
     );
   }
 
+  @Post('sms')
+  @Permissions('messages:create')
+  sendSms(
+    @Body() data: { patientId: string; content: string },
+    @Request() req,
+  ) {
+    return this.messagesService.sendSms(
+      data.patientId,
+      data.content,
+      req.user.organizationId,
+      req.user.branchId,
+    );
+  }
+
   @Get('templates')
   @Permissions('messages:read')
   getTemplates(@Request() req) {

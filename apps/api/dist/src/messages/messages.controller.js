@@ -30,6 +30,9 @@ let MessagesController = class MessagesController {
     sendWhatsApp(data, req) {
         return this.messagesService.sendWhatsApp(data.patientId, data.content, req.user.organizationId, req.user.branchId);
     }
+    sendSms(data, req) {
+        return this.messagesService.sendSms(data.patientId, data.content, req.user.organizationId, req.user.branchId);
+    }
     getTemplates(req) {
         return this.messagesService.getTemplates(req.user.organizationId);
     }
@@ -52,6 +55,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], MessagesController.prototype, "sendWhatsApp", null);
+__decorate([
+    (0, common_1.Post)('sms'),
+    (0, permissions_decorator_1.Permissions)('messages:create'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], MessagesController.prototype, "sendSms", null);
 __decorate([
     (0, common_1.Get)('templates'),
     (0, permissions_decorator_1.Permissions)('messages:read'),

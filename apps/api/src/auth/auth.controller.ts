@@ -12,12 +12,14 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { ThrottlerGuard } from '@nestjs/throttler';
 
 @Controller('api/v1/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
+  @UseGuards(ThrottlerGuard)
   async login(
     @Body() loginDto: LoginDto,
     @Ip() ip: string,

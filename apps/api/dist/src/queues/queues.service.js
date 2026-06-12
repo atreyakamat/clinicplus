@@ -47,6 +47,20 @@ let QueuesService = class QueuesService {
         }
         return queue;
     }
+    async getQueueStatus(organizationId, branchId) {
+        return this.prisma.queueEntry.findMany({
+            where: { organizationId, branchId },
+            include: {
+                appointment: {
+                    include: {
+                        patient: true,
+                        doctor: { select: { firstName: true, lastName: true } },
+                    },
+                },
+            },
+            orderBy: { tokenNumber: 'asc' },
+        });
+    }
     async checkIn(appointmentId, organizationId, branchId) {
         const queue = await this.getLiveQueue(organizationId, branchId);
         const lastEntry = await this.prisma.queueEntry.findFirst({

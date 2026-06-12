@@ -16,6 +16,7 @@ const config_1 = require("@nestjs/config");
 const jwt_strategy_1 = require("./strategies/jwt.strategy");
 const local_strategy_1 = require("./strategies/local.strategy");
 const passport_1 = require("@nestjs/passport");
+const throttler_1 = require("@nestjs/throttler");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -34,6 +35,12 @@ exports.AuthModule = AuthModule = __decorate([
                     },
                 }),
             }),
+            throttler_1.ThrottlerModule.forRoot([
+                {
+                    ttl: 900,
+                    limit: 5,
+                },
+            ]),
         ],
         providers: [
             auth_service_1.AuthService,

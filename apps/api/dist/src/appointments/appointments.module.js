@@ -10,6 +10,7 @@ exports.AppointmentsModule = void 0;
 const common_1 = require("@nestjs/common");
 const appointments_controller_1 = require("./appointments.controller");
 const appointments_service_1 = require("./appointments.service");
+const appointment_reminder_module_1 = require("./appointment-reminder.module");
 let AppointmentsModule = class AppointmentsModule {
 };
 exports.AppointmentsModule = AppointmentsModule;
@@ -17,6 +18,7 @@ exports.AppointmentsModule = AppointmentsModule = __decorate([
     (0, common_1.Module)({
         controllers: [appointments_controller_1.AppointmentsController],
         providers: [appointments_service_1.AppointmentsService],
+        imports: [appointment_reminder_module_1.AppointmentReminderModule],
     })
 ], AppointmentsModule);
 //# sourceMappingURL=appointments.module.js.map

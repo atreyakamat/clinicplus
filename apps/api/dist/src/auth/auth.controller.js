@@ -18,6 +18,7 @@ const auth_service_1 = require("./auth.service");
 const login_dto_1 = require("./dto/login.dto");
 const register_dto_1 = require("./dto/register.dto");
 const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
+const throttler_1 = require("@nestjs/throttler");
 let AuthController = class AuthController {
     authService;
     constructor(authService) {
@@ -42,6 +43,7 @@ let AuthController = class AuthController {
 exports.AuthController = AuthController;
 __decorate([
     (0, common_1.Post)('login'),
+    (0, common_1.UseGuards)(throttler_1.ThrottlerGuard),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Ip)()),
     __param(2, (0, common_1.Headers)('user-agent')),

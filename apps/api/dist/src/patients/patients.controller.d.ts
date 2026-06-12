@@ -189,12 +189,12 @@ export declare class PatientsController {
             branchId: string;
             patientId: string;
             title: string;
-            uploadedBy: string;
             documentType: string;
             fileUrl: string;
             mimeType: string | null;
             fileSize: number | null;
             uploadedAt: Date;
+            uploadedBy: string;
         })[];
         invoices: ({
             payments: {
@@ -208,6 +208,9 @@ export declare class PatientsController {
                 transactionReference: string | null;
                 paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
                 paidAt: Date | null;
+                isRefund: boolean;
+                originalPaymentId: string | null;
+                createdById: string | null;
                 invoiceId: string;
             }[];
             items: {

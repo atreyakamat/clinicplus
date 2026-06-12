@@ -18,16 +18,24 @@ describe('ConsultationsService', () => {
         {
           provide: PrismaService,
           useValue: {
-            $transaction: jest.fn().mockImplementation((cb) => cb({
-              consultation: { update: jest.fn().mockResolvedValue({ id: 'cons-1', organizationId: mockOrgId, branchId: mockBranchId, status: 'COMPLETED' }) },
-              vital: { upsert: jest.fn().mockResolvedValue({}) },
-              diagnosis: { deleteMany: jest.fn().mockResolvedValue({}), createMany: jest.fn().mockResolvedValue({}) },
-            })),
+            $transaction: jest.fn().mockImplementation((cb) => {
+              if (typeof cb === 'function') {
+                return cb({
+                  consultation: { update: jest.fn().mockResolvedValue({ id: 'cons-1', organizationId: mockOrgId, branchId: mockBranchId, status: 'COMPLETED' }) },
+                  vital: { upsert: jest.fn().mockResolvedValue({}) },
+                  diagnosis: { deleteMany: jest.fn().mockResolvedValue({}), createMany: jest.fn().mockResolvedValue({}) },
+                });
+              }
+              return Promise.resolve();
+            }),
             consultation: {
               create: jest.fn(),
               findMany: jest.fn(),
               findUnique: jest.fn(),
+              findFirst: jest.fn(),
               update: jest.fn(),
+              delete: jest.fn(),
+              count: jest.fn(),
             },
           },
         },
@@ -69,7 +77,7 @@ describe('ConsultationsService', () => {
         followUps: [{ id: 'fu-1', followUpDate: new Date() }],
       };
 
-      jest.spyOn(prisma.consultation, 'findUnique').mockResolvedValue(consultation as any);
+      jest.spyOn(prisma.consultation, 'findFirst').mockResolvedValue(consultation as any);
 
       const result = await service.findOne('cons-1', mockOrgId, mockBranchId);
 
@@ -147,7 +155,7 @@ describe('ConsultationsService', () => {
         ],
       };
 
-      jest.spyOn(prisma.consultation, 'findUnique').mockResolvedValue(consultation as any);
+      jest.spyOn(prisma.consultation, 'findFirst').mockResolvedValue(consultation as any);
 
       const result = await service.findOne('cons-1', mockOrgId, mockBranchId);
 
@@ -165,11 +173,11 @@ describe('ConsultationsService', () => {
         doctor: { firstName: 'Dr', lastName: 'Smith' },
       };
 
-      jest.spyOn(prisma.consultation, 'findUnique').mockResolvedValue(consultation as any);
+      jest.spyOn(prisma.consultation, 'findFirst').mockResolvedValue(consultation as any);
 
       await service.findOne('cons-1', mockOrgId, mockBranchId);
 
-      expect(prisma.consultation.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+      expect(prisma.consultation.findFirst).toHaveBeenCalledWith(expect.objectContaining({
         include: expect.objectContaining({
           patient: true,
           diagnoses: true,
@@ -188,7 +196,7 @@ describe('ConsultationsService', () => {
         ]
       };
 
-      jest.spyOn(prisma.consultation, 'findUnique').mockResolvedValue(consultation as any);
+      jest.spyOn(prisma.consultation, 'findFirst').mockResolvedValue(consultation as any);
 
       const result = await service.findOne('cons-1', mockOrgId, mockBranchId);
 
@@ -213,7 +221,7 @@ describe('ConsultationsService', () => {
     });
 
     it('should prevent cross-organization access', async () => {
-      jest.spyOn(prisma.consultation, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.consultation, 'findFirst').mockResolvedValue(null);
 
       await expect(
         service.findOne('cons-1', mockOrgId2, mockBranchId)
@@ -275,7 +283,7 @@ describe('ConsultationsService', () => {
 
   describe('TRANSACTION ROLLBACK: Error Handling', () => {
     it('should throw NotFoundException when consultation not found', async () => {
-      jest.spyOn(prisma.consultation, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.consultation, 'findFirst').mockResolvedValue(null);
 
       await expect(
         service.findOne('cons-1', mockOrgId, mockBranchId)
@@ -321,11 +329,11 @@ describe('ConsultationsService', () => {
         doctor: { firstName: 'Dr', lastName: 'Smith' },
       };
 
-      jest.spyOn(prisma.consultation, 'findUnique').mockResolvedValue(consultation as any);
+      jest.spyOn(prisma.consultation, 'findFirst').mockResolvedValue(consultation as any);
 
       await service.findOne('cons-1', mockOrgId, mockBranchId);
 
-      expect(prisma.consultation.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+      expect(prisma.consultation.findFirst).toHaveBeenCalledWith(expect.objectContaining({
         include: expect.objectContaining({
           patient: true,
           doctor: expect.any(Object)
@@ -335,7 +343,6 @@ describe('ConsultationsService', () => {
 
     it('should verify organization context during update', async () => {
       jest.spyOn(service, 'findOne').mockResolvedValue({ id: 'cons-1' } as any);
-      jest.spyOn(prisma, '$transaction').mockResolvedValue({ id: 'cons-1' } as any);
 
       await service.update('cons-1', { status: 'COMPLETED' }, mockOrgId, mockBranchId);
 

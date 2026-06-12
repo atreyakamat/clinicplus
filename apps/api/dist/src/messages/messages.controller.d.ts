@@ -4,14 +4,12 @@ export declare class MessagesController {
     constructor(messagesService: MessagesService);
     findAll(req: any): Promise<({
         patient: {
-            phone: string | null;
             firstName: string;
             lastName: string;
+            phone: string | null;
         };
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
         patientId: string;
@@ -20,14 +18,14 @@ export declare class MessagesController {
         messageBody: string;
         deliveryStatus: string | null;
         sentAt: Date;
+        createdAt: Date;
+        updatedAt: Date;
     })[]>;
     sendWhatsApp(data: {
         patientId: string;
         content: string;
     }, req: any): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
         patientId: string;
@@ -36,15 +34,33 @@ export declare class MessagesController {
         messageBody: string;
         deliveryStatus: string | null;
         sentAt: Date;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    sendSms(data: {
+        patientId: string;
+        content: string;
+    }, req: any): Promise<{
+        id: string;
+        organizationId: string;
+        branchId: string;
+        patientId: string;
+        channel: import("@prisma/client").$Enums.MessageChannel;
+        direction: import("@prisma/client").$Enums.MessageDirection;
+        messageBody: string;
+        deliveryStatus: string | null;
+        sentAt: Date;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     getTemplates(req: any): Promise<{
         id: string;
-        name: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string | null;
         channel: import("@prisma/client").$Enums.TemplateChannel;
+        createdAt: Date;
+        updatedAt: Date;
+        name: string;
         templateContent: string;
     }[]>;
 }

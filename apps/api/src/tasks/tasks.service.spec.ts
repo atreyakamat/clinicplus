@@ -23,6 +23,7 @@ describe('TasksService', () => {
               create: jest.fn(),
               findMany: jest.fn(),
               findUnique: jest.fn(),
+              findFirst: jest.fn(),
               update: jest.fn(),
             },
           },
@@ -67,7 +68,7 @@ describe('TasksService', () => {
         createdByUser: { id: 'user-1', firstName: 'Manager', lastName: 'Admin' }
       };
 
-      jest.spyOn(prisma.task, 'findUnique').mockResolvedValue(task as any);
+      jest.spyOn(prisma.task, 'findFirst').mockResolvedValue(task as any);
 
       const result = await service.findOne('task-1', mockOrgId, mockBranchId);
 
@@ -221,7 +222,7 @@ describe('TasksService', () => {
     });
 
     it('should prevent cross-organization task access', async () => {
-      jest.spyOn(prisma.task, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.task, 'findFirst').mockResolvedValue(null);
 
       await expect(
         service.findOne('task-1', mockOrgId2, mockBranchId)
@@ -359,11 +360,11 @@ describe('TasksService', () => {
         assignedToUser: { id: 'user-2' }
       };
 
-      jest.spyOn(prisma.task, 'findUnique').mockResolvedValue(task as any);
+      jest.spyOn(prisma.task, 'findFirst').mockResolvedValue(task as any);
 
       await service.findOne('task-1', mockOrgId, mockBranchId);
 
-      expect(prisma.task.findUnique).toHaveBeenCalledWith(
+      expect(prisma.task.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
           include: expect.any(Object)
         })

@@ -11,12 +11,12 @@ export declare class DocumentsService {
         branchId: string;
         patientId: string;
         title: string;
-        uploadedBy: string;
         documentType: string;
         fileUrl: string;
         mimeType: string | null;
         fileSize: number | null;
         uploadedAt: Date;
+        uploadedBy: string;
     }>;
     findAll(organizationId: string, branchId: string): Promise<({
         patient: {
@@ -37,12 +37,12 @@ export declare class DocumentsService {
         branchId: string;
         patientId: string;
         title: string;
-        uploadedBy: string;
         documentType: string;
         fileUrl: string;
         mimeType: string | null;
         fileSize: number | null;
         uploadedAt: Date;
+        uploadedBy: string;
     })[]>;
     findOne(id: string, organizationId: string, branchId: string): Promise<{
         patient: {
@@ -86,12 +86,12 @@ export declare class DocumentsService {
         branchId: string;
         patientId: string;
         title: string;
-        uploadedBy: string;
         documentType: string;
         fileUrl: string;
         mimeType: string | null;
         fileSize: number | null;
         uploadedAt: Date;
+        uploadedBy: string;
     }>;
     update(id: string, data: Prisma.MedicalDocumentUpdateInput, organizationId: string, branchId: string): Promise<{
         id: string;
@@ -101,12 +101,12 @@ export declare class DocumentsService {
         branchId: string;
         patientId: string;
         title: string;
-        uploadedBy: string;
         documentType: string;
         fileUrl: string;
         mimeType: string | null;
         fileSize: number | null;
         uploadedAt: Date;
+        uploadedBy: string;
     }>;
     remove(id: string, organizationId: string, branchId: string): Promise<{
         id: string;
@@ -116,11 +116,11 @@ export declare class DocumentsService {
         branchId: string;
         patientId: string;
         title: string;
-        uploadedBy: string;
         documentType: string;
         fileUrl: string;
         mimeType: string | null;
         fileSize: number | null;
         uploadedAt: Date;
+        uploadedBy: string;
     }>;
 }
