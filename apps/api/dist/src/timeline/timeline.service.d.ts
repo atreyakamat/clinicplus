@@ -14,9 +14,9 @@ export declare class TimelineService {
     }, tx?: any): Promise<any>;
     findAllByPatient(patientId: string, organizationId: string): Promise<{
         id: string;
+        organizationId: string;
         createdAt: Date;
         createdBy: string | null;
-        organizationId: string;
         patientId: string;
         description: string | null;
         eventType: string;

@@ -6,7 +6,8 @@ export declare class UsersController {
         roles: ({
             role: {
                 id: string;
-                name: string;
+                organizationId: string;
+                branchId: string | null;
                 createdAt: Date;
                 updatedAt: Date;
                 createdBy: string | null;
@@ -14,23 +15,26 @@ export declare class UsersController {
                 deletedAt: Date | null;
                 deletedBy: string | null;
                 deleteReason: string | null;
-                organizationId: string;
-                branchId: string | null;
+                name: string;
                 description: string | null;
             };
         } & {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             organizationId: string;
             branchId: string;
+            createdAt: Date;
+            updatedAt: Date;
             userId: string;
             roleId: string;
         })[];
     } & {
         id: string;
-        email: string;
+        organizationId: string;
+        branchId: string;
+        firstName: string;
+        lastName: string;
         phone: string | null;
+        email: string;
         status: import("@prisma/client").$Enums.RecordStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -39,10 +43,6 @@ export declare class UsersController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
-        firstName: string;
-        lastName: string;
         avatarUrl: string | null;
         passwordHash: string | null;
         lastLoginAt: Date | null;
@@ -58,7 +58,8 @@ export declare class UsersController {
         roles: ({
             role: {
                 id: string;
-                name: string;
+                organizationId: string;
+                branchId: string | null;
                 createdAt: Date;
                 updatedAt: Date;
                 createdBy: string | null;
@@ -66,23 +67,26 @@ export declare class UsersController {
                 deletedAt: Date | null;
                 deletedBy: string | null;
                 deleteReason: string | null;
-                organizationId: string;
-                branchId: string | null;
+                name: string;
                 description: string | null;
             };
         } & {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             organizationId: string;
             branchId: string;
+            createdAt: Date;
+            updatedAt: Date;
             userId: string;
             roleId: string;
         })[];
     } & {
         id: string;
-        email: string;
+        organizationId: string;
+        branchId: string;
+        firstName: string;
+        lastName: string;
         phone: string | null;
+        email: string;
         status: import("@prisma/client").$Enums.RecordStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -91,10 +95,6 @@ export declare class UsersController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
-        firstName: string;
-        lastName: string;
         avatarUrl: string | null;
         passwordHash: string | null;
         lastLoginAt: Date | null;
@@ -108,8 +108,12 @@ export declare class UsersController {
     }) | null>;
     update(id: string, data: any, req: any): Promise<{
         id: string;
-        email: string;
+        organizationId: string;
+        branchId: string;
+        firstName: string;
+        lastName: string;
         phone: string | null;
+        email: string;
         status: import("@prisma/client").$Enums.RecordStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -118,10 +122,6 @@ export declare class UsersController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
-        firstName: string;
-        lastName: string;
         avatarUrl: string | null;
         passwordHash: string | null;
         lastLoginAt: Date | null;

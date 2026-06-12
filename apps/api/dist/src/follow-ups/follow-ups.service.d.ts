@@ -4,11 +4,11 @@ export declare class FollowUpsService {
     constructor(prisma: PrismaService);
     create(data: any): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: string | null;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
-        branchId: string;
         notes: string | null;
         patientId: string;
         doctorId: string;
@@ -17,9 +17,9 @@ export declare class FollowUpsService {
     }>;
     findAll(organizationId: string, branchId: string): Promise<({
         patient: {
-            phone: string | null;
             firstName: string;
             lastName: string;
+            phone: string | null;
         };
         doctor: {
             firstName: string;
@@ -27,10 +27,10 @@ export declare class FollowUpsService {
         };
         outcomes: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             organizationId: string;
             branchId: string;
+            createdAt: Date;
+            updatedAt: Date;
             outcomeType: string;
             remarks: string | null;
             recordedAt: Date;
@@ -38,11 +38,11 @@ export declare class FollowUpsService {
         }[];
     } & {
         id: string;
+        organizationId: string;
+        branchId: string;
         status: string | null;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
-        branchId: string;
         notes: string | null;
         patientId: string;
         doctorId: string;
@@ -51,9 +51,9 @@ export declare class FollowUpsService {
     })[]>;
     findOne(id: string, organizationId: string, branchId: string): Promise<{
         patient: {
-            phone: string | null;
             firstName: string;
             lastName: string;
+            phone: string | null;
         };
         doctor: {
             firstName: string;
@@ -61,10 +61,10 @@ export declare class FollowUpsService {
         };
         outcomes: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             organizationId: string;
             branchId: string;
+            createdAt: Date;
+            updatedAt: Date;
             outcomeType: string;
             remarks: string | null;
             recordedAt: Date;
@@ -72,11 +72,11 @@ export declare class FollowUpsService {
         }[];
     } & {
         id: string;
+        organizationId: string;
+        branchId: string;
         status: string | null;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
-        branchId: string;
         notes: string | null;
         patientId: string;
         doctorId: string;
@@ -85,10 +85,10 @@ export declare class FollowUpsService {
     }>;
     addOutcome(followUpId: string, data: any, organizationId: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
         outcomeType: string;
         remarks: string | null;
         recordedAt: Date;
@@ -96,11 +96,11 @@ export declare class FollowUpsService {
     }>;
     updateStatus(id: string, status: string, organizationId: string): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: string | null;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
-        branchId: string;
         notes: string | null;
         patientId: string;
         doctorId: string;

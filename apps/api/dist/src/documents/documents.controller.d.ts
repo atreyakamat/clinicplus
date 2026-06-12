@@ -10,10 +10,10 @@ export declare class DocumentsController {
         title: string;
     }, req: any): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
         patientId: string;
         title: string;
         uploadedBy: string;
@@ -25,10 +25,10 @@ export declare class DocumentsController {
     }>;
     create(data: any, req: any): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
         patientId: string;
         title: string;
         uploadedBy: string;
@@ -51,10 +51,10 @@ export declare class DocumentsController {
         };
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
         patientId: string;
         title: string;
         uploadedBy: string;
@@ -72,11 +72,11 @@ export declare class DocumentsController {
         };
         labReports: {
             id: string;
+            organizationId: string;
+            branchId: string;
             status: string | null;
             createdAt: Date;
             updatedAt: Date;
-            organizationId: string;
-            branchId: string;
             patientId: string;
             consultationId: string | null;
             documentId: string;
@@ -84,10 +84,10 @@ export declare class DocumentsController {
         }[];
         imagingReports: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             organizationId: string;
             branchId: string;
+            createdAt: Date;
+            updatedAt: Date;
             patientId: string;
             consultationId: string | null;
             documentId: string;
@@ -100,10 +100,10 @@ export declare class DocumentsController {
         };
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
         patientId: string;
         title: string;
         uploadedBy: string;
@@ -115,10 +115,10 @@ export declare class DocumentsController {
     }>;
     update(id: string, data: any, req: any): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
         patientId: string;
         title: string;
         uploadedBy: string;
@@ -130,10 +130,10 @@ export declare class DocumentsController {
     }>;
     remove(id: string, req: any): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
         patientId: string;
         title: string;
         uploadedBy: string;

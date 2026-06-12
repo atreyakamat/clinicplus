@@ -74,8 +74,8 @@ export class FollowUpReminderService {
           await this.messagesService.sendWhatsApp(
             followUp.patient.id,
             messageContent,
-            /* organizationId and branchId would come from followUp */ '',
-            '',
+            followUp.organizationId,
+            followUp.branchId,
           );
           this.logger.log(
             `Follow-up reminder sent via WhatsApp for follow-up ${followUp.id}`,
@@ -89,8 +89,8 @@ export class FollowUpReminderService {
             await this.messagesService.sendSms(
               followUp.patient.id,
               messageContent,
-              /* organizationId and branchId would come from followUp */ '',
-              '',
+              followUp.organizationId,
+              followUp.branchId,
             );
             this.logger.log(
               `Follow-up reminder sent via SMS for follow-up ${followUp.id}`,

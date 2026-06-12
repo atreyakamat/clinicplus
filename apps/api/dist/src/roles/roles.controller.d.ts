@@ -4,7 +4,8 @@ export declare class RolesController {
     constructor(rolesService: RolesService);
     findAll(req: any): Promise<{
         id: string;
-        name: string;
+        organizationId: string;
+        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
@@ -12,13 +13,13 @@ export declare class RolesController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string | null;
+        name: string;
         description: string | null;
     }[]>;
     findOne(id: string): Promise<{
         id: string;
-        name: string;
+        organizationId: string;
+        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
@@ -26,13 +27,13 @@ export declare class RolesController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string | null;
+        name: string;
         description: string | null;
     } | null>;
     create(data: any, req: any): Promise<{
         id: string;
-        name: string;
+        organizationId: string;
+        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
@@ -40,13 +41,13 @@ export declare class RolesController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string | null;
+        name: string;
         description: string | null;
     }>;
     update(id: string, data: any): Promise<{
         id: string;
-        name: string;
+        organizationId: string;
+        branchId: string | null;
         createdAt: Date;
         updatedAt: Date;
         createdBy: string | null;
@@ -54,8 +55,7 @@ export declare class RolesController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string | null;
+        name: string;
         description: string | null;
     }>;
 }

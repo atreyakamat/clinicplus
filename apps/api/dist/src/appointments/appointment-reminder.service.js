@@ -60,13 +60,13 @@ let AppointmentReminderService = AppointmentReminderService_1 = class Appointmen
                 const appointmentTime = appointment.scheduledStart.toLocaleString();
                 const messageContent = `Reminder: You have an appointment with ${doctorName} on ${appointmentTime}. Patient: ${patientName}`;
                 try {
-                    await this.messagesService.sendWhatsApp(appointment.patient.id, messageContent, '', '');
+                    await this.messagesService.sendWhatsApp(appointment.patient.id, messageContent, appointment.organizationId, appointment.branchId);
                     this.logger.log(`Appointment reminder sent via WhatsApp for appointment ${appointment.id}`);
                 }
                 catch (whatsappError) {
                     this.logger.warn(`WhatsApp failed for appointment ${appointment.id}, trying SMS: ${whatsappError.message}`);
                     try {
-                        await this.messagesService.sendSms(appointment.patient.id, messageContent, '', '');
+                        await this.messagesService.sendSms(appointment.patient.id, messageContent, appointment.organizationId, appointment.branchId);
                         this.logger.log(`Appointment reminder sent via SMS for appointment ${appointment.id}`);
                     }
                     catch (smsError) {

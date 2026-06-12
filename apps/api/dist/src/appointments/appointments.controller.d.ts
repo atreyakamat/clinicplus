@@ -4,6 +4,8 @@ export declare class AppointmentsController {
     constructor(appointmentsService: AppointmentsService);
     create(data: any, req: any): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.AppointmentStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -12,8 +14,6 @@ export declare class AppointmentsController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         notes: string | null;
         patientId: string;
         doctorId: string;
@@ -26,9 +26,9 @@ export declare class AppointmentsController {
     findAll(req: any, date?: string): Promise<({
         patient: {
             id: string;
-            phone: string | null;
             firstName: string;
             lastName: string;
+            phone: string | null;
         };
         doctor: {
             id: string;
@@ -37,6 +37,8 @@ export declare class AppointmentsController {
         };
     } & {
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.AppointmentStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -45,8 +47,6 @@ export declare class AppointmentsController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         notes: string | null;
         patientId: string;
         doctorId: string;
@@ -58,8 +58,20 @@ export declare class AppointmentsController {
     findOne(id: string, req: any): Promise<{
         patient: {
             id: string;
-            email: string | null;
+            organizationId: string;
+            branchId: string;
+            patientCode: string | null;
+            firstName: string;
+            middleName: string | null;
+            lastName: string;
+            gender: string | null;
+            dateOfBirth: Date | null;
             phone: string | null;
+            email: string | null;
+            bloodGroup: string | null;
+            maritalStatus: string | null;
+            occupation: string | null;
+            abhaNumber: string | null;
             status: import("@prisma/client").$Enums.RecordStatus;
             createdAt: Date;
             updatedAt: Date;
@@ -68,18 +80,6 @@ export declare class AppointmentsController {
             deletedAt: Date | null;
             deletedBy: string | null;
             deleteReason: string | null;
-            organizationId: string;
-            branchId: string;
-            firstName: string;
-            lastName: string;
-            patientCode: string | null;
-            middleName: string | null;
-            gender: string | null;
-            dateOfBirth: Date | null;
-            bloodGroup: string | null;
-            maritalStatus: string | null;
-            occupation: string | null;
-            abhaNumber: string | null;
         };
         doctor: {
             id: string;
@@ -88,6 +88,8 @@ export declare class AppointmentsController {
         };
     } & {
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.AppointmentStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -96,8 +98,6 @@ export declare class AppointmentsController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         notes: string | null;
         patientId: string;
         doctorId: string;
@@ -108,6 +108,8 @@ export declare class AppointmentsController {
     }>;
     update(id: string, data: any, req: any): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.AppointmentStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -116,8 +118,6 @@ export declare class AppointmentsController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         notes: string | null;
         patientId: string;
         doctorId: string;
@@ -128,6 +128,8 @@ export declare class AppointmentsController {
     }>;
     remove(id: string, req: any): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.AppointmentStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -136,8 +138,6 @@ export declare class AppointmentsController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         notes: string | null;
         patientId: string;
         doctorId: string;

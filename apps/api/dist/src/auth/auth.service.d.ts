@@ -21,11 +21,11 @@ export declare class AuthService {
     }>;
     logout(sessionId: string): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.RecordStatus;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
-        branchId: string;
         userId: string;
         ipAddress: string | null;
         deviceName: string | null;

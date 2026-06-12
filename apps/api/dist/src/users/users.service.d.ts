@@ -8,26 +8,27 @@ export declare class UsersService {
                 rolePermissions: ({
                     permission: {
                         id: string;
-                        createdAt: Date;
-                        updatedAt: Date;
                         organizationId: string | null;
                         branchId: string | null;
+                        createdAt: Date;
+                        updatedAt: Date;
                         module: string;
                         action: string;
                         description: string | null;
                     };
                 } & {
                     id: string;
-                    createdAt: Date;
-                    updatedAt: Date;
                     organizationId: string;
                     branchId: string | null;
+                    createdAt: Date;
+                    updatedAt: Date;
                     roleId: string;
                     permissionId: string;
                 })[];
             } & {
                 id: string;
-                name: string;
+                organizationId: string;
+                branchId: string | null;
                 createdAt: Date;
                 updatedAt: Date;
                 createdBy: string | null;
@@ -35,23 +36,26 @@ export declare class UsersService {
                 deletedAt: Date | null;
                 deletedBy: string | null;
                 deleteReason: string | null;
-                organizationId: string;
-                branchId: string | null;
+                name: string;
                 description: string | null;
             };
         } & {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             organizationId: string;
             branchId: string;
+            createdAt: Date;
+            updatedAt: Date;
             userId: string;
             roleId: string;
         })[];
     } & {
         id: string;
-        email: string;
+        organizationId: string;
+        branchId: string;
+        firstName: string;
+        lastName: string;
         phone: string | null;
+        email: string;
         status: import("@prisma/client").$Enums.RecordStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -60,10 +64,6 @@ export declare class UsersService {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
-        firstName: string;
-        lastName: string;
         avatarUrl: string | null;
         passwordHash: string | null;
         lastLoginAt: Date | null;
@@ -79,7 +79,8 @@ export declare class UsersService {
         roles: ({
             role: {
                 id: string;
-                name: string;
+                organizationId: string;
+                branchId: string | null;
                 createdAt: Date;
                 updatedAt: Date;
                 createdBy: string | null;
@@ -87,23 +88,26 @@ export declare class UsersService {
                 deletedAt: Date | null;
                 deletedBy: string | null;
                 deleteReason: string | null;
-                organizationId: string;
-                branchId: string | null;
+                name: string;
                 description: string | null;
             };
         } & {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             organizationId: string;
             branchId: string;
+            createdAt: Date;
+            updatedAt: Date;
             userId: string;
             roleId: string;
         })[];
     } & {
         id: string;
-        email: string;
+        organizationId: string;
+        branchId: string;
+        firstName: string;
+        lastName: string;
         phone: string | null;
+        email: string;
         status: import("@prisma/client").$Enums.RecordStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -112,10 +116,6 @@ export declare class UsersService {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
-        firstName: string;
-        lastName: string;
         avatarUrl: string | null;
         passwordHash: string | null;
         lastLoginAt: Date | null;
@@ -131,7 +131,8 @@ export declare class UsersService {
         roles: ({
             role: {
                 id: string;
-                name: string;
+                organizationId: string;
+                branchId: string | null;
                 createdAt: Date;
                 updatedAt: Date;
                 createdBy: string | null;
@@ -139,23 +140,26 @@ export declare class UsersService {
                 deletedAt: Date | null;
                 deletedBy: string | null;
                 deleteReason: string | null;
-                organizationId: string;
-                branchId: string | null;
+                name: string;
                 description: string | null;
             };
         } & {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             organizationId: string;
             branchId: string;
+            createdAt: Date;
+            updatedAt: Date;
             userId: string;
             roleId: string;
         })[];
     } & {
         id: string;
-        email: string;
+        organizationId: string;
+        branchId: string;
+        firstName: string;
+        lastName: string;
         phone: string | null;
+        email: string;
         status: import("@prisma/client").$Enums.RecordStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -164,10 +168,6 @@ export declare class UsersService {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
-        firstName: string;
-        lastName: string;
         avatarUrl: string | null;
         passwordHash: string | null;
         lastLoginAt: Date | null;
@@ -181,8 +181,12 @@ export declare class UsersService {
     }) | null>;
     update(id: string, data: any, organizationId: string, branchId: string): Promise<{
         id: string;
-        email: string;
+        organizationId: string;
+        branchId: string;
+        firstName: string;
+        lastName: string;
         phone: string | null;
+        email: string;
         status: import("@prisma/client").$Enums.RecordStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -191,10 +195,6 @@ export declare class UsersService {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
-        firstName: string;
-        lastName: string;
         avatarUrl: string | null;
         passwordHash: string | null;
         lastLoginAt: Date | null;

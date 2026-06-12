@@ -65,13 +65,13 @@ let FollowUpReminderService = FollowUpReminderService_1 = class FollowUpReminder
                 const followUpDate = followUp.scheduledDate.toLocaleDateString();
                 const messageContent = `Reminder: You have a follow-up appointment with ${doctorName} on ${followUpDate}. Patient: ${patientName}`;
                 try {
-                    await this.messagesService.sendWhatsApp(followUp.patient.id, messageContent, '', '');
+                    await this.messagesService.sendWhatsApp(followUp.patient.id, messageContent, followUp.organizationId, followUp.branchId);
                     this.logger.log(`Follow-up reminder sent via WhatsApp for follow-up ${followUp.id}`);
                 }
                 catch (whatsappError) {
                     this.logger.warn(`WhatsApp failed for follow-up ${followUp.id}, trying SMS: ${whatsappError.message}`);
                     try {
-                        await this.messagesService.sendSms(followUp.patient.id, messageContent, '', '');
+                        await this.messagesService.sendSms(followUp.patient.id, messageContent, followUp.organizationId, followUp.branchId);
                         this.logger.log(`Follow-up reminder sent via SMS for follow-up ${followUp.id}`);
                     }
                     catch (smsError) {

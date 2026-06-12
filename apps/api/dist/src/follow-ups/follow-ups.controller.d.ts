@@ -4,11 +4,11 @@ export declare class FollowUpsController {
     constructor(followUpsService: FollowUpsService);
     create(data: any, req: any): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: string | null;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
-        branchId: string;
         notes: string | null;
         patientId: string;
         doctorId: string;
@@ -17,9 +17,9 @@ export declare class FollowUpsController {
     }>;
     findAll(req: any): Promise<({
         patient: {
-            phone: string | null;
             firstName: string;
             lastName: string;
+            phone: string | null;
         };
         doctor: {
             firstName: string;
@@ -27,10 +27,10 @@ export declare class FollowUpsController {
         };
         outcomes: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             organizationId: string;
             branchId: string;
+            createdAt: Date;
+            updatedAt: Date;
             outcomeType: string;
             remarks: string | null;
             recordedAt: Date;
@@ -38,11 +38,11 @@ export declare class FollowUpsController {
         }[];
     } & {
         id: string;
+        organizationId: string;
+        branchId: string;
         status: string | null;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
-        branchId: string;
         notes: string | null;
         patientId: string;
         doctorId: string;
@@ -51,11 +51,11 @@ export declare class FollowUpsController {
     })[]>;
     updateStatus(id: string, status: string, req: any): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: string | null;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
-        branchId: string;
         notes: string | null;
         patientId: string;
         doctorId: string;
@@ -64,10 +64,10 @@ export declare class FollowUpsController {
     }>;
     addOutcome(id: string, data: any, req: any): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
         outcomeType: string;
         remarks: string | null;
         recordedAt: Date;

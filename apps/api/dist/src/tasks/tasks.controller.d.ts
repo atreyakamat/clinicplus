@@ -4,6 +4,8 @@ export declare class TasksController {
     constructor(tasksService: TasksService);
     create(data: any, req: any): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.TaskStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -12,8 +14,6 @@ export declare class TasksController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         patientId: string | null;
         description: string | null;
         title: string;
@@ -34,6 +34,8 @@ export declare class TasksController {
         } | null;
     } & {
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.TaskStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -42,8 +44,6 @@ export declare class TasksController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         patientId: string | null;
         description: string | null;
         title: string;
@@ -64,6 +64,8 @@ export declare class TasksController {
         } | null;
     } & {
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.TaskStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -72,8 +74,6 @@ export declare class TasksController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         patientId: string | null;
         description: string | null;
         title: string;
@@ -83,6 +83,8 @@ export declare class TasksController {
     }>;
     update(id: string, data: any, req: any): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.TaskStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -91,8 +93,6 @@ export declare class TasksController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         patientId: string | null;
         description: string | null;
         title: string;
@@ -102,6 +102,8 @@ export declare class TasksController {
     }>;
     remove(id: string, req: any): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.TaskStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -110,8 +112,6 @@ export declare class TasksController {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         patientId: string | null;
         description: string | null;
         title: string;

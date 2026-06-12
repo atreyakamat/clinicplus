@@ -10,24 +10,24 @@ export declare class StaffInvitationsService {
         branchId: string;
     }): Promise<{
         id: string;
-        email: string;
+        organizationId: string;
         phone: string | null;
+        email: string;
         status: string;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
         roleId: string;
         token: string;
         expiresAt: Date;
     }>;
     findAll(organizationId: string): Promise<{
         id: string;
-        email: string;
+        organizationId: string;
         phone: string | null;
+        email: string;
         status: string;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
         roleId: string;
         token: string;
         expiresAt: Date;
@@ -35,20 +35,8 @@ export declare class StaffInvitationsService {
     findByToken(token: string): Promise<{
         organization: {
             id: string;
-            name: string;
-            legalName: string | null;
-            slug: string;
-            logoUrl: string | null;
-            website: string | null;
-            email: string | null;
             phone: string | null;
-            primaryColor: string | null;
-            secondaryColor: string | null;
-            letterheadUrl: string | null;
-            footerText: string | null;
-            watermarkUrl: string | null;
-            subscriptionPlan: import("@prisma/client").$Enums.SubscriptionPlan | null;
-            subscriptionStatus: import("@prisma/client").$Enums.SubscriptionStatus;
+            email: string | null;
             status: import("@prisma/client").$Enums.RecordStatus;
             createdAt: Date;
             updatedAt: Date;
@@ -57,15 +45,27 @@ export declare class StaffInvitationsService {
             deletedAt: Date | null;
             deletedBy: string | null;
             deleteReason: string | null;
+            name: string;
+            slug: string;
+            legalName: string | null;
+            logoUrl: string | null;
+            website: string | null;
+            primaryColor: string | null;
+            secondaryColor: string | null;
+            letterheadUrl: string | null;
+            footerText: string | null;
+            watermarkUrl: string | null;
+            subscriptionPlan: import("@prisma/client").$Enums.SubscriptionPlan | null;
+            subscriptionStatus: import("@prisma/client").$Enums.SubscriptionStatus;
         };
     } & {
         id: string;
-        email: string;
+        organizationId: string;
         phone: string | null;
+        email: string;
         status: string;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
         roleId: string;
         token: string;
         expiresAt: Date;
@@ -76,8 +76,12 @@ export declare class StaffInvitationsService {
         passwordHash: string;
     }): Promise<{
         id: string;
-        email: string;
+        organizationId: string;
+        branchId: string;
+        firstName: string;
+        lastName: string;
         phone: string | null;
+        email: string;
         status: import("@prisma/client").$Enums.RecordStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -86,10 +90,6 @@ export declare class StaffInvitationsService {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
-        firstName: string;
-        lastName: string;
         avatarUrl: string | null;
         passwordHash: string | null;
         lastLoginAt: Date | null;

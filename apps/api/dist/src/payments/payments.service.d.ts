@@ -7,10 +7,11 @@ export declare class PaymentsService {
     constructor(prisma: PrismaService);
     createPayment(createPaymentDto: CreatePaymentDto, organizationId: string, branchId: string, userId: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        invoiceId: string;
         amount: Decimal;
         paymentMethod: string;
         transactionReference: string | null;
@@ -19,14 +20,25 @@ export declare class PaymentsService {
         isRefund: boolean;
         originalPaymentId: string | null;
         createdById: string | null;
-        invoiceId: string;
     }>;
     findPaymentById(id: string, organizationId: string, branchId: string): Promise<{
         invoice: {
             patient: {
                 id: string;
-                email: string | null;
+                organizationId: string;
+                branchId: string;
+                patientCode: string | null;
+                firstName: string;
+                middleName: string | null;
+                lastName: string;
+                gender: string | null;
+                dateOfBirth: Date | null;
                 phone: string | null;
+                email: string | null;
+                bloodGroup: string | null;
+                maritalStatus: string | null;
+                occupation: string | null;
+                abhaNumber: string | null;
                 status: import("@prisma/client").$Enums.RecordStatus;
                 createdAt: Date;
                 updatedAt: Date;
@@ -35,21 +47,11 @@ export declare class PaymentsService {
                 deletedAt: Date | null;
                 deletedBy: string | null;
                 deleteReason: string | null;
-                organizationId: string;
-                branchId: string;
-                firstName: string;
-                lastName: string;
-                patientCode: string | null;
-                middleName: string | null;
-                gender: string | null;
-                dateOfBirth: Date | null;
-                bloodGroup: string | null;
-                maritalStatus: string | null;
-                occupation: string | null;
-                abhaNumber: string | null;
             };
         } & {
             id: string;
+            organizationId: string;
+            branchId: string;
             status: import("@prisma/client").$Enums.InvoiceStatus;
             createdAt: Date;
             updatedAt: Date;
@@ -58,8 +60,6 @@ export declare class PaymentsService {
             deletedAt: Date | null;
             deletedBy: string | null;
             deleteReason: string | null;
-            organizationId: string;
-            branchId: string;
             patientId: string;
             invoiceNumber: string;
             subtotal: Decimal;
@@ -69,10 +69,11 @@ export declare class PaymentsService {
         };
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        invoiceId: string;
         amount: Decimal;
         paymentMethod: string;
         transactionReference: string | null;
@@ -81,14 +82,14 @@ export declare class PaymentsService {
         isRefund: boolean;
         originalPaymentId: string | null;
         createdById: string | null;
-        invoiceId: string;
     }>;
     refundPayment(paymentId: string, refundPaymentDto: RefundPaymentDto, organizationId: string, branchId: string, userId: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        invoiceId: string;
         amount: Decimal;
         paymentMethod: string;
         transactionReference: string | null;
@@ -97,7 +98,6 @@ export declare class PaymentsService {
         isRefund: boolean;
         originalPaymentId: string | null;
         createdById: string | null;
-        invoiceId: string;
     }>;
     getPaymentsByInvoice(invoiceId: string, organizationId: string, branchId: string): Promise<({
         createdBy: {
@@ -107,10 +107,11 @@ export declare class PaymentsService {
         } | null;
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        invoiceId: string;
         amount: Decimal;
         paymentMethod: string;
         transactionReference: string | null;
@@ -119,19 +120,25 @@ export declare class PaymentsService {
         isRefund: boolean;
         originalPaymentId: string | null;
         createdById: string | null;
-        invoiceId: string;
     })[]>;
     getPayments(organizationId: string, branchId: string, skip?: number, take?: number): Promise<({
-        createdBy: {
-            id: string;
-            firstName: string;
-            lastName: string;
-        } | null;
         invoice: {
             patient: {
                 id: string;
-                email: string | null;
+                organizationId: string;
+                branchId: string;
+                patientCode: string | null;
+                firstName: string;
+                middleName: string | null;
+                lastName: string;
+                gender: string | null;
+                dateOfBirth: Date | null;
                 phone: string | null;
+                email: string | null;
+                bloodGroup: string | null;
+                maritalStatus: string | null;
+                occupation: string | null;
+                abhaNumber: string | null;
                 status: import("@prisma/client").$Enums.RecordStatus;
                 createdAt: Date;
                 updatedAt: Date;
@@ -140,21 +147,11 @@ export declare class PaymentsService {
                 deletedAt: Date | null;
                 deletedBy: string | null;
                 deleteReason: string | null;
-                organizationId: string;
-                branchId: string;
-                firstName: string;
-                lastName: string;
-                patientCode: string | null;
-                middleName: string | null;
-                gender: string | null;
-                dateOfBirth: Date | null;
-                bloodGroup: string | null;
-                maritalStatus: string | null;
-                occupation: string | null;
-                abhaNumber: string | null;
             };
         } & {
             id: string;
+            organizationId: string;
+            branchId: string;
             status: import("@prisma/client").$Enums.InvoiceStatus;
             createdAt: Date;
             updatedAt: Date;
@@ -163,8 +160,6 @@ export declare class PaymentsService {
             deletedAt: Date | null;
             deletedBy: string | null;
             deleteReason: string | null;
-            organizationId: string;
-            branchId: string;
             patientId: string;
             invoiceNumber: string;
             subtotal: Decimal;
@@ -172,12 +167,18 @@ export declare class PaymentsService {
             tax: Decimal;
             total: Decimal;
         };
+        createdBy: {
+            id: string;
+            firstName: string;
+            lastName: string;
+        } | null;
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        invoiceId: string;
         amount: Decimal;
         paymentMethod: string;
         transactionReference: string | null;
@@ -186,7 +187,6 @@ export declare class PaymentsService {
         isRefund: boolean;
         originalPaymentId: string | null;
         createdById: string | null;
-        invoiceId: string;
     })[]>;
     countPayments(organizationId: string, branchId: string): Promise<number>;
     private calculateInvoiceStatus;

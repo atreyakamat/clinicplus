@@ -5,6 +5,8 @@ export declare class TasksService {
     constructor(prisma: PrismaService);
     create(data: Prisma.TaskUncheckedCreateInput, organizationId: string, branchId: string, createdBy: string): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.TaskStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -13,8 +15,6 @@ export declare class TasksService {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         patientId: string | null;
         description: string | null;
         title: string;
@@ -35,6 +35,8 @@ export declare class TasksService {
         } | null;
     } & {
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.TaskStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -43,8 +45,6 @@ export declare class TasksService {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         patientId: string | null;
         description: string | null;
         title: string;
@@ -65,6 +65,8 @@ export declare class TasksService {
         } | null;
     } & {
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.TaskStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -73,8 +75,6 @@ export declare class TasksService {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         patientId: string | null;
         description: string | null;
         title: string;
@@ -84,6 +84,8 @@ export declare class TasksService {
     }>;
     update(id: string, data: Prisma.TaskUpdateInput, organizationId: string, branchId: string): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.TaskStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -92,8 +94,6 @@ export declare class TasksService {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         patientId: string | null;
         description: string | null;
         title: string;
@@ -103,6 +103,8 @@ export declare class TasksService {
     }>;
     remove(id: string, organizationId: string, branchId: string): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.TaskStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -111,8 +113,6 @@ export declare class TasksService {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         patientId: string | null;
         description: string | null;
         title: string;

@@ -6,18 +6,20 @@ export declare class InvoicesService {
     create(data: any, organizationId: string, branchId: string, createdBy: string): Promise<{
         items: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             organizationId: string;
             branchId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            invoiceId: string;
+            amount: Prisma.Decimal;
             itemName: string;
             quantity: number;
             unitPrice: Prisma.Decimal;
-            amount: Prisma.Decimal;
-            invoiceId: string;
         }[];
     } & {
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.InvoiceStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -26,8 +28,6 @@ export declare class InvoicesService {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         patientId: string;
         invoiceNumber: string;
         subtotal: Prisma.Decimal;
@@ -42,10 +42,11 @@ export declare class InvoicesService {
         };
         payments: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             organizationId: string;
             branchId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            invoiceId: string;
             amount: Prisma.Decimal;
             paymentMethod: string;
             transactionReference: string | null;
@@ -54,10 +55,11 @@ export declare class InvoicesService {
             isRefund: boolean;
             originalPaymentId: string | null;
             createdById: string | null;
-            invoiceId: string;
         }[];
     } & {
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.InvoiceStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -66,8 +68,6 @@ export declare class InvoicesService {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         patientId: string;
         invoiceNumber: string;
         subtotal: Prisma.Decimal;
@@ -78,8 +78,20 @@ export declare class InvoicesService {
     findOne(id: string, organizationId: string, branchId: string): Promise<{
         patient: {
             id: string;
-            email: string | null;
+            organizationId: string;
+            branchId: string;
+            patientCode: string | null;
+            firstName: string;
+            middleName: string | null;
+            lastName: string;
+            gender: string | null;
+            dateOfBirth: Date | null;
             phone: string | null;
+            email: string | null;
+            bloodGroup: string | null;
+            maritalStatus: string | null;
+            occupation: string | null;
+            abhaNumber: string | null;
             status: import("@prisma/client").$Enums.RecordStatus;
             createdAt: Date;
             updatedAt: Date;
@@ -88,37 +100,14 @@ export declare class InvoicesService {
             deletedAt: Date | null;
             deletedBy: string | null;
             deleteReason: string | null;
-            organizationId: string;
-            branchId: string;
-            firstName: string;
-            lastName: string;
-            patientCode: string | null;
-            middleName: string | null;
-            gender: string | null;
-            dateOfBirth: Date | null;
-            bloodGroup: string | null;
-            maritalStatus: string | null;
-            occupation: string | null;
-            abhaNumber: string | null;
         };
-        items: {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            organizationId: string;
-            branchId: string;
-            itemName: string;
-            quantity: number;
-            unitPrice: Prisma.Decimal;
-            amount: Prisma.Decimal;
-            invoiceId: string;
-        }[];
         payments: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             organizationId: string;
             branchId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            invoiceId: string;
             amount: Prisma.Decimal;
             paymentMethod: string;
             transactionReference: string | null;
@@ -127,10 +116,23 @@ export declare class InvoicesService {
             isRefund: boolean;
             originalPaymentId: string | null;
             createdById: string | null;
+        }[];
+        items: {
+            id: string;
+            organizationId: string;
+            branchId: string;
+            createdAt: Date;
+            updatedAt: Date;
             invoiceId: string;
+            amount: Prisma.Decimal;
+            itemName: string;
+            quantity: number;
+            unitPrice: Prisma.Decimal;
         }[];
     } & {
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.InvoiceStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -139,8 +141,6 @@ export declare class InvoicesService {
         deletedAt: Date | null;
         deletedBy: string | null;
         deleteReason: string | null;
-        organizationId: string;
-        branchId: string;
         patientId: string;
         invoiceNumber: string;
         subtotal: Prisma.Decimal;
@@ -150,10 +150,11 @@ export declare class InvoicesService {
     }>;
     addPayment(invoiceId: string, paymentData: any, organizationId: string, branchId: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        invoiceId: string;
         amount: Prisma.Decimal;
         paymentMethod: string;
         transactionReference: string | null;
@@ -162,6 +163,5 @@ export declare class InvoicesService {
         isRefund: boolean;
         originalPaymentId: string | null;
         createdById: string | null;
-        invoiceId: string;
     }>;
 }

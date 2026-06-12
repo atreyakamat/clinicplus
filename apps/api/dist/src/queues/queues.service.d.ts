@@ -5,11 +5,11 @@ export declare class QueuesService {
     getLiveQueue(organizationId: string, branchId: string): Promise<{
         entries: {
             id: string;
+            organizationId: string;
+            branchId: string;
             status: import("@prisma/client").$Enums.QueueEntryStatus;
             createdAt: Date;
             updatedAt: Date;
-            organizationId: string;
-            branchId: string;
             appointmentId: string;
             tokenNumber: number;
             queueId: string;
@@ -19,19 +19,31 @@ export declare class QueuesService {
         }[];
     } & {
         id: string;
-        name: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        name: string;
         description: string | null;
     }>;
     getQueueStatus(organizationId: string, branchId: string): Promise<({
         appointment: {
             patient: {
                 id: string;
-                email: string | null;
+                organizationId: string;
+                branchId: string;
+                patientCode: string | null;
+                firstName: string;
+                middleName: string | null;
+                lastName: string;
+                gender: string | null;
+                dateOfBirth: Date | null;
                 phone: string | null;
+                email: string | null;
+                bloodGroup: string | null;
+                maritalStatus: string | null;
+                occupation: string | null;
+                abhaNumber: string | null;
                 status: import("@prisma/client").$Enums.RecordStatus;
                 createdAt: Date;
                 updatedAt: Date;
@@ -40,18 +52,6 @@ export declare class QueuesService {
                 deletedAt: Date | null;
                 deletedBy: string | null;
                 deleteReason: string | null;
-                organizationId: string;
-                branchId: string;
-                firstName: string;
-                lastName: string;
-                patientCode: string | null;
-                middleName: string | null;
-                gender: string | null;
-                dateOfBirth: Date | null;
-                bloodGroup: string | null;
-                maritalStatus: string | null;
-                occupation: string | null;
-                abhaNumber: string | null;
             };
             doctor: {
                 firstName: string;
@@ -59,6 +59,8 @@ export declare class QueuesService {
             };
         } & {
             id: string;
+            organizationId: string;
+            branchId: string;
             status: import("@prisma/client").$Enums.AppointmentStatus;
             createdAt: Date;
             updatedAt: Date;
@@ -67,8 +69,6 @@ export declare class QueuesService {
             deletedAt: Date | null;
             deletedBy: string | null;
             deleteReason: string | null;
-            organizationId: string;
-            branchId: string;
             notes: string | null;
             patientId: string;
             doctorId: string;
@@ -79,11 +79,11 @@ export declare class QueuesService {
         };
     } & {
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.QueueEntryStatus;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
-        branchId: string;
         appointmentId: string;
         tokenNumber: number;
         queueId: string;
@@ -93,11 +93,11 @@ export declare class QueuesService {
     })[]>;
     checkIn(appointmentId: string, organizationId: string, branchId: string): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.QueueEntryStatus;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
-        branchId: string;
         appointmentId: string;
         tokenNumber: number;
         queueId: string;
@@ -107,11 +107,11 @@ export declare class QueuesService {
     }>;
     updateEntryStatus(entryId: string, status: 'WAITING' | 'CALLED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.QueueEntryStatus;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
-        branchId: string;
         appointmentId: string;
         tokenNumber: number;
         queueId: string;

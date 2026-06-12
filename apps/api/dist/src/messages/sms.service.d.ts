@@ -11,15 +11,15 @@ export declare class SmsService {
         gatewayMessageId: string | undefined;
         gatewayError: string | undefined;
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
-        patientId: string;
+        createdAt: Date;
+        updatedAt: Date;
         channel: import("@prisma/client").$Enums.MessageChannel;
         direction: import("@prisma/client").$Enums.MessageDirection;
         messageBody: string;
         deliveryStatus: string | null;
         sentAt: Date;
+        patientId: string;
     }>;
 }

@@ -5,50 +5,50 @@ export declare class PermissionsService {
     constructor(prisma: PrismaService);
     create(data: Prisma.PermissionCreateInput): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string | null;
         branchId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         module: string;
         action: string;
         description: string | null;
     }>;
     findAll(organizationId?: string, branchId?: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string | null;
         branchId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         module: string;
         action: string;
         description: string | null;
     }[]>;
     findOne(id: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string | null;
         branchId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         module: string;
         action: string;
         description: string | null;
     } | null>;
     update(id: string, data: Prisma.PermissionUpdateInput): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string | null;
         branchId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         module: string;
         action: string;
         description: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string | null;
         branchId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         module: string;
         action: string;
         description: string | null;

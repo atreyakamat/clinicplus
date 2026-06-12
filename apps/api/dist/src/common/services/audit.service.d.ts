@@ -14,9 +14,9 @@ export declare class AuditService {
         userAgent?: string;
     }): Promise<{
         id: string;
-        createdAt: Date;
         organizationId: string;
         branchId: string | null;
+        createdAt: Date;
         action: string;
         ipAddress: string | null;
         actorId: string | null;

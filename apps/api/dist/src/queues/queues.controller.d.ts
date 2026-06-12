@@ -5,11 +5,11 @@ export declare class QueuesController {
     getLiveQueue(req: any): Promise<{
         entries: {
             id: string;
+            organizationId: string;
+            branchId: string;
             status: import("@prisma/client").$Enums.QueueEntryStatus;
             createdAt: Date;
             updatedAt: Date;
-            organizationId: string;
-            branchId: string;
             appointmentId: string;
             tokenNumber: number;
             queueId: string;
@@ -19,22 +19,22 @@ export declare class QueuesController {
         }[];
     } & {
         id: string;
-        name: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        name: string;
         description: string | null;
     }>;
     checkIn(data: {
         appointmentId: string;
     }, req: any): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.QueueEntryStatus;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
-        branchId: string;
         appointmentId: string;
         tokenNumber: number;
         queueId: string;
@@ -46,11 +46,11 @@ export declare class QueuesController {
         status: 'WAITING' | 'CALLED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
     }): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: import("@prisma/client").$Enums.QueueEntryStatus;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
-        branchId: string;
         appointmentId: string;
         tokenNumber: number;
         queueId: string;

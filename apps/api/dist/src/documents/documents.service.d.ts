@@ -5,10 +5,10 @@ export declare class DocumentsService {
     constructor(prisma: PrismaService);
     create(data: Prisma.MedicalDocumentUncheckedCreateInput, organizationId: string, branchId: string, uploadedBy: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
         patientId: string;
         title: string;
         uploadedBy: string;
@@ -31,10 +31,10 @@ export declare class DocumentsService {
         };
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
         patientId: string;
         title: string;
         uploadedBy: string;
@@ -52,11 +52,11 @@ export declare class DocumentsService {
         };
         labReports: {
             id: string;
+            organizationId: string;
+            branchId: string;
             status: string | null;
             createdAt: Date;
             updatedAt: Date;
-            organizationId: string;
-            branchId: string;
             patientId: string;
             consultationId: string | null;
             documentId: string;
@@ -64,10 +64,10 @@ export declare class DocumentsService {
         }[];
         imagingReports: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             organizationId: string;
             branchId: string;
+            createdAt: Date;
+            updatedAt: Date;
             patientId: string;
             consultationId: string | null;
             documentId: string;
@@ -80,10 +80,10 @@ export declare class DocumentsService {
         };
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
         patientId: string;
         title: string;
         uploadedBy: string;
@@ -95,10 +95,10 @@ export declare class DocumentsService {
     }>;
     update(id: string, data: Prisma.MedicalDocumentUpdateInput, organizationId: string, branchId: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
         patientId: string;
         title: string;
         uploadedBy: string;
@@ -110,10 +110,10 @@ export declare class DocumentsService {
     }>;
     remove(id: string, organizationId: string, branchId: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         organizationId: string;
         branchId: string;
+        createdAt: Date;
+        updatedAt: Date;
         patientId: string;
         title: string;
         uploadedBy: string;

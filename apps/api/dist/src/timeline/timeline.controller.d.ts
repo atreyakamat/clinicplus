@@ -4,9 +4,9 @@ export declare class TimelineController {
     constructor(timelineService: TimelineService);
     findAllByPatient(patientId: string, req: any): Promise<{
         id: string;
+        organizationId: string;
         createdAt: Date;
         createdBy: string | null;
-        organizationId: string;
         patientId: string;
         description: string | null;
         eventType: string;

@@ -67,8 +67,8 @@ export class AppointmentReminderService {
           await this.messagesService.sendWhatsApp(
             appointment.patient.id,
             messageContent,
-            /* organizationId and branchId would come from appointment */ '',
-            '',
+            appointment.organizationId,
+            appointment.branchId,
           );
           this.logger.log(
             `Appointment reminder sent via WhatsApp for appointment ${appointment.id}`,
@@ -82,8 +82,8 @@ export class AppointmentReminderService {
             await this.messagesService.sendSms(
               appointment.patient.id,
               messageContent,
-              /* organizationId and branchId would come from appointment */ '',
-              '',
+              appointment.organizationId,
+              appointment.branchId,
             );
             this.logger.log(
               `Appointment reminder sent via SMS for appointment ${appointment.id}`,

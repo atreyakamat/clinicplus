@@ -4,11 +4,11 @@ export declare class FeedbackController {
     constructor(feedbackService: FeedbackService);
     create(data: any, req: any): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: string;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
-        branchId: string;
         userId: string;
         priority: string;
         category: string;
@@ -22,11 +22,11 @@ export declare class FeedbackController {
         };
     } & {
         id: string;
+        organizationId: string;
+        branchId: string;
         status: string;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
-        branchId: string;
         userId: string;
         priority: string;
         category: string;
@@ -35,11 +35,11 @@ export declare class FeedbackController {
     })[]>;
     updateStatus(id: string, status: string, req: any): Promise<{
         id: string;
+        organizationId: string;
+        branchId: string;
         status: string;
         createdAt: Date;
         updatedAt: Date;
-        organizationId: string;
-        branchId: string;
         userId: string;
         priority: string;
         category: string;
