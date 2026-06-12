@@ -49,9 +49,11 @@ describe('UsersService', () => {
 
       const result = await service.findAll('org-1');
       expect(result).toEqual(mockUsers);
-      expect(prisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({ organizationId: 'org-1' })
-      }));
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ organizationId: 'org-1' }),
+        }),
+      );
     });
   });
 });

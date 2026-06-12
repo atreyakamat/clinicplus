@@ -63,12 +63,19 @@ describe('Production Readiness: E2E Workflow Validation', () => {
 
   afterAll(async () => {
     try {
-      const tablenames = await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames.map(({ tablename }) => tablename).filter(name => name !== '_prisma_migrations').map(name => `"public"."${name}"`).join(', ');
+      const tablenames =
+        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
+      const tables = tablenames
+        .map(({ tablename }) => tablename)
+        .filter((name) => name !== '_prisma_migrations')
+        .map((name) => `"public"."${name}"`)
+        .join(', ');
       if (tables.length > 0) {
         await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
     await app.close();
   });
 
@@ -84,7 +91,8 @@ describe('Production Readiness: E2E Workflow Validation', () => {
           gender: 'Male',
         });
 
-      console.log(patientRes.status, patientRes.body); const patientId = patientRes.body.id || patientRes.body.data?.id;
+      console.log(patientRes.status, patientRes.body);
+      const patientId = patientRes.body.id || patientRes.body.data?.id;
 
       const apptRes = await request(app.getHttpServer())
         .post('/api/v1/appointments')
@@ -197,7 +205,9 @@ describe('Production Readiness: E2E Workflow Validation', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .get(`/api/v1/patients/${(await prisma.patient.findFirst({ where: { organizationId: orgId } }))?.id}`)
+        .get(
+          `/api/v1/patients/${(await prisma.patient.findFirst({ where: { organizationId: orgId } }))?.id}`,
+        )
         .set('Authorization', `Bearer ${tokenB}`);
 
       expect(res.status).toBeDefined();

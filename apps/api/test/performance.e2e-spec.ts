@@ -11,12 +11,17 @@ describe('Performance Testing (E2E) — Phase 16', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let jwtService: JwtService;
-  let org: any; let branch: any; let doctor: any; let token: string;
+  let org: any;
+  let branch: any;
+  let doctor: any;
+  let token: string;
 
   const LATENCY_THRESHOLD_MS = 500;
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const mod = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = mod.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     app.useGlobalFilters(new AllExceptionsFilter());
@@ -24,14 +29,29 @@ describe('Performance Testing (E2E) — Phase 16', () => {
     prisma = app.get(PrismaService);
     await app.init();
 
-    org = await prisma.organization.create({ data: { name: 'Perf Test', slug: `perf-${Date.now()}` } });
-    branch = await prisma.branch.create({ data: { name: 'Perf Branch', organizationId: org.id } });
+    org = await prisma.organization.create({
+      data: { name: 'Perf Test', slug: `perf-${Date.now()}` },
+    });
+    branch = await prisma.branch.create({
+      data: { name: 'Perf Branch', organizationId: org.id },
+    });
     doctor = await prisma.user.create({
-      data: { email: `perf-${Date.now()}@t.com`, passwordHash: 'h', firstName: 'Perf', lastName: 'Doc', organizationId: org.id, branchId: branch.id },
+      data: {
+        email: `perf-${Date.now()}@t.com`,
+        passwordHash: 'h',
+        firstName: 'Perf',
+        lastName: 'Doc',
+        organizationId: org.id,
+        branchId: branch.id,
+      },
     });
     token = jwtService.sign({
-      sub: doctor.id, email: doctor.email, organizationId: org.id, branchId: branch.id,
-      roles: ['Organization Owner'], permissions: ['*'],
+      sub: doctor.id,
+      email: doctor.email,
+      organizationId: org.id,
+      branchId: branch.id,
+      roles: ['Organization Owner'],
+      permissions: ['*'],
     });
 
     // Seed data
@@ -47,7 +67,10 @@ describe('Performance Testing (E2E) — Phase 16', () => {
       createdAt: new Date(startTime + i),
     }));
     await prisma.patient.createMany({ data: patients, skipDuplicates: true });
-    const createdPatients = await prisma.patient.findMany({ where: { organizationId: org.id }, take: 1000 });
+    const createdPatients = await prisma.patient.findMany({
+      where: { organizationId: org.id },
+      take: 1000,
+    });
 
     const appointments = createdPatients.slice(0, 500).map((p, i) => ({
       patientId: p.id,
@@ -57,7 +80,10 @@ describe('Performance Testing (E2E) — Phase 16', () => {
       scheduledStart: new Date(startTime + i * 3600000),
       scheduledEnd: new Date(startTime + i * 3600000 + 1800000),
     }));
-    await prisma.appointment.createMany({ data: appointments, skipDuplicates: true });
+    await prisma.appointment.createMany({
+      data: appointments,
+      skipDuplicates: true,
+    });
 
     const consultations = createdPatients.slice(0, 300).map((p, i) => ({
       patientId: p.id,
@@ -66,7 +92,10 @@ describe('Performance Testing (E2E) — Phase 16', () => {
       branchId: branch.id,
       chiefComplaint: `Checkup ${i}`,
     }));
-    await prisma.consultation.createMany({ data: consultations, skipDuplicates: true });
+    await prisma.consultation.createMany({
+      data: consultations,
+      skipDuplicates: true,
+    });
 
     const invoices = createdPatients.slice(0, 400).map((p, i) => ({
       patientId: p.id,
@@ -77,25 +106,40 @@ describe('Performance Testing (E2E) — Phase 16', () => {
     }));
     await prisma.invoice.createMany({ data: invoices, skipDuplicates: true });
 
-    console.log(`[PERF] Seeded: ${createdPatients.length} patients, ${appointments.length} appointments, ${consultations.length} consultations, ${invoices.length} invoices`);
+    console.log(
+      `[PERF] Seeded: ${createdPatients.length} patients, ${appointments.length} appointments, ${consultations.length} consultations, ${invoices.length} invoices`,
+    );
   });
 
   afterAll(async () => {
     try {
-      const tablenames = await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames.map(({ tablename }) => tablename).filter(name => name !== '_prisma_migrations').map(name => `"public"."${name}"`).join(', ');
+      const tablenames =
+        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
+      const tables = tablenames
+        .map(({ tablename }) => tablename)
+        .filter((name) => name !== '_prisma_migrations')
+        .map((name) => `"public"."${name}"`)
+        .join(', ');
       if (tables.length > 0) {
         await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
     await app.close();
   });
 
-  const benchmark = async (name: string, fn: () => Promise<any>, threshold = LATENCY_THRESHOLD_MS) => {
+  const benchmark = async (
+    name: string,
+    fn: () => Promise<any>,
+    threshold = LATENCY_THRESHOLD_MS,
+  ) => {
     const start = performance.now();
     const result = await fn();
     const duration = performance.now() - start;
-    console.log(`[PERF] ${name}: ${duration.toFixed(2)}ms (threshold: ${threshold}ms)`);
+    console.log(
+      `[PERF] ${name}: ${duration.toFixed(2)}ms (threshold: ${threshold}ms)`,
+    );
     return { result, duration };
   };
 
@@ -104,7 +148,7 @@ describe('Performance Testing (E2E) — Phase 16', () => {
       const { duration } = await benchmark('Patient Search (P50)', () =>
         request(app.getHttpServer())
           .get('/api/v1/patients/search?q=PerfPat')
-          .set('Authorization', `Bearer ${token}`)
+          .set('Authorization', `Bearer ${token}`),
       );
       expect(duration).toBeLessThan(LATENCY_THRESHOLD_MS);
     });
@@ -125,7 +169,9 @@ describe('Performance Testing (E2E) — Phase 16', () => {
     });
 
     it('P99: Individual patient fetch', async () => {
-      const patient = await prisma.patient.findFirst({ where: { organizationId: org.id } });
+      const patient = await prisma.patient.findFirst({
+        where: { organizationId: org.id },
+      });
       const times: number[] = [];
       for (let i = 0; i < 100; i++) {
         const start = performance.now();
@@ -146,7 +192,7 @@ describe('Performance Testing (E2E) — Phase 16', () => {
       const { duration } = await benchmark('Appointment List', () =>
         request(app.getHttpServer())
           .get('/api/v1/appointments')
-          .set('Authorization', `Bearer ${token}`)
+          .set('Authorization', `Bearer ${token}`),
       );
       expect(duration).toBeLessThan(LATENCY_THRESHOLD_MS);
     });
@@ -157,7 +203,7 @@ describe('Performance Testing (E2E) — Phase 16', () => {
       const { duration } = await benchmark('Doctor Dashboard', () =>
         request(app.getHttpServer())
           .get('/api/v1/analytics/dashboard/doctor')
-          .set('Authorization', `Bearer ${token}`)
+          .set('Authorization', `Bearer ${token}`),
       );
       expect(duration).toBeLessThan(LATENCY_THRESHOLD_MS * 2);
     });
@@ -168,7 +214,7 @@ describe('Performance Testing (E2E) — Phase 16', () => {
       const { duration } = await benchmark('Invoice List', () =>
         request(app.getHttpServer())
           .get('/api/v1/invoices')
-          .set('Authorization', `Bearer ${token}`)
+          .set('Authorization', `Bearer ${token}`),
       );
       expect(duration).toBeLessThan(LATENCY_THRESHOLD_MS);
     });
@@ -179,7 +225,7 @@ describe('Performance Testing (E2E) — Phase 16', () => {
       const { duration } = await benchmark('Live Queue', () =>
         request(app.getHttpServer())
           .get('/api/v1/queues/live')
-          .set('Authorization', `Bearer ${token}`)
+          .set('Authorization', `Bearer ${token}`),
       );
       expect(duration).toBeLessThan(LATENCY_THRESHOLD_MS);
     });
@@ -192,13 +238,15 @@ describe('Performance Testing (E2E) — Phase 16', () => {
         Array.from({ length: 50 }, () =>
           request(app.getHttpServer())
             .get('/api/v1/patients')
-            .set('Authorization', `Bearer ${token}`)
-        )
+            .set('Authorization', `Bearer ${token}`),
+        ),
       );
       const duration = performance.now() - start;
-      console.log(`[PERF] 50 concurrent requests: ${duration.toFixed(2)}ms total`);
+      console.log(
+        `[PERF] 50 concurrent requests: ${duration.toFixed(2)}ms total`,
+      );
 
-      const successCount = results.filter(r => r.status < 500).length;
+      const successCount = results.filter((r) => r.status < 500).length;
       expect(successCount).toBeGreaterThan(40);
       expect(duration).toBeLessThan(LATENCY_THRESHOLD_MS * 10); // Relaxed for local test environment overhead
     });
@@ -214,7 +262,9 @@ describe('Performance Testing (E2E) — Phase 16', () => {
     });
 
     it('complex patient include query under 200ms', async () => {
-      const patient = await prisma.patient.findFirst({ where: { organizationId: org.id } });
+      const patient = await prisma.patient.findFirst({
+        where: { organizationId: org.id },
+      });
       if (!patient) return;
       const start = performance.now();
       await prisma.patient.findUnique({

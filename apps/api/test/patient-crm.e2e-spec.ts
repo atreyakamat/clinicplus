@@ -10,10 +10,15 @@ describe('Patient CRM (E2E) — Phase 5', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let jwtService: JwtService;
-  let org: any; let branch: any; let user: any; let token: string;
+  let org: any;
+  let branch: any;
+  let user: any;
+  let token: string;
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const mod = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = mod.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     app.useGlobalFilters(new AllExceptionsFilter());
@@ -21,33 +26,61 @@ describe('Patient CRM (E2E) — Phase 5', () => {
     prisma = app.get(PrismaService);
     await app.init();
 
-    org = await prisma.organization.create({ data: { name: 'CRM Test', slug: `crm-${Date.now()}` } });
-    branch = await prisma.branch.create({ data: { name: 'CRM Branch', organizationId: org.id } });
+    org = await prisma.organization.create({
+      data: { name: 'CRM Test', slug: `crm-${Date.now()}` },
+    });
+    branch = await prisma.branch.create({
+      data: { name: 'CRM Branch', organizationId: org.id },
+    });
     user = await prisma.user.create({
-      data: { email: `crm-${Date.now()}@t.com`, passwordHash: 'h', firstName: 'CRM', lastName: 'User', organizationId: org.id, branchId: branch.id },
+      data: {
+        email: `crm-${Date.now()}@t.com`,
+        passwordHash: 'h',
+        firstName: 'CRM',
+        lastName: 'User',
+        organizationId: org.id,
+        branchId: branch.id,
+      },
     });
     token = jwtService.sign({
-      sub: user.id, email: user.email, organizationId: org.id, branchId: branch.id,
-      roles: ['Organization Owner'], permissions: ['*'],
+      sub: user.id,
+      email: user.email,
+      organizationId: org.id,
+      branchId: branch.id,
+      roles: ['Organization Owner'],
+      permissions: ['*'],
     });
   });
 
   afterAll(async () => {
     try {
-      const tablenames = await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames.map(({ tablename }) => tablename).filter(name => name !== '_prisma_migrations').map(name => `"public"."${name}"`).join(', ');
+      const tablenames =
+        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
+      const tables = tablenames
+        .map(({ tablename }) => tablename)
+        .filter((name) => name !== '_prisma_migrations')
+        .map((name) => `"public"."${name}"`)
+        .join(', ');
       if (tables.length > 0) {
         await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
     await app.close();
   });
 
   describe('Create Patient', () => {
     it('should create a patient with required fields', async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/patients').set('Authorization', `Bearer ${token}`)
-        .send({ firstName: 'John', lastName: 'Doe', phone: '5550101000', gender: 'Male' });
+        .post('/api/v1/patients')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          firstName: 'John',
+          lastName: 'Doe',
+          phone: '5550101000',
+          gender: 'Male',
+        });
       expect(res.status).toBeDefined();
       const body = res.body.data || res.body;
       expect(body.id).toBeDefined();
@@ -56,36 +89,57 @@ describe('Patient CRM (E2E) — Phase 5', () => {
 
     it('should reject patient with missing required fields', async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/patients').set('Authorization', `Bearer ${token}`)
+        .post('/api/v1/patients')
+        .set('Authorization', `Bearer ${token}`)
         .send({ firstName: 'Incomplete' });
       expect(res.status).toBeDefined();
     });
 
     it('should reject duplicate email within same org', async () => {
       await request(app.getHttpServer())
-        .post('/api/v1/patients').set('Authorization', `Bearer ${token}`)
-        .send({ firstName: 'First', lastName: 'Dup', email: 'dup@test.com', phone: '5550101001' });
+        .post('/api/v1/patients')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          firstName: 'First',
+          lastName: 'Dup',
+          email: 'dup@test.com',
+          phone: '5550101001',
+        });
       const res = await request(app.getHttpServer())
-        .post('/api/v1/patients').set('Authorization', `Bearer ${token}`)
-        .send({ firstName: 'Second', lastName: 'Dup', email: 'dup@test.com', phone: '5550101002' });
+        .post('/api/v1/patients')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          firstName: 'Second',
+          lastName: 'Dup',
+          email: 'dup@test.com',
+          phone: '5550101002',
+        });
       expect(res.status).toBeDefined();
     });
 
     it('should reject duplicate phone within same org', async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/patients').set('Authorization', `Bearer ${token}`)
+        .post('/api/v1/patients')
+        .set('Authorization', `Bearer ${token}`)
         .send({ firstName: 'Phone', lastName: 'Dup', phone: '5550101999' });
       expect(res.status).toBeDefined();
       const res2 = await request(app.getHttpServer())
-        .post('/api/v1/patients').set('Authorization', `Bearer ${token}`)
+        .post('/api/v1/patients')
+        .set('Authorization', `Bearer ${token}`)
         .send({ firstName: 'Phone2', lastName: 'Dup', phone: '5550101999' });
       expect(res2.status).toBe(409);
     });
 
     it('should validate email format', async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/patients').set('Authorization', `Bearer ${token}`)
-        .send({ firstName: 'Bad', lastName: 'Email', phone: '5550101111', email: 'not-an-email' });
+        .post('/api/v1/patients')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          firstName: 'Bad',
+          lastName: 'Email',
+          phone: '5550101111',
+          email: 'not-an-email',
+        });
       expect(res.status).toBeDefined();
     });
   });
@@ -94,7 +148,13 @@ describe('Patient CRM (E2E) — Phase 5', () => {
     let pid: string;
     beforeEach(async () => {
       const p = await prisma.patient.create({
-        data: { firstName: 'Edit', lastName: 'Me', phone: '5550101222', organizationId: org.id, branchId: branch.id },
+        data: {
+          firstName: 'Edit',
+          lastName: 'Me',
+          phone: '5550101222',
+          organizationId: org.id,
+          branchId: branch.id,
+        },
       });
       pid = p.id;
     });
@@ -104,14 +164,16 @@ describe('Patient CRM (E2E) — Phase 5', () => {
 
     it('should update patient fields', async () => {
       const res = await request(app.getHttpServer())
-        .patch(`/api/v1/patients/${pid}`).set('Authorization', `Bearer ${token}`)
+        .patch(`/api/v1/patients/${pid}`)
+        .set('Authorization', `Bearer ${token}`)
         .send({ firstName: 'Edited', lastName: 'Name' });
       expect(res.status).toBeDefined();
     });
 
     it('should reject update with invalid ID', async () => {
       const res = await request(app.getHttpServer())
-        .patch('/api/v1/patients/invalid-id').set('Authorization', `Bearer ${token}`)
+        .patch('/api/v1/patients/invalid-id')
+        .set('Authorization', `Bearer ${token}`)
         .send({ firstName: 'Bad' });
       expect(res.status).toBeDefined();
     });
@@ -121,16 +183,35 @@ describe('Patient CRM (E2E) — Phase 5', () => {
     beforeAll(async () => {
       await prisma.patient.createMany({
         data: [
-          { firstName: 'Search', lastName: 'Me', phone: '5550200001', organizationId: org.id, branchId: branch.id },
-          { firstName: 'Findable', lastName: 'Patient', phone: '5550200002', organizationId: org.id, branchId: branch.id },
-          { firstName: 'Hidden', lastName: 'Patient', phone: '5550200003', organizationId: org.id, branchId: branch.id },
+          {
+            firstName: 'Search',
+            lastName: 'Me',
+            phone: '5550200001',
+            organizationId: org.id,
+            branchId: branch.id,
+          },
+          {
+            firstName: 'Findable',
+            lastName: 'Patient',
+            phone: '5550200002',
+            organizationId: org.id,
+            branchId: branch.id,
+          },
+          {
+            firstName: 'Hidden',
+            lastName: 'Patient',
+            phone: '5550200003',
+            organizationId: org.id,
+            branchId: branch.id,
+          },
         ],
       });
     });
 
     it('should search by first name', async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/v1/patients/search?q=Search').set('Authorization', `Bearer ${token}`);
+        .get('/api/v1/patients/search?q=Search')
+        .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBeDefined();
       const body = res.body.data || res.body;
       expect(Array.isArray(body)).toBe(true);
@@ -139,7 +220,8 @@ describe('Patient CRM (E2E) — Phase 5', () => {
 
     it('should search by phone', async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/v1/patients/search?q=5550200002').set('Authorization', `Bearer ${token}`);
+        .get('/api/v1/patients/search?q=5550200002')
+        .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBeDefined();
       const body = res.body.data || res.body;
       expect(body.some((p: any) => p.phone === '5550200002')).toBe(true);
@@ -147,7 +229,8 @@ describe('Patient CRM (E2E) — Phase 5', () => {
 
     it('should return empty for short query', async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/v1/patients/search?q=a').set('Authorization', `Bearer ${token}`);
+        .get('/api/v1/patients/search?q=a')
+        .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBeDefined();
       const body = res.body.data || res.body;
       expect(Array.isArray(body)).toBe(true);
@@ -158,14 +241,21 @@ describe('Patient CRM (E2E) — Phase 5', () => {
     let pid: string;
     beforeEach(async () => {
       const p = await prisma.patient.create({
-        data: { firstName: 'Archive', lastName: 'Patient', phone: '5550300001', organizationId: org.id, branchId: branch.id },
+        data: {
+          firstName: 'Archive',
+          lastName: 'Patient',
+          phone: '5550300001',
+          organizationId: org.id,
+          branchId: branch.id,
+        },
       });
       pid = p.id;
     });
 
     it('should soft delete patient', async () => {
       const res = await request(app.getHttpServer())
-        .delete(`/api/v1/patients/${pid}`).set('Authorization', `Bearer ${token}`);
+        .delete(`/api/v1/patients/${pid}`)
+        .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBeDefined();
       const deleted = await prisma.patient.findUnique({ where: { id: pid } });
       expect(deleted?.status).toBe('INACTIVE');
@@ -176,22 +266,42 @@ describe('Patient CRM (E2E) — Phase 5', () => {
   describe('Pagination & Filtering', () => {
     it('should return paginated patient list', async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/v1/patients?page=1&limit=5').set('Authorization', `Bearer ${token}`);
+        .get('/api/v1/patients?page=1&limit=5')
+        .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBeDefined();
       const body = res.body.data || res.body;
       expect(Array.isArray(body)).toBe(true);
     });
 
     it('should handle no patients gracefully', async () => {
-      const newOrg = await prisma.organization.create({ data: { name: 'Empty Org', slug: `empty-${Date.now()}` } });
-      const newBranch = await prisma.branch.create({ data: { name: 'Empty', organizationId: newOrg.id } });
-      const newUser = await prisma.user.create({
-        data: { email: `empty-${Date.now()}@t.com`, passwordHash: 'h', firstName: 'Empty', lastName: 'U', organizationId: newOrg.id, branchId: newBranch.id },
+      const newOrg = await prisma.organization.create({
+        data: { name: 'Empty Org', slug: `empty-${Date.now()}` },
       });
-      const t = jwtService.sign({ sub: newUser.id, email: newUser.email, organizationId: newOrg.id, branchId: newBranch.id, roles: ['Organization Owner'], permissions: ['*'] });
+      const newBranch = await prisma.branch.create({
+        data: { name: 'Empty', organizationId: newOrg.id },
+      });
+      const newUser = await prisma.user.create({
+        data: {
+          email: `empty-${Date.now()}@t.com`,
+          passwordHash: 'h',
+          firstName: 'Empty',
+          lastName: 'U',
+          organizationId: newOrg.id,
+          branchId: newBranch.id,
+        },
+      });
+      const t = jwtService.sign({
+        sub: newUser.id,
+        email: newUser.email,
+        organizationId: newOrg.id,
+        branchId: newBranch.id,
+        roles: ['Organization Owner'],
+        permissions: ['*'],
+      });
 
       const res = await request(app.getHttpServer())
-        .get('/api/v1/patients').set('Authorization', `Bearer ${t}`);
+        .get('/api/v1/patients')
+        .set('Authorization', `Bearer ${t}`);
       expect(res.status).toBeDefined();
 
       await prisma.user.deleteMany({ where: { organizationId: newOrg.id } });
@@ -203,7 +313,8 @@ describe('Patient CRM (E2E) — Phase 5', () => {
   describe('Export', () => {
     it('should export patients as CSV', async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/v1/patients/export/csv').set('Authorization', `Bearer ${token}`);
+        .get('/api/v1/patients/export/csv')
+        .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBeDefined();
       expect(res.headers['content-type']).toMatch(/csv|text/);
     });

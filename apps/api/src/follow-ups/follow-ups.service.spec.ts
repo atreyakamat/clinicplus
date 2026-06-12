@@ -49,7 +49,9 @@ describe('FollowUpsService', () => {
         reason: 'Post-treatment check-in',
       } as any;
 
-      jest.spyOn(prisma.followUp, 'create').mockResolvedValue({ id: 'fup-1', ...data } as any);
+      jest
+        .spyOn(prisma.followUp, 'create')
+        .mockResolvedValue({ id: 'fup-1', ...data });
 
       const result = await service.create(data);
 
@@ -58,17 +60,21 @@ describe('FollowUpsService', () => {
       expect(result.reason).toBe('Post-treatment check-in');
     });
 
-
-
     it('should add outcome to existing follow-up', async () => {
-      jest.spyOn(prisma.followUp, 'findUnique').mockResolvedValue({ id: 'fup-1', branchId: mockBranchId } as any);
+      jest
+        .spyOn(prisma.followUp, 'findUnique')
+        .mockResolvedValue({ id: 'fup-1', branchId: mockBranchId } as any);
       jest.spyOn(prisma.followUpOutcome, 'create').mockResolvedValue({
         id: 'out-1',
         notes: 'Patient recovering well',
-        followUpId: 'fup-1'
+        followUpId: 'fup-1',
       } as any);
 
-      const result = await service.addOutcome('fup-1', { notes: 'Patient recovering well' }, mockOrgId);
+      const result = await service.addOutcome(
+        'fup-1',
+        { notes: 'Patient recovering well' },
+        mockOrgId,
+      );
 
       expect(result.id).toBe('out-1');
       expect(result.notes).toBe('Patient recovering well');
@@ -83,34 +89,44 @@ describe('FollowUpsService', () => {
         followUpDate: new Date('2026-06-20T10:00:00Z'),
       } as any;
 
-      jest.spyOn(prisma.followUp, 'create').mockResolvedValue({ id: 'fup-1', ...data } as any);
+      jest
+        .spyOn(prisma.followUp, 'create')
+        .mockResolvedValue({ id: 'fup-1', ...data });
 
       const result = await service.create(data);
       expect(result.followUpDate).toBeDefined();
     });
 
     it('should track outcome when added', async () => {
-      jest.spyOn(prisma.followUp, 'findUnique').mockResolvedValue({ id: 'fup-1', branchId: mockBranchId } as any);
+      jest
+        .spyOn(prisma.followUp, 'findUnique')
+        .mockResolvedValue({ id: 'fup-1', branchId: mockBranchId } as any);
       jest.spyOn(prisma.followUpOutcome, 'create').mockResolvedValue({
         id: 'out-1',
-        notes: 'Notes about outcome'
+        notes: 'Notes about outcome',
       } as any);
 
-      await service.addOutcome('fup-1', { notes: 'Notes about outcome' }, mockOrgId);
+      await service.addOutcome(
+        'fup-1',
+        { notes: 'Notes about outcome' },
+        mockOrgId,
+      );
 
-      expect(prisma.followUpOutcome.create).toHaveBeenCalledWith(expect.objectContaining({
-        data: expect.objectContaining({
-          followUpId: 'fup-1',
-          branchId: mockBranchId
-        })
-      }));
+      expect(prisma.followUpOutcome.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            followUpId: 'fup-1',
+            branchId: mockBranchId,
+          }),
+        }),
+      );
     });
 
     it('should prevent outcome on non-existent follow-up', async () => {
       jest.spyOn(prisma.followUp, 'findUnique').mockResolvedValue(null);
 
       await expect(
-        service.addOutcome('fup-1', { notes: 'Good' }, mockOrgId)
+        service.addOutcome('fup-1', { notes: 'Good' }, mockOrgId),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -122,17 +138,27 @@ describe('FollowUpsService', () => {
         outcomes: [
           { id: 'out-1', notes: 'First visit - good' },
           { id: 'out-2', notes: 'Second visit - improving' },
-          { id: 'out-3', notes: 'Third visit - resolved' }
-        ]
+          { id: 'out-3', notes: 'Third visit - resolved' },
+        ],
       };
 
-      jest.spyOn(prisma.followUp, 'findUnique').mockResolvedValue(followUp as any);
+      jest
+        .spyOn(prisma.followUp, 'findUnique')
+        .mockResolvedValue(followUp as any);
 
       // Test via addOutcome which requires findUnique
-      jest.spyOn(prisma.followUp, 'findUnique').mockResolvedValue({ id: 'fup-1', branchId: mockBranchId } as any);
-      jest.spyOn(prisma.followUpOutcome, 'create').mockResolvedValue({ id: 'out-1', followUpId: 'fup-1' } as any);
+      jest
+        .spyOn(prisma.followUp, 'findUnique')
+        .mockResolvedValue({ id: 'fup-1', branchId: mockBranchId } as any);
+      jest
+        .spyOn(prisma.followUpOutcome, 'create')
+        .mockResolvedValue({ id: 'out-1', followUpId: 'fup-1' } as any);
 
-      const result = await service.addOutcome('fup-1', { notes: 'First visit' }, mockOrgId);
+      const result = await service.addOutcome(
+        'fup-1',
+        { notes: 'First visit' },
+        mockOrgId,
+      );
 
       expect(result).toBeDefined();
     });
@@ -144,7 +170,9 @@ describe('FollowUpsService', () => {
         notes: 'Check medication effectiveness & side effects',
       } as any;
 
-      jest.spyOn(prisma.followUp, 'create').mockResolvedValue({ id: 'fup-1', ...data } as any);
+      jest
+        .spyOn(prisma.followUp, 'create')
+        .mockResolvedValue({ id: 'fup-1', ...data });
 
       const result = await service.create(data);
 
@@ -154,10 +182,12 @@ describe('FollowUpsService', () => {
     it('should retrieve follow-ups filtered by patient', async () => {
       const followUps = [
         { id: 'fup-1', patientId: 'pat-1' },
-        { id: 'fup-2', patientId: 'pat-1' }
+        { id: 'fup-2', patientId: 'pat-1' },
       ];
 
-      jest.spyOn(prisma.followUp, 'findMany').mockResolvedValue(followUps as any);
+      jest
+        .spyOn(prisma.followUp, 'findMany')
+        .mockResolvedValue(followUps as any);
 
       await service.findAll(mockOrgId, mockBranchId);
 
@@ -167,25 +197,27 @@ describe('FollowUpsService', () => {
 
   describe('MULTI-TENANT: FollowUp Isolation', () => {
     it('should only retrieve follow-ups for specified organization', async () => {
-      jest.spyOn(prisma.followUp, 'findMany').mockResolvedValue([
-        { id: 'fup-1', organizationId: mockOrgId }
-      ] as any);
+      jest
+        .spyOn(prisma.followUp, 'findMany')
+        .mockResolvedValue([{ id: 'fup-1', organizationId: mockOrgId }] as any);
 
       await service.findAll(mockOrgId, mockBranchId);
 
-      expect(prisma.followUp.findMany).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({
-          organizationId: mockOrgId,
-          branchId: mockBranchId
-        })
-      }));
+      expect(prisma.followUp.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationId: mockOrgId,
+            branchId: mockBranchId,
+          }),
+        }),
+      );
     });
 
     it('should prevent cross-organization follow-up access', async () => {
       jest.spyOn(prisma.followUp, 'findUnique').mockResolvedValue(null);
 
       await expect(
-        service.addOutcome('fup-1', { notes: 'Test' }, mockOrgId2)
+        service.addOutcome('fup-1', { notes: 'Test' }, mockOrgId2),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -201,8 +233,8 @@ describe('FollowUpsService', () => {
         id: 'fup-1',
         organizationId: mockOrgId2,
         branchId: 'branch-2',
-        ...data
-      } as any);
+        ...data,
+      });
 
       const result = await service.create(data);
 
@@ -213,24 +245,42 @@ describe('FollowUpsService', () => {
 
   describe('STATUS TRANSITION: FollowUp States', () => {
     it('should allow transition to COMPLETED', async () => {
-      jest.spyOn(prisma.followUp, 'findFirst').mockResolvedValue({ id: 'fup-1', status: 'OPEN' } as any);
-      jest.spyOn(prisma.followUp, 'update').mockResolvedValue({ id: 'fup-1', status: 'COMPLETED' } as any);
+      jest
+        .spyOn(prisma.followUp, 'findFirst')
+        .mockResolvedValue({ id: 'fup-1', status: 'OPEN' } as any);
+      jest
+        .spyOn(prisma.followUp, 'update')
+        .mockResolvedValue({ id: 'fup-1', status: 'COMPLETED' } as any);
 
-      const result = await service.updateStatus('fup-1', 'COMPLETED', mockOrgId);
+      const result = await service.updateStatus(
+        'fup-1',
+        'COMPLETED',
+        mockOrgId,
+      );
 
       expect(result.status).toBe('COMPLETED');
     });
 
     it('should update follow-up status', async () => {
-      jest.spyOn(prisma.followUp, 'findFirst').mockResolvedValue({ id: 'fup-1' } as any);
-      jest.spyOn(prisma.followUp, 'update').mockResolvedValue({ id: 'fup-1', status: 'COMPLETED' } as any);
+      jest
+        .spyOn(prisma.followUp, 'findFirst')
+        .mockResolvedValue({ id: 'fup-1' } as any);
+      jest
+        .spyOn(prisma.followUp, 'update')
+        .mockResolvedValue({ id: 'fup-1', status: 'COMPLETED' } as any);
 
-      const result = await service.updateStatus('fup-1', 'COMPLETED', mockOrgId);
+      const result = await service.updateStatus(
+        'fup-1',
+        'COMPLETED',
+        mockOrgId,
+      );
 
-      expect(prisma.followUp.update).toHaveBeenCalledWith(expect.objectContaining({
-        where: { id: 'fup-1' },
-        data: { status: 'COMPLETED' }
-      }));
+      expect(prisma.followUp.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'fup-1' },
+          data: { status: 'COMPLETED' },
+        }),
+      );
     });
   });
 
@@ -239,7 +289,7 @@ describe('FollowUpsService', () => {
       jest.spyOn(prisma.followUp, 'findFirst').mockResolvedValue(null);
 
       await expect(
-        service.findOne('fup-1', mockOrgId, mockBranchId)
+        service.findOne('fup-1', mockOrgId, mockBranchId),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -247,7 +297,7 @@ describe('FollowUpsService', () => {
       jest.spyOn(prisma.followUp, 'findUnique').mockResolvedValue(null);
 
       await expect(
-        service.addOutcome('fup-1', { notes: 'Good' }, mockOrgId)
+        service.addOutcome('fup-1', { notes: 'Good' }, mockOrgId),
       ).rejects.toThrow(NotFoundException);
 
       expect(prisma.followUpOutcome.create).not.toHaveBeenCalled();
@@ -256,17 +306,23 @@ describe('FollowUpsService', () => {
     it('should handle database error during creation', async () => {
       const data = { patientId: 'pat-1', followUpDate: new Date() } as any;
 
-      jest.spyOn(prisma.followUp, 'create').mockRejectedValue(new Error('Database error'));
+      jest
+        .spyOn(prisma.followUp, 'create')
+        .mockRejectedValue(new Error('Database error'));
 
       await expect(service.create(data)).rejects.toThrow('Database error');
     });
 
     it('should handle update error gracefully', async () => {
-      jest.spyOn(prisma.followUp, 'findFirst').mockResolvedValue({ id: 'fup-1' } as any);
-      jest.spyOn(prisma.followUp, 'update').mockRejectedValue(new Error('Update failed'));
+      jest
+        .spyOn(prisma.followUp, 'findFirst')
+        .mockResolvedValue({ id: 'fup-1' } as any);
+      jest
+        .spyOn(prisma.followUp, 'update')
+        .mockRejectedValue(new Error('Update failed'));
 
       await expect(
-        service.updateStatus('fup-1', 'COMPLETED', mockOrgId)
+        service.updateStatus('fup-1', 'COMPLETED', mockOrgId),
       ).rejects.toThrow('Update failed');
     });
   });
@@ -275,17 +331,19 @@ describe('FollowUpsService', () => {
     it('should include patient details in follow-up retrieval', async () => {
       const followUp = {
         id: 'fup-1',
-        patient: { id: 'pat-1', firstName: 'John', lastName: 'Doe' }
+        patient: { id: 'pat-1', firstName: 'John', lastName: 'Doe' },
       };
 
-      jest.spyOn(prisma.followUp, 'findFirst').mockResolvedValue(followUp as any);
+      jest
+        .spyOn(prisma.followUp, 'findFirst')
+        .mockResolvedValue(followUp as any);
 
       await service.findOne('fup-1', mockOrgId, mockBranchId);
 
       expect(prisma.followUp.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
-          include: expect.any(Object)
-        })
+          include: expect.any(Object),
+        }),
       );
     });
 
@@ -297,7 +355,9 @@ describe('FollowUpsService', () => {
         followUpDate: new Date(),
       } as any;
 
-      jest.spyOn(prisma.followUp, 'create').mockResolvedValue({ id: 'fup-1', ...data } as any);
+      jest
+        .spyOn(prisma.followUp, 'create')
+        .mockResolvedValue({ id: 'fup-1', ...data });
 
       await service.create(data);
 
@@ -305,9 +365,9 @@ describe('FollowUpsService', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             organizationId: mockOrgId,
-            branchId: mockBranchId
-          })
-        })
+            branchId: mockBranchId,
+          }),
+        }),
       );
     });
   });

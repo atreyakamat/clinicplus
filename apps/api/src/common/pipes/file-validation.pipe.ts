@@ -27,7 +27,9 @@ export class FileValidationPipe implements PipeTransform {
     }
 
     if (!this.ALLOWED_MIMES.includes(file.mimetype)) {
-      throw new BadRequestException(`Unsupported file type: ${file.mimetype}. Allowed types: PDF, JPG, PNG, DICOM`);
+      throw new BadRequestException(
+        `Unsupported file type: ${file.mimetype}. Allowed types: PDF, JPG, PNG, DICOM`,
+      );
     }
 
     // Security Hardening: Basic filename sanitization

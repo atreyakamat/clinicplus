@@ -25,7 +25,8 @@ export class TimelineInterceptor implements NestInterceptor {
           let patientId: string | null = null;
           if (body && body.patientId) patientId = body.patientId;
           else if (data && data.patientId) patientId = data.patientId;
-          else if (url && url.includes('patients/')) patientId = url.split('/')[4];
+          else if (url && url.includes('patients/'))
+            patientId = url.split('/')[4];
 
           if (patientId && patientId.length === 36) {
             // Basic UUID check

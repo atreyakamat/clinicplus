@@ -39,7 +39,9 @@ describe('FollowUpsController', () => {
       const data = { notes: 'Checkup' };
       jest.spyOn(service, 'create').mockResolvedValue({ id: 'fup-1' } as any);
       await controller.create(data, mockRequest);
-      expect(service.create).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 'org-1' }));
+      expect(service.create).toHaveBeenCalledWith(
+        expect.objectContaining({ organizationId: 'org-1' }),
+      );
     });
   });
 
@@ -53,17 +55,33 @@ describe('FollowUpsController', () => {
 
   describe('addOutcome', () => {
     it('should call service addOutcome with context', async () => {
-      jest.spyOn(service, 'addOutcome').mockResolvedValue({ id: 'out-1' } as any);
+      jest
+        .spyOn(service, 'addOutcome')
+        .mockResolvedValue({ id: 'out-1' } as any);
       await controller.addOutcome('fup-1', { notes: 'Better' }, mockRequest);
-      expect(service.addOutcome).toHaveBeenCalledWith('fup-1', expect.objectContaining({ notes: 'Better' }), 'org-1');
+      expect(service.addOutcome).toHaveBeenCalledWith(
+        'fup-1',
+        expect.objectContaining({ notes: 'Better' }),
+        'org-1',
+      );
     });
   });
 
   describe('updateStatus', () => {
     it('should call service updateStatus with context', async () => {
-      jest.spyOn(service, 'updateStatus').mockResolvedValue({ id: 'fup-1' } as any);
-      await controller.updateStatus('fup-1', { status: 'COMPLETED' }, mockRequest);
-      expect(service.updateStatus).toHaveBeenCalledWith('fup-1', { status: 'COMPLETED' }, 'org-1');
+      jest
+        .spyOn(service, 'updateStatus')
+        .mockResolvedValue({ id: 'fup-1' } as any);
+      await controller.updateStatus(
+        'fup-1',
+        { status: 'COMPLETED' },
+        mockRequest,
+      );
+      expect(service.updateStatus).toHaveBeenCalledWith(
+        'fup-1',
+        { status: 'COMPLETED' },
+        'org-1',
+      );
     });
   });
 });

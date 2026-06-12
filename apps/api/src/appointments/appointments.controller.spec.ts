@@ -46,16 +46,20 @@ describe('AppointmentsController', () => {
         expect.objectContaining({ organizationId: 'org-1' }),
         'org-1',
         'branch-1',
-        'user-1'
+        'user-1',
       );
     });
   });
 
   describe('findAll', () => {
     it('should call service findAll with context', async () => {
-      jest.spyOn(service, 'findAll').mockResolvedValue([] as any);
+      jest.spyOn(service, 'findAll').mockResolvedValue([]);
       await controller.findAll(mockRequest, '2026-06-09');
-      expect(service.findAll).toHaveBeenCalledWith('org-1', 'branch-1', '2026-06-09');
+      expect(service.findAll).toHaveBeenCalledWith(
+        'org-1',
+        'branch-1',
+        '2026-06-09',
+      );
     });
   });
 
@@ -63,7 +67,11 @@ describe('AppointmentsController', () => {
     it('should call service findOne with context', async () => {
       jest.spyOn(service, 'findOne').mockResolvedValue({ id: 'appt-1' } as any);
       await controller.findOne('appt-1', mockRequest);
-      expect(service.findOne).toHaveBeenCalledWith('appt-1', 'org-1', 'branch-1');
+      expect(service.findOne).toHaveBeenCalledWith(
+        'appt-1',
+        'org-1',
+        'branch-1',
+      );
     });
   });
 
@@ -71,7 +79,13 @@ describe('AppointmentsController', () => {
     it('should call service update with context', async () => {
       jest.spyOn(service, 'update').mockResolvedValue({ id: 'appt-1' } as any);
       await controller.update('appt-1', { status: 'COMPLETED' }, mockRequest);
-      expect(service.update).toHaveBeenCalledWith('appt-1', { status: 'COMPLETED' }, 'org-1', 'branch-1', 'user-1');
+      expect(service.update).toHaveBeenCalledWith(
+        'appt-1',
+        { status: 'COMPLETED' },
+        'org-1',
+        'branch-1',
+        'user-1',
+      );
     });
   });
 
@@ -79,7 +93,12 @@ describe('AppointmentsController', () => {
     it('should call service remove with context', async () => {
       jest.spyOn(service, 'remove').mockResolvedValue({ id: 'appt-1' } as any);
       await controller.remove('appt-1', mockRequest);
-      expect(service.remove).toHaveBeenCalledWith('appt-1', 'org-1', 'branch-1', 'user-1');
+      expect(service.remove).toHaveBeenCalledWith(
+        'appt-1',
+        'org-1',
+        'branch-1',
+        'user-1',
+      );
     });
   });
 
@@ -89,16 +108,23 @@ describe('AppointmentsController', () => {
         set: jest.fn(),
         send: jest.fn().mockReturnValue('csv-content'),
       };
-      
+
       jest.spyOn(service, 'findAll').mockResolvedValue([
-        { id: '1', scheduledStart: new Date(), patient: { firstName: 'John' }, doctor: { lastName: 'Smith' } }
+        {
+          id: '1',
+          scheduledStart: new Date(),
+          patient: { firstName: 'John' },
+          doctor: { lastName: 'Smith' },
+        },
       ] as any);
 
       await controller.exportCsv(mockRequest, mockRes);
       expect(service.findAll).toHaveBeenCalledWith('org-1', 'branch-1');
-      expect(mockRes.set).toHaveBeenCalledWith(expect.objectContaining({
-        'Content-Type': 'text/csv'
-      }));
+      expect(mockRes.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          'Content-Type': 'text/csv',
+        }),
+      );
       expect(mockRes.send).toHaveBeenCalled();
     });
   });

@@ -7,13 +7,13 @@ export declare class UsersService {
             role: {
                 rolePermissions: ({
                     permission: {
-                        module: string;
-                        action: string;
                         id: string;
                         createdAt: Date;
                         updatedAt: Date;
                         organizationId: string | null;
                         branchId: string | null;
+                        module: string;
+                        action: string;
                         description: string | null;
                     };
                 } & {
@@ -61,6 +61,7 @@ export declare class UsersService {
         deletedBy: string | null;
         deleteReason: string | null;
         organizationId: string;
+        branchId: string;
         firstName: string;
         lastName: string;
         avatarUrl: string | null;
@@ -73,7 +74,6 @@ export declare class UsersService {
         bio: string | null;
         consultationFee: import("@prisma/client/runtime/library").Decimal | null;
         signatureUrl: string | null;
-        branchId: string;
     }) | null>;
     findAll(organizationId: string, branchId: string, role?: string): Promise<({
         roles: ({
@@ -113,6 +113,7 @@ export declare class UsersService {
         deletedBy: string | null;
         deleteReason: string | null;
         organizationId: string;
+        branchId: string;
         firstName: string;
         lastName: string;
         avatarUrl: string | null;
@@ -125,7 +126,6 @@ export declare class UsersService {
         bio: string | null;
         consultationFee: import("@prisma/client/runtime/library").Decimal | null;
         signatureUrl: string | null;
-        branchId: string;
     })[]>;
     findOne(id: string, organizationId: string, branchId: string): Promise<({
         roles: ({
@@ -165,6 +165,7 @@ export declare class UsersService {
         deletedBy: string | null;
         deleteReason: string | null;
         organizationId: string;
+        branchId: string;
         firstName: string;
         lastName: string;
         avatarUrl: string | null;
@@ -177,7 +178,6 @@ export declare class UsersService {
         bio: string | null;
         consultationFee: import("@prisma/client/runtime/library").Decimal | null;
         signatureUrl: string | null;
-        branchId: string;
     }) | null>;
     update(id: string, data: any, organizationId: string, branchId: string): Promise<{
         id: string;
@@ -192,6 +192,7 @@ export declare class UsersService {
         deletedBy: string | null;
         deleteReason: string | null;
         organizationId: string;
+        branchId: string;
         firstName: string;
         lastName: string;
         avatarUrl: string | null;
@@ -204,6 +205,5 @@ export declare class UsersService {
         bio: string | null;
         consultationFee: import("@prisma/client/runtime/library").Decimal | null;
         signatureUrl: string | null;
-        branchId: string;
     }>;
 }

@@ -66,7 +66,8 @@ let FollowUpsService = class FollowUpsService {
         });
     }
     async updateStatus(id, status, organizationId) {
-        const followUp = await this.prisma.followUp.findFirst({ where: { id, organizationId },
+        const followUp = await this.prisma.followUp.findFirst({
+            where: { id, organizationId },
         });
         if (!followUp)
             throw new common_1.NotFoundException('Follow-up not found');

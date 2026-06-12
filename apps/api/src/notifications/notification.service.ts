@@ -55,7 +55,9 @@ export class NotificationService {
    * Send appointment reminders for specific time windows
    */
   async sendAppointmentRemindersForHours(hoursBefore: number) {
-    return this.appointmentReminderService.sendAppointmentReminders(hoursBefore);
+    return this.appointmentReminderService.sendAppointmentReminders(
+      hoursBefore,
+    );
   }
 
   /**

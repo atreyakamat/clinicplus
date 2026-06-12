@@ -40,7 +40,12 @@ describe('TasksController', () => {
       const data = { title: 'Task' };
       jest.spyOn(service, 'create').mockResolvedValue({ id: 'task-1' } as any);
       await controller.create(data, mockRequest);
-      expect(service.create).toHaveBeenCalledWith(data, 'org-1', 'branch-1', 'user-1');
+      expect(service.create).toHaveBeenCalledWith(
+        data,
+        'org-1',
+        'branch-1',
+        'user-1',
+      );
     });
   });
 
@@ -56,7 +61,11 @@ describe('TasksController', () => {
     it('should call service findOne with context', async () => {
       jest.spyOn(service, 'findOne').mockResolvedValue({ id: 'task-1' } as any);
       await controller.findOne('task-1', mockRequest);
-      expect(service.findOne).toHaveBeenCalledWith('task-1', 'org-1', 'branch-1');
+      expect(service.findOne).toHaveBeenCalledWith(
+        'task-1',
+        'org-1',
+        'branch-1',
+      );
     });
   });
 
@@ -64,7 +73,12 @@ describe('TasksController', () => {
     it('should call service update with updatedBy', async () => {
       jest.spyOn(service, 'update').mockResolvedValue({ id: 'task-1' } as any);
       await controller.update('task-1', { status: 'COMPLETED' }, mockRequest);
-      expect(service.update).toHaveBeenCalledWith('task-1', { status: 'COMPLETED', updatedBy: 'user-1' }, 'org-1', 'branch-1');
+      expect(service.update).toHaveBeenCalledWith(
+        'task-1',
+        { status: 'COMPLETED', updatedBy: 'user-1' },
+        'org-1',
+        'branch-1',
+      );
     });
   });
 
@@ -72,7 +86,11 @@ describe('TasksController', () => {
     it('should call service remove with context', async () => {
       jest.spyOn(service, 'remove').mockResolvedValue({ id: 'task-1' } as any);
       await controller.remove('task-1', mockRequest);
-      expect(service.remove).toHaveBeenCalledWith('task-1', 'org-1', 'branch-1');
+      expect(service.remove).toHaveBeenCalledWith(
+        'task-1',
+        'org-1',
+        'branch-1',
+      );
     });
   });
 });

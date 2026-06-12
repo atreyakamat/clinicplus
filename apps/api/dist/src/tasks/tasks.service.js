@@ -47,7 +47,8 @@ let TasksService = class TasksService {
         });
     }
     async findOne(id, organizationId, branchId) {
-        const task = await this.prisma.task.findFirst({ where: { id, organizationId, branchId },
+        const task = await this.prisma.task.findFirst({
+            where: { id, organizationId, branchId },
             include: {
                 assignee: {
                     select: { id: true, firstName: true, lastName: true },

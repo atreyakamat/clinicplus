@@ -35,7 +35,9 @@ describe('QueuesController', () => {
 
   describe('getLiveQueue', () => {
     it('should call service getLiveQueue with context', async () => {
-      jest.spyOn(service, 'getLiveQueue').mockResolvedValue({ id: 'q-1' } as any);
+      jest
+        .spyOn(service, 'getLiveQueue')
+        .mockResolvedValue({ id: 'q-1' } as any);
       await controller.getLiveQueue(mockRequest);
       expect(service.getLiveQueue).toHaveBeenCalledWith('org-1', 'branch-1');
     });
@@ -43,17 +45,28 @@ describe('QueuesController', () => {
 
   describe('checkIn', () => {
     it('should call service checkIn with context', async () => {
-      jest.spyOn(service, 'checkIn').mockResolvedValue({ id: 'entry-1' } as any);
+      jest
+        .spyOn(service, 'checkIn')
+        .mockResolvedValue({ id: 'entry-1' } as any);
       await controller.checkIn({ appointmentId: 'appt-1' }, mockRequest);
-      expect(service.checkIn).toHaveBeenCalledWith('appt-1', 'org-1', 'branch-1');
+      expect(service.checkIn).toHaveBeenCalledWith(
+        'appt-1',
+        'org-1',
+        'branch-1',
+      );
     });
   });
 
   describe('updateEntryStatus', () => {
     it('should call service updateEntryStatus', async () => {
-      jest.spyOn(service, 'updateEntryStatus').mockResolvedValue({ id: 'entry-1' } as any);
+      jest
+        .spyOn(service, 'updateEntryStatus')
+        .mockResolvedValue({ id: 'entry-1' } as any);
       await controller.updateStatus('entry-1', { status: 'IN_PROGRESS' });
-      expect(service.updateEntryStatus).toHaveBeenCalledWith('entry-1', 'IN_PROGRESS');
+      expect(service.updateEntryStatus).toHaveBeenCalledWith(
+        'entry-1',
+        'IN_PROGRESS',
+      );
     });
   });
 });

@@ -43,7 +43,7 @@ describe('ConsultationsController', () => {
         expect.objectContaining({
           organizationId: 'org-1',
           doctorId: 'user-1',
-        })
+        }),
       );
     });
   });
@@ -52,7 +52,11 @@ describe('ConsultationsController', () => {
     it('should pass query params to service', async () => {
       jest.spyOn(service, 'findAll').mockResolvedValue([]);
       await controller.findAll('pat-1', mockRequest);
-      expect(service.findAll).toHaveBeenCalledWith('org-1', 'branch-1', 'pat-1');
+      expect(service.findAll).toHaveBeenCalledWith(
+        'org-1',
+        'branch-1',
+        'pat-1',
+      );
     });
   });
 
@@ -60,7 +64,11 @@ describe('ConsultationsController', () => {
     it('should call service findOne', async () => {
       jest.spyOn(service, 'findOne').mockResolvedValue({ id: 'cons-1' } as any);
       await controller.findOne('cons-1', mockRequest);
-      expect(service.findOne).toHaveBeenCalledWith('cons-1', 'org-1', 'branch-1');
+      expect(service.findOne).toHaveBeenCalledWith(
+        'cons-1',
+        'org-1',
+        'branch-1',
+      );
     });
   });
 
@@ -68,15 +76,26 @@ describe('ConsultationsController', () => {
     it('should call service update with updatedBy', async () => {
       jest.spyOn(service, 'update').mockResolvedValue({ id: 'cons-1' } as any);
       await controller.update('cons-1', { notes: 'Updated' }, mockRequest);
-      expect(service.update).toHaveBeenCalledWith('cons-1', expect.objectContaining({ updatedBy: 'user-1' }), 'org-1', 'branch-1');
+      expect(service.update).toHaveBeenCalledWith(
+        'cons-1',
+        expect.objectContaining({ updatedBy: 'user-1' }),
+        'org-1',
+        'branch-1',
+      );
     });
   });
 
   describe('complete', () => {
     it('should call service complete', async () => {
-      jest.spyOn(service, 'complete').mockResolvedValue({ id: 'cons-1' } as any);
+      jest
+        .spyOn(service, 'complete')
+        .mockResolvedValue({ id: 'cons-1' } as any);
       await controller.complete('cons-1', mockRequest);
-      expect(service.complete).toHaveBeenCalledWith('cons-1', 'org-1', 'branch-1');
+      expect(service.complete).toHaveBeenCalledWith(
+        'cons-1',
+        'org-1',
+        'branch-1',
+      );
     });
   });
 });

@@ -41,9 +41,9 @@ export declare class QueuesService {
                 deletedBy: string | null;
                 deleteReason: string | null;
                 organizationId: string;
+                branchId: string;
                 firstName: string;
                 lastName: string;
-                branchId: string;
                 patientCode: string | null;
                 middleName: string | null;
                 gender: string | null;

@@ -31,15 +31,15 @@ export class PatientsService {
     const duplicateCriteria: any[] = [];
     if (data.email) duplicateCriteria.push({ email: data.email });
     if (data.phone) duplicateCriteria.push({ phone: data.phone });
-    
+
     // Also check Name + Phone combination as requested in Acceptance Test
     if (data.firstName && data.lastName && data.phone) {
       duplicateCriteria.push({
         AND: [
           { firstName: data.firstName },
           { lastName: data.lastName },
-          { phone: data.phone }
-        ]
+          { phone: data.phone },
+        ],
       });
     }
 
@@ -53,7 +53,12 @@ export class PatientsService {
       });
 
       if (existing) {
-        const field = existing.email === data.email ? 'email' : (existing.phone === data.phone ? 'phone' : 'name/phone combination');
+        const field =
+          existing.email === data.email
+            ? 'email'
+            : existing.phone === data.phone
+              ? 'phone'
+              : 'name/phone combination';
         throw new ConflictException(
           `Patient with this ${field} already exists in this clinic`,
         );
@@ -76,15 +81,18 @@ export class PatientsService {
       });
 
       // 3. Timeline Recording (F-010)
-      await this.timeline.record({
-        organizationId: patient.organizationId,
-        patientId: patient.id,
-        eventType: 'PATIENT_REGISTERED',
-        eventCategory: 'PATIENT',
-        title: 'Patient Registered',
-        description: `Patient ${patient.firstName} ${patient.lastName} was registered in the system.`,
-        createdBy: data.createdBy,
-      }, tx);
+      await this.timeline.record(
+        {
+          organizationId: patient.organizationId,
+          patientId: patient.id,
+          eventType: 'PATIENT_REGISTERED',
+          eventCategory: 'PATIENT',
+          title: 'Patient Registered',
+          description: `Patient ${patient.firstName} ${patient.lastName} was registered in the system.`,
+          createdBy: data.createdBy,
+        },
+        tx,
+      );
 
       // 4. Audit Log
       await this.auditService.log({
@@ -115,7 +123,8 @@ export class PatientsService {
 
   async findOne(id: string, organizationId: string, branchId: string) {
     this.validateUuid(id);
-    const patient = await this.prisma.patient.findFirst({ where: { id, organizationId, branchId },
+    const patient = await this.prisma.patient.findFirst({
+      where: { id, organizationId, branchId },
       include: {
         addresses: true,
         emergencyContacts: true,

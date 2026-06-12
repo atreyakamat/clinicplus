@@ -36,6 +36,10 @@ export declare class InvoicesService {
         total: Prisma.Decimal;
     }>;
     findAll(organizationId: string, branchId: string): Promise<({
+        patient: {
+            firstName: string;
+            lastName: string;
+        };
         payments: {
             id: string;
             createdAt: Date;
@@ -52,10 +56,6 @@ export declare class InvoicesService {
             createdById: string | null;
             invoiceId: string;
         }[];
-        patient: {
-            firstName: string;
-            lastName: string;
-        };
     } & {
         id: string;
         status: import("@prisma/client").$Enums.InvoiceStatus;
@@ -76,22 +76,6 @@ export declare class InvoicesService {
         total: Prisma.Decimal;
     })[]>;
     findOne(id: string, organizationId: string, branchId: string): Promise<{
-        payments: {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            organizationId: string;
-            branchId: string;
-            amount: Prisma.Decimal;
-            paymentMethod: string;
-            transactionReference: string | null;
-            paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
-            paidAt: Date | null;
-            isRefund: boolean;
-            originalPaymentId: string | null;
-            createdById: string | null;
-            invoiceId: string;
-        }[];
         patient: {
             id: string;
             email: string | null;
@@ -105,9 +89,9 @@ export declare class InvoicesService {
             deletedBy: string | null;
             deleteReason: string | null;
             organizationId: string;
+            branchId: string;
             firstName: string;
             lastName: string;
-            branchId: string;
             patientCode: string | null;
             middleName: string | null;
             gender: string | null;
@@ -127,6 +111,22 @@ export declare class InvoicesService {
             quantity: number;
             unitPrice: Prisma.Decimal;
             amount: Prisma.Decimal;
+            invoiceId: string;
+        }[];
+        payments: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            organizationId: string;
+            branchId: string;
+            amount: Prisma.Decimal;
+            paymentMethod: string;
+            transactionReference: string | null;
+            paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+            paidAt: Date | null;
+            isRefund: boolean;
+            originalPaymentId: string | null;
+            createdById: string | null;
             invoiceId: string;
         }[];
     } & {

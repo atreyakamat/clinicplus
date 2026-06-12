@@ -15,8 +15,8 @@ export declare class TasksService {
         deleteReason: string | null;
         organizationId: string;
         branchId: string;
-        description: string | null;
         patientId: string | null;
+        description: string | null;
         title: string;
         priority: import("@prisma/client").$Enums.TaskPriority;
         dueDate: Date | null;
@@ -45,8 +45,8 @@ export declare class TasksService {
         deleteReason: string | null;
         organizationId: string;
         branchId: string;
-        description: string | null;
         patientId: string | null;
+        description: string | null;
         title: string;
         priority: import("@prisma/client").$Enums.TaskPriority;
         dueDate: Date | null;
@@ -75,8 +75,8 @@ export declare class TasksService {
         deleteReason: string | null;
         organizationId: string;
         branchId: string;
-        description: string | null;
         patientId: string | null;
+        description: string | null;
         title: string;
         priority: import("@prisma/client").$Enums.TaskPriority;
         dueDate: Date | null;
@@ -94,8 +94,8 @@ export declare class TasksService {
         deleteReason: string | null;
         organizationId: string;
         branchId: string;
-        description: string | null;
         patientId: string | null;
+        description: string | null;
         title: string;
         priority: import("@prisma/client").$Enums.TaskPriority;
         dueDate: Date | null;
@@ -113,8 +113,8 @@ export declare class TasksService {
         deleteReason: string | null;
         organizationId: string;
         branchId: string;
-        description: string | null;
         patientId: string | null;
+        description: string | null;
         title: string;
         priority: import("@prisma/client").$Enums.TaskPriority;
         dueDate: Date | null;

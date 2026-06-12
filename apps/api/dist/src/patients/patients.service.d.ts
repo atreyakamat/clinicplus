@@ -21,9 +21,9 @@ export declare class PatientsService {
         deletedBy: string | null;
         deleteReason: string | null;
         organizationId: string;
+        branchId: string;
         firstName: string;
         lastName: string;
-        branchId: string;
         patientCode: string | null;
         middleName: string | null;
         gender: string | null;
@@ -46,9 +46,9 @@ export declare class PatientsService {
         deletedBy: string | null;
         deleteReason: string | null;
         organizationId: string;
+        branchId: string;
         firstName: string;
         lastName: string;
-        branchId: string;
         patientCode: string | null;
         middleName: string | null;
         gender: string | null;
@@ -59,6 +59,54 @@ export declare class PatientsService {
         abhaNumber: string | null;
     }[]>;
     findOne(id: string, organizationId: string, branchId: string): Promise<{
+        invoices: ({
+            items: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                organizationId: string;
+                branchId: string;
+                itemName: string;
+                quantity: number;
+                unitPrice: Prisma.Decimal;
+                amount: Prisma.Decimal;
+                invoiceId: string;
+            }[];
+            payments: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                organizationId: string;
+                branchId: string;
+                amount: Prisma.Decimal;
+                paymentMethod: string;
+                transactionReference: string | null;
+                paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+                paidAt: Date | null;
+                isRefund: boolean;
+                originalPaymentId: string | null;
+                createdById: string | null;
+                invoiceId: string;
+            }[];
+        } & {
+            id: string;
+            status: import("@prisma/client").$Enums.InvoiceStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            createdBy: string | null;
+            updatedBy: string | null;
+            deletedAt: Date | null;
+            deletedBy: string | null;
+            deleteReason: string | null;
+            organizationId: string;
+            branchId: string;
+            patientId: string;
+            invoiceNumber: string;
+            subtotal: Prisma.Decimal;
+            discount: Prisma.Decimal;
+            tax: Prisma.Decimal;
+            total: Prisma.Decimal;
+        })[];
         appointments: ({
             doctor: {
                 id: string;
@@ -98,10 +146,10 @@ export declare class PatientsService {
                 organizationId: string;
                 branchId: string;
                 notes: string | null;
+                consultationId: string;
                 icdCode: string | null;
                 diagnosisName: string;
                 severity: string | null;
-                consultationId: string;
             }[];
         } & {
             id: string;
@@ -154,84 +202,15 @@ export declare class PatientsService {
             issuedAt: Date;
             consultationId: string | null;
         })[];
-        documents: ({
-            uploader: {
-                id: string;
-                firstName: string;
-                lastName: string;
-            };
-        } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            organizationId: string;
-            branchId: string;
-            patientId: string;
-            title: string;
-            uploadedBy: string;
-            documentType: string;
-            fileUrl: string;
-            mimeType: string | null;
-            fileSize: number | null;
-            uploadedAt: Date;
-        })[];
-        invoices: ({
-            payments: {
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                organizationId: string;
-                branchId: string;
-                amount: Prisma.Decimal;
-                paymentMethod: string;
-                transactionReference: string | null;
-                paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
-                paidAt: Date | null;
-                isRefund: boolean;
-                originalPaymentId: string | null;
-                createdById: string | null;
-                invoiceId: string;
-            }[];
-            items: {
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                organizationId: string;
-                branchId: string;
-                itemName: string;
-                quantity: number;
-                unitPrice: Prisma.Decimal;
-                amount: Prisma.Decimal;
-                invoiceId: string;
-            }[];
-        } & {
-            id: string;
-            status: import("@prisma/client").$Enums.InvoiceStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            createdBy: string | null;
-            updatedBy: string | null;
-            deletedAt: Date | null;
-            deletedBy: string | null;
-            deleteReason: string | null;
-            organizationId: string;
-            branchId: string;
-            patientId: string;
-            invoiceNumber: string;
-            subtotal: Prisma.Decimal;
-            discount: Prisma.Decimal;
-            tax: Prisma.Decimal;
-            total: Prisma.Decimal;
-        })[];
         addresses: {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            organizationId: string;
             city: string | null;
             state: string | null;
             country: string | null;
             postalCode: string | null;
-            organizationId: string;
             branchId: string;
             patientId: string;
             addressType: string | null;
@@ -281,6 +260,27 @@ export declare class PatientsService {
             patientId: string;
             note: string;
         }[];
+        documents: ({
+            uploader: {
+                id: string;
+                firstName: string;
+                lastName: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            organizationId: string;
+            branchId: string;
+            patientId: string;
+            title: string;
+            uploadedBy: string;
+            documentType: string;
+            fileUrl: string;
+            mimeType: string | null;
+            fileSize: number | null;
+            uploadedAt: Date;
+        })[];
     } & {
         id: string;
         email: string | null;
@@ -294,9 +294,9 @@ export declare class PatientsService {
         deletedBy: string | null;
         deleteReason: string | null;
         organizationId: string;
+        branchId: string;
         firstName: string;
         lastName: string;
-        branchId: string;
         patientCode: string | null;
         middleName: string | null;
         gender: string | null;
@@ -319,9 +319,9 @@ export declare class PatientsService {
         deletedBy: string | null;
         deleteReason: string | null;
         organizationId: string;
+        branchId: string;
         firstName: string;
         lastName: string;
-        branchId: string;
         patientCode: string | null;
         middleName: string | null;
         gender: string | null;
@@ -344,9 +344,9 @@ export declare class PatientsService {
         deletedBy: string | null;
         deleteReason: string | null;
         organizationId: string;
+        branchId: string;
         firstName: string;
         lastName: string;
-        branchId: string;
         patientCode: string | null;
         middleName: string | null;
         gender: string | null;
@@ -369,9 +369,9 @@ export declare class PatientsService {
         deletedBy: string | null;
         deleteReason: string | null;
         organizationId: string;
+        branchId: string;
         firstName: string;
         lastName: string;
-        branchId: string;
         patientCode: string | null;
         middleName: string | null;
         gender: string | null;

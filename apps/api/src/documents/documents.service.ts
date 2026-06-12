@@ -43,7 +43,8 @@ export class DocumentsService {
   }
 
   async findOne(id: string, organizationId: string, branchId: string) {
-    const document = await this.prisma.medicalDocument.findFirst({ where: { id, organizationId, branchId },
+    const document = await this.prisma.medicalDocument.findFirst({
+      where: { id, organizationId, branchId },
       include: {
         patient: {
           select: { id: true, firstName: true, lastName: true },

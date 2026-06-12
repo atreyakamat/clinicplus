@@ -35,6 +35,7 @@ import { NotificationModule } from './notifications/notification.module';
 import { TaskSchedulerModule } from './tasks/task-scheduler.module';
 import { TaskSchedulerService } from './tasks/task-scheduler.service';
 import { BackupModule } from './backup/backup.module';
+import { BackupSchedulerService } from './backup/backup-scheduler.service';
 
 @Module({
   imports: [

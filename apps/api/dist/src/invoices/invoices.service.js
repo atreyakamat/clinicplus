@@ -49,7 +49,8 @@ let InvoicesService = class InvoicesService {
         });
     }
     async findOne(id, organizationId, branchId) {
-        const invoice = await this.prisma.invoice.findFirst({ where: { id, organizationId, branchId },
+        const invoice = await this.prisma.invoice.findFirst({
+            where: { id, organizationId, branchId },
             include: { items: true, patient: true, payments: true },
         });
         if (!invoice)

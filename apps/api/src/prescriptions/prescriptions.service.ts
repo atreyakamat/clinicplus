@@ -52,7 +52,8 @@ export class PrescriptionsService {
   }
 
   async findOne(id: string, organizationId: string, branchId: string) {
-    const prescription = await this.prisma.prescription.findFirst({ where: { id, organizationId, branchId },
+    const prescription = await this.prisma.prescription.findFirst({
+      where: { id, organizationId, branchId },
       include: {
         items: true,
         patient: true,
@@ -64,7 +65,12 @@ export class PrescriptionsService {
     return prescription;
   }
 
-  async update(id: string, data: any, organizationId: string, branchId: string) {
+  async update(
+    id: string,
+    data: any,
+    organizationId: string,
+    branchId: string,
+  ) {
     // Verify prescription belongs to org/branch
     await this.findOne(id, organizationId, branchId);
 

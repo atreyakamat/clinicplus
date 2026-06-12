@@ -16,6 +16,7 @@ export declare class OrganizationsController {
             deletedAt: Date | null;
             deletedBy: string | null;
             deleteReason: string | null;
+            organizationId: string;
             code: string | null;
             address: string | null;
             city: string | null;
@@ -23,13 +24,12 @@ export declare class OrganizationsController {
             country: string | null;
             postalCode: string | null;
             timezone: string | null;
-            organizationId: string;
         }[];
     } & {
         id: string;
-        slug: string;
         name: string;
         legalName: string | null;
+        slug: string;
         logoUrl: string | null;
         website: string | null;
         email: string | null;
@@ -52,9 +52,9 @@ export declare class OrganizationsController {
     }>;
     update(id: string, data: any, req: any): Promise<{
         id: string;
-        slug: string;
         name: string;
         legalName: string | null;
+        slug: string;
         logoUrl: string | null;
         website: string | null;
         email: string | null;

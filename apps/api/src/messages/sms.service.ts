@@ -115,7 +115,7 @@ export class SmsService {
     return {
       ...message,
       gatewayMessageId: smsResult.messageId,
-      gatewayError: smsResult.error
+      gatewayError: smsResult.error,
     };
   }
 }

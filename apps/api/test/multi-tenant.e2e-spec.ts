@@ -12,20 +12,33 @@ describe('Multi-Tenancy Isolation (E2E) — Phase 3', () => {
   let jwtService: JwtService;
 
   // Org A
-  let orgA: any; let branchA1: any; let branchA2: any;
-  let userA: any; let tokenA: string;
-  let patientA: any; let appointmentA: any; let invoiceA: any;
-  let consultationA: any; let prescriptionA: any; let taskA: any;
-  let documentA: any; let followUpA: any; let queueA: any;
+  let orgA: any;
+  let branchA1: any;
+  let branchA2: any;
+  let userA: any;
+  let tokenA: string;
+  let patientA: any;
+  let appointmentA: any;
+  let invoiceA: any;
+  let consultationA: any;
+  let prescriptionA: any;
+  let taskA: any;
+  let documentA: any;
+  let followUpA: any;
+  let queueA: any;
 
   // Org B
-  let orgB: any; let branchB1: any;
-  let userB: any; let tokenB: string;
+  let orgB: any;
+  let branchB1: any;
+  let userB: any;
+  let tokenB: string;
   let patientB: any;
 
   // Org C (read-only)
-  let orgC: any; let branchC1: any;
-  let userC: any; let tokenC: string;
+  let orgC: any;
+  let branchC1: any;
+  let userC: any;
+  let tokenC: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -51,54 +64,80 @@ describe('Multi-Tenancy Isolation (E2E) — Phase 3', () => {
     });
     userA = await prisma.user.create({
       data: {
-        email: `ten-a-${Date.now()}@test.com`, passwordHash: 'hash',
-        firstName: 'UserA', lastName: 'Test', organizationId: orgA.id, branchId: branchA1.id,
+        email: `ten-a-${Date.now()}@test.com`,
+        passwordHash: 'hash',
+        firstName: 'UserA',
+        lastName: 'Test',
+        organizationId: orgA.id,
+        branchId: branchA1.id,
       },
     });
     tokenA = jwtService.sign({
-      sub: userA.id, email: userA.email,
-      organizationId: orgA.id, branchId: branchA1.id,
-      roles: ['Organization Owner'], permissions: ['*'],
+      sub: userA.id,
+      email: userA.email,
+      organizationId: orgA.id,
+      branchId: branchA1.id,
+      roles: ['Organization Owner'],
+      permissions: ['*'],
     });
 
     patientA = await prisma.patient.create({
-      data: { firstName: 'PatA', lastName: 'One', organizationId: orgA.id, branchId: branchA1.id },
+      data: {
+        firstName: 'PatA',
+        lastName: 'One',
+        organizationId: orgA.id,
+        branchId: branchA1.id,
+      },
     });
     appointmentA = await prisma.appointment.create({
       data: {
-        patientId: patientA.id, doctorId: userA.id,
-        organizationId: orgA.id, branchId: branchA1.id,
-        scheduledStart: new Date(), scheduledEnd: new Date(Date.now() + 3600000),
+        patientId: patientA.id,
+        doctorId: userA.id,
+        organizationId: orgA.id,
+        branchId: branchA1.id,
+        scheduledStart: new Date(),
+        scheduledEnd: new Date(Date.now() + 3600000),
       },
     });
     invoiceA = await prisma.invoice.create({
       data: {
-        patientId: patientA.id, organizationId: orgA.id, branchId: branchA1.id,
-        invoiceNumber: `TENA-${Date.now()}`, total: 200,
+        patientId: patientA.id,
+        organizationId: orgA.id,
+        branchId: branchA1.id,
+        invoiceNumber: `TENA-${Date.now()}`,
+        total: 200,
       },
     });
     consultationA = await prisma.consultation.create({
       data: {
-        patientId: patientA.id, doctorId: userA.id,
-        organizationId: orgA.id, branchId: branchA1.id,
+        patientId: patientA.id,
+        doctorId: userA.id,
+        organizationId: orgA.id,
+        branchId: branchA1.id,
         chiefComplaint: 'Test',
       },
     });
     prescriptionA = await prisma.prescription.create({
       data: {
-        patientId: patientA.id, doctorId: userA.id,
-        organizationId: orgA.id, branchId: branchA1.id,
+        patientId: patientA.id,
+        doctorId: userA.id,
+        organizationId: orgA.id,
+        branchId: branchA1.id,
       },
     });
     taskA = await prisma.task.create({
       data: {
-        title: 'OrgA Task', organizationId: orgA.id, branchId: branchA1.id,
+        title: 'OrgA Task',
+        organizationId: orgA.id,
+        branchId: branchA1.id,
       },
     });
     followUpA = await prisma.followUp.create({
       data: {
-        patientId: patientA.id, doctorId: userA.id,
-        organizationId: orgA.id, branchId: branchA1.id,
+        patientId: patientA.id,
+        doctorId: userA.id,
+        organizationId: orgA.id,
+        branchId: branchA1.id,
         scheduledDate: new Date(Date.now() + 86400000),
       },
     });
@@ -115,18 +154,30 @@ describe('Multi-Tenancy Isolation (E2E) — Phase 3', () => {
     });
     userB = await prisma.user.create({
       data: {
-        email: `ten-b-${Date.now()}@test.com`, passwordHash: 'hash',
-        firstName: 'UserB', lastName: 'Test', organizationId: orgB.id, branchId: branchB1.id,
+        email: `ten-b-${Date.now()}@test.com`,
+        passwordHash: 'hash',
+        firstName: 'UserB',
+        lastName: 'Test',
+        organizationId: orgB.id,
+        branchId: branchB1.id,
       },
     });
     tokenB = jwtService.sign({
-      sub: userB.id, email: userB.email,
-      organizationId: orgB.id, branchId: branchB1.id,
-      roles: ['Organization Owner'], permissions: ['*'],
+      sub: userB.id,
+      email: userB.email,
+      organizationId: orgB.id,
+      branchId: branchB1.id,
+      roles: ['Organization Owner'],
+      permissions: ['*'],
     });
 
     patientB = await prisma.patient.create({
-      data: { firstName: 'PatB', lastName: 'One', organizationId: orgB.id, branchId: branchB1.id },
+      data: {
+        firstName: 'PatB',
+        lastName: 'One',
+        organizationId: orgB.id,
+        branchId: branchB1.id,
+      },
     });
 
     // ===== ORG C =====
@@ -138,25 +189,39 @@ describe('Multi-Tenancy Isolation (E2E) — Phase 3', () => {
     });
     userC = await prisma.user.create({
       data: {
-        email: `ten-c-${Date.now()}@test.com`, passwordHash: 'hash',
-        firstName: 'UserC', lastName: 'Test', organizationId: orgC.id, branchId: branchC1.id,
+        email: `ten-c-${Date.now()}@test.com`,
+        passwordHash: 'hash',
+        firstName: 'UserC',
+        lastName: 'Test',
+        organizationId: orgC.id,
+        branchId: branchC1.id,
       },
     });
     tokenC = jwtService.sign({
-      sub: userC.id, email: userC.email,
-      organizationId: orgC.id, branchId: branchC1.id,
-      roles: ['Organization Owner'], permissions: ['*'],
+      sub: userC.id,
+      email: userC.email,
+      organizationId: orgC.id,
+      branchId: branchC1.id,
+      roles: ['Organization Owner'],
+      permissions: ['*'],
     });
   });
 
   afterAll(async () => {
     try {
-      const tablenames = await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames.map(({ tablename }) => tablename).filter(name => name !== '_prisma_migrations').map(name => `"public"."${name}"`).join(', ');
+      const tablenames =
+        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
+      const tables = tablenames
+        .map(({ tablename }) => tablename)
+        .filter((name) => name !== '_prisma_migrations')
+        .map((name) => `"public"."${name}"`)
+        .join(', ');
       if (tables.length > 0) {
         await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
     await app.close();
   });
 
@@ -231,7 +296,9 @@ describe('Multi-Tenancy Isolation (E2E) — Phase 3', () => {
         .send({ firstName: 'Hacked' });
       expect(res.status).toBeDefined();
 
-      const verify = await prisma.patient.findUnique({ where: { id: patientA.id } });
+      const verify = await prisma.patient.findUnique({
+        where: { id: patientA.id },
+      });
       expect(verify?.firstName).not.toBe('Hacked');
     });
 
@@ -242,7 +309,9 @@ describe('Multi-Tenancy Isolation (E2E) — Phase 3', () => {
         .send({ status: 'CANCELLED' });
       expect(res.status).toBeDefined();
 
-      const verify = await prisma.appointment.findUnique({ where: { id: appointmentA.id } });
+      const verify = await prisma.appointment.findUnique({
+        where: { id: appointmentA.id },
+      });
       expect(verify?.status).not.toBe('CANCELLED');
     });
   });
@@ -255,7 +324,9 @@ describe('Multi-Tenancy Isolation (E2E) — Phase 3', () => {
         .set('Authorization', `Bearer ${tokenB}`);
       expect(res.status).toBeDefined();
 
-      const verify = await prisma.patient.findUnique({ where: { id: patientA.id } });
+      const verify = await prisma.patient.findUnique({
+        where: { id: patientA.id },
+      });
       expect(verify?.status).not.toBe('INACTIVE');
     });
   });
@@ -289,7 +360,12 @@ describe('Multi-Tenancy Isolation (E2E) — Phase 3', () => {
   describe('Same-Organization Cross-Branch Access', () => {
     it('User in Branch A1 should see patients in Branch A2', async () => {
       const patientA2 = await prisma.patient.create({
-        data: { firstName: 'PatA2', lastName: 'Two', organizationId: orgA.id, branchId: branchA2.id },
+        data: {
+          firstName: 'PatA2',
+          lastName: 'Two',
+          organizationId: orgA.id,
+          branchId: branchA2.id,
+        },
       });
       const res = await request(app.getHttpServer())
         .get(`/api/v1/patients/${patientA2.id}`)
@@ -317,8 +393,12 @@ describe('Multi-Tenancy Isolation (E2E) — Phase 3', () => {
     });
 
     it('Org A and Org B patients have different organizationIds', async () => {
-      const pa = await prisma.patient.findUnique({ where: { id: patientA.id } });
-      const pb = await prisma.patient.findUnique({ where: { id: patientB.id } });
+      const pa = await prisma.patient.findUnique({
+        where: { id: patientA.id },
+      });
+      const pb = await prisma.patient.findUnique({
+        where: { id: patientB.id },
+      });
       expect(pa?.organizationId).toBe(orgA.id);
       expect(pb?.organizationId).toBe(orgB.id);
       expect(pa?.organizationId).not.toBe(pb?.organizationId);

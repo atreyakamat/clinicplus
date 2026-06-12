@@ -40,6 +40,7 @@ export declare class UsersController {
         deletedBy: string | null;
         deleteReason: string | null;
         organizationId: string;
+        branchId: string;
         firstName: string;
         lastName: string;
         avatarUrl: string | null;
@@ -52,7 +53,6 @@ export declare class UsersController {
         bio: string | null;
         consultationFee: import("@prisma/client/runtime/library").Decimal | null;
         signatureUrl: string | null;
-        branchId: string;
     })[]>;
     findOne(id: string, req: any): Promise<({
         roles: ({
@@ -92,6 +92,7 @@ export declare class UsersController {
         deletedBy: string | null;
         deleteReason: string | null;
         organizationId: string;
+        branchId: string;
         firstName: string;
         lastName: string;
         avatarUrl: string | null;
@@ -104,7 +105,6 @@ export declare class UsersController {
         bio: string | null;
         consultationFee: import("@prisma/client/runtime/library").Decimal | null;
         signatureUrl: string | null;
-        branchId: string;
     }) | null>;
     update(id: string, data: any, req: any): Promise<{
         id: string;
@@ -119,6 +119,7 @@ export declare class UsersController {
         deletedBy: string | null;
         deleteReason: string | null;
         organizationId: string;
+        branchId: string;
         firstName: string;
         lastName: string;
         avatarUrl: string | null;
@@ -131,6 +132,5 @@ export declare class UsersController {
         bio: string | null;
         consultationFee: import("@prisma/client/runtime/library").Decimal | null;
         signatureUrl: string | null;
-        branchId: string;
     }>;
 }

@@ -47,7 +47,12 @@ describe('DocumentsController', () => {
       const data = { title: 'Report' };
       jest.spyOn(service, 'create').mockResolvedValue({ id: 'doc-1' } as any);
       await controller.create(data, mockRequest);
-      expect(service.create).toHaveBeenCalledWith(data, 'org-1', 'branch-1', 'user-1');
+      expect(service.create).toHaveBeenCalledWith(
+        data,
+        'org-1',
+        'branch-1',
+        'user-1',
+      );
     });
   });
 
@@ -63,7 +68,11 @@ describe('DocumentsController', () => {
     it('should call service findOne with context', async () => {
       jest.spyOn(service, 'findOne').mockResolvedValue({ id: 'doc-1' } as any);
       await controller.findOne('doc-1', mockRequest);
-      expect(service.findOne).toHaveBeenCalledWith('doc-1', 'org-1', 'branch-1');
+      expect(service.findOne).toHaveBeenCalledWith(
+        'doc-1',
+        'org-1',
+        'branch-1',
+      );
     });
   });
 
@@ -71,7 +80,12 @@ describe('DocumentsController', () => {
     it('should call service update with context', async () => {
       jest.spyOn(service, 'update').mockResolvedValue({ id: 'doc-1' } as any);
       await controller.update('doc-1', { title: 'Updated' }, mockRequest);
-      expect(service.update).toHaveBeenCalledWith('doc-1', { title: 'Updated' }, 'org-1', 'branch-1');
+      expect(service.update).toHaveBeenCalledWith(
+        'doc-1',
+        { title: 'Updated' },
+        'org-1',
+        'branch-1',
+      );
     });
   });
 

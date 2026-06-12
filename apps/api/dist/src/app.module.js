@@ -43,6 +43,8 @@ const health_module_1 = require("./health/health.module");
 const notification_module_1 = require("./notifications/notification.module");
 const task_scheduler_module_1 = require("./tasks/task-scheduler.module");
 const task_scheduler_service_1 = require("./tasks/task-scheduler.service");
+const backup_module_1 = require("./backup/backup.module");
+const backup_scheduler_service_1 = require("./backup/backup-scheduler.service");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -78,11 +80,13 @@ exports.AppModule = AppModule = __decorate([
             health_module_1.HealthModule,
             notification_module_1.NotificationModule,
             task_scheduler_module_1.TaskSchedulerModule,
+            backup_module_1.BackupModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [
             app_service_1.AppService,
             task_scheduler_service_1.TaskSchedulerService,
+            backup_scheduler_service_1.BackupSchedulerService,
             {
                 provide: core_1.APP_INTERCEPTOR,
                 useClass: audit_interceptor_1.AuditInterceptor,

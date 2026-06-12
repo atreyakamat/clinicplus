@@ -5,33 +5,33 @@ import { Prisma } from '@prisma/client';
 @Injectable()
 export class InvoicesService {
   constructor(private prisma: PrismaService) {}
-async create(
-  data: any,
-  organizationId: string,
-  branchId: string,
-  createdBy: string,
-) {
-  const { items = [], ...invoiceData } = data;
+  async create(
+    data: any,
+    organizationId: string,
+    branchId: string,
+    createdBy: string,
+  ) {
+    const { items = [], ...invoiceData } = data;
 
-  return this.prisma.invoice.create({
-    data: {
-      ...invoiceData,
-      organizationId,
-      branchId,
-      createdBy,
-      items: {
-        create: items.map((item) => ({
-          ...item,
-          organizationId,
-          branchId,
-        })),
+    return this.prisma.invoice.create({
+      data: {
+        ...invoiceData,
+        organizationId,
+        branchId,
+        createdBy,
+        items: {
+          create: items.map((item) => ({
+            ...item,
+            organizationId,
+            branchId,
+          })),
+        },
       },
-    },
-    include: {
-      items: true,
-    },
-  });
-}
+      include: {
+        items: true,
+      },
+    });
+  }
   async findAll(organizationId: string, branchId: string) {
     return this.prisma.invoice.findMany({
       where: { organizationId, branchId },
@@ -44,7 +44,8 @@ async create(
   }
 
   async findOne(id: string, organizationId: string, branchId: string) {
-    const invoice = await this.prisma.invoice.findFirst({ where: { id, organizationId, branchId },
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { id, organizationId, branchId },
       include: { items: true, patient: true, payments: true },
     });
     if (!invoice) throw new NotFoundException('Invoice not found');

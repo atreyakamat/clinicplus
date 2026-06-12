@@ -40,10 +40,10 @@ export declare class ConsultationsController {
             organizationId: string;
             branchId: string;
             notes: string | null;
+            consultationId: string;
             icdCode: string | null;
             diagnosisName: string;
             severity: string | null;
-            consultationId: string;
         }[];
         vitals: {
             id: string;
@@ -51,6 +51,7 @@ export declare class ConsultationsController {
             updatedAt: Date;
             organizationId: string;
             branchId: string;
+            consultationId: string;
             height: number | null;
             weight: number | null;
             temperature: number | null;
@@ -59,7 +60,6 @@ export declare class ConsultationsController {
             bloodPressureSystolic: number | null;
             bloodPressureDiastolic: number | null;
             spo2: number | null;
-            consultationId: string;
         }[];
     } & {
         id: string;
@@ -134,9 +134,9 @@ export declare class ConsultationsController {
             deletedBy: string | null;
             deleteReason: string | null;
             organizationId: string;
+            branchId: string;
             firstName: string;
             lastName: string;
-            branchId: string;
             patientCode: string | null;
             middleName: string | null;
             gender: string | null;
@@ -157,10 +157,10 @@ export declare class ConsultationsController {
             organizationId: string;
             branchId: string;
             notes: string | null;
+            consultationId: string;
             icdCode: string | null;
             diagnosisName: string;
             severity: string | null;
-            consultationId: string;
         }[];
         vitals: {
             id: string;
@@ -168,6 +168,7 @@ export declare class ConsultationsController {
             updatedAt: Date;
             organizationId: string;
             branchId: string;
+            consultationId: string;
             height: number | null;
             weight: number | null;
             temperature: number | null;
@@ -176,7 +177,6 @@ export declare class ConsultationsController {
             bloodPressureSystolic: number | null;
             bloodPressureDiastolic: number | null;
             spo2: number | null;
-            consultationId: string;
         }[];
     } & {
         id: string;

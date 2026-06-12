@@ -21,19 +21,23 @@ describe('PatientsService', () => {
         {
           provide: PrismaService,
           useValue: {
-            $transaction: jest.fn().mockImplementation((cb) => cb({
-              patient: { 
-                create: jest.fn().mockImplementation((args) => Promise.resolve({ 
-                  id: VALID_UUID, 
-                  ...args.data,
-                  patientCode: args.data.patientCode || 'PAT-000001',
-                  organizationId: VALID_ORG_UUID,
-                  branchId: VALID_BRANCH_UUID,
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                })) 
-              }
-            })),
+            $transaction: jest.fn().mockImplementation((cb) =>
+              cb({
+                patient: {
+                  create: jest.fn().mockImplementation((args) =>
+                    Promise.resolve({
+                      id: VALID_UUID,
+                      ...args.data,
+                      patientCode: args.data.patientCode || 'PAT-000001',
+                      organizationId: VALID_ORG_UUID,
+                      branchId: VALID_BRANCH_UUID,
+                      createdAt: new Date(),
+                      updatedAt: new Date(),
+                    }),
+                  ),
+                },
+              }),
+            ),
             patient: {
               create: jest.fn(),
               findMany: jest.fn(),
@@ -81,7 +85,7 @@ describe('PatientsService', () => {
         email: 'john.doe@example.com',
         phone: '1234567890',
       };
-      
+
       jest.spyOn(prisma.patient, 'findFirst').mockResolvedValue(null);
 
       const result = await service.create({
@@ -108,20 +112,34 @@ describe('PatientsService', () => {
         addresses: [],
         emergencyContacts: [],
       };
-      
-      jest.spyOn(prisma.patient, 'findFirst').mockResolvedValue(expectedPatient as any);
 
-      const result = await service.findOne(VALID_UUID, VALID_ORG_UUID, VALID_BRANCH_UUID);
+      jest
+        .spyOn(prisma.patient, 'findFirst')
+        .mockResolvedValue(expectedPatient as any);
+
+      const result = await service.findOne(
+        VALID_UUID,
+        VALID_ORG_UUID,
+        VALID_BRANCH_UUID,
+      );
       expect(result).toEqual(expectedPatient);
-      expect(prisma.patient.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-        where: { id: VALID_UUID, organizationId: VALID_ORG_UUID, branchId: VALID_BRANCH_UUID },
-      }));
+      expect(prisma.patient.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            id: VALID_UUID,
+            organizationId: VALID_ORG_UUID,
+            branchId: VALID_BRANCH_UUID,
+          },
+        }),
+      );
     });
 
     it('should throw NotFoundException if patient not found', async () => {
       jest.spyOn(prisma.patient, 'findFirst').mockResolvedValue(null);
 
-      await expect(service.findOne(VALID_UUID, VALID_ORG_UUID, VALID_BRANCH_UUID)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findOne(VALID_UUID, VALID_ORG_UUID, VALID_BRANCH_UUID),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -136,11 +154,18 @@ describe('PatientsService', () => {
         branchId: VALID_BRANCH_UUID,
       };
       const updatedPatient = { ...existingPatient, ...updatePatientDto };
-      
-      jest.spyOn(service, 'findOne').mockResolvedValue(existingPatient as any);
-      jest.spyOn(prisma.patient, 'update').mockResolvedValue(updatedPatient as any);
 
-      const result = await service.update(VALID_UUID, updatePatientDto, VALID_ORG_UUID, VALID_BRANCH_UUID);
+      jest.spyOn(service, 'findOne').mockResolvedValue(existingPatient as any);
+      jest
+        .spyOn(prisma.patient, 'update')
+        .mockResolvedValue(updatedPatient as any);
+
+      const result = await service.update(
+        VALID_UUID,
+        updatePatientDto,
+        VALID_ORG_UUID,
+        VALID_BRANCH_UUID,
+      );
       expect(result.firstName).toBe('Johnny');
       expect(prisma.patient.update).toHaveBeenCalled();
     });
@@ -156,12 +181,23 @@ describe('PatientsService', () => {
         branchId: VALID_BRANCH_UUID,
         status: 'ACTIVE',
       };
-      const deletedPatient = { ...existingPatient, status: 'INACTIVE', deletedAt: new Date() };
-      
-      jest.spyOn(service, 'findOne').mockResolvedValue(existingPatient as any);
-      jest.spyOn(prisma.patient, 'update').mockResolvedValue(deletedPatient as any);
+      const deletedPatient = {
+        ...existingPatient,
+        status: 'INACTIVE',
+        deletedAt: new Date(),
+      };
 
-      const result = await service.remove(VALID_UUID, VALID_ORG_UUID, VALID_BRANCH_UUID, VALID_UUID);
+      jest.spyOn(service, 'findOne').mockResolvedValue(existingPatient as any);
+      jest
+        .spyOn(prisma.patient, 'update')
+        .mockResolvedValue(deletedPatient as any);
+
+      const result = await service.remove(
+        VALID_UUID,
+        VALID_ORG_UUID,
+        VALID_BRANCH_UUID,
+        VALID_UUID,
+      );
       expect(result.status).toBe('INACTIVE');
     });
   });

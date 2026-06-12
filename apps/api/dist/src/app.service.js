@@ -12,24 +12,30 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppService = void 0;
 const common_1 = require("@nestjs/common");
 const task_scheduler_service_1 = require("./tasks/task-scheduler.service");
+const backup_scheduler_service_1 = require("./backup/backup-scheduler.service");
 let AppService = class AppService {
     taskSchedulerService;
-    constructor(taskSchedulerService) {
+    backupSchedulerService;
+    constructor(taskSchedulerService, backupSchedulerService) {
         this.taskSchedulerService = taskSchedulerService;
+        this.backupSchedulerService = backupSchedulerService;
     }
     getHello() {
         return 'Hello World!';
     }
     onModuleInit() {
         this.taskSchedulerService.start();
+        this.backupSchedulerService.start();
     }
     onModuleDestroy() {
         this.taskSchedulerService.stop();
+        this.backupSchedulerService.stop();
     }
 };
 exports.AppService = AppService;
 exports.AppService = AppService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [task_scheduler_service_1.TaskSchedulerService])
+    __metadata("design:paramtypes", [task_scheduler_service_1.TaskSchedulerService,
+        backup_scheduler_service_1.BackupSchedulerService])
 ], AppService);
 //# sourceMappingURL=app.service.js.map

@@ -61,7 +61,8 @@ let PrescriptionsService = class PrescriptionsService {
         });
     }
     async findOne(id, organizationId, branchId) {
-        const prescription = await this.prisma.prescription.findFirst({ where: { id, organizationId, branchId },
+        const prescription = await this.prisma.prescription.findFirst({
+            where: { id, organizationId, branchId },
             include: {
                 items: true,
                 patient: true,

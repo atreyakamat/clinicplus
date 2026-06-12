@@ -29,7 +29,7 @@ import { APP_GUARD } from '@nestjs/core';
     ThrottlerModule.forRoot([
       {
         ttl: 900, // 15 minutes
-        limit: 5,   // 5 requests
+        limit: 5, // 5 requests
       },
     ]),
   ],

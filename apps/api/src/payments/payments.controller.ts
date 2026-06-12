@@ -23,7 +23,13 @@ export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post()
-  @Roles('super-admin', 'organization-owner', 'clinic-admin', 'receptionist', 'accountant')
+  @Roles(
+    'super-admin',
+    'organization-owner',
+    'clinic-admin',
+    'receptionist',
+    'accountant',
+  )
   @Permissions('payments:create')
   async createPayment(
     @Body() createPaymentDto: CreatePaymentDto,
@@ -38,12 +44,15 @@ export class PaymentsController {
   }
 
   @Get(':id')
-  @Roles('super-admin', 'organization-owner', 'clinic-admin', 'receptionist', 'accountant')
+  @Roles(
+    'super-admin',
+    'organization-owner',
+    'clinic-admin',
+    'receptionist',
+    'accountant',
+  )
   @Permissions('payments:view')
-  async getPaymentById(
-    @Param('id') id: string,
-    @Request() req,
-  ) {
+  async getPaymentById(@Param('id') id: string, @Request() req) {
     return this.paymentsService.findPaymentById(
       id,
       req.user.organizationId,
@@ -52,7 +61,13 @@ export class PaymentsController {
   }
 
   @Post(':id/refund')
-  @Roles('super-admin', 'organization-owner', 'clinic-admin', 'receptionist', 'accountant')
+  @Roles(
+    'super-admin',
+    'organization-owner',
+    'clinic-admin',
+    'receptionist',
+    'accountant',
+  )
   @Permissions('payments:refund')
   async refundPayment(
     @Param('id') paymentId: string,
@@ -69,7 +84,13 @@ export class PaymentsController {
   }
 
   @Get('invoice/:invoiceId')
-  @Roles('super-admin', 'organization-owner', 'clinic-admin', 'receptionist', 'accountant')
+  @Roles(
+    'super-admin',
+    'organization-owner',
+    'clinic-admin',
+    'receptionist',
+    'accountant',
+  )
   @Permissions('payments:view')
   async getPaymentsByInvoice(
     @Param('invoiceId') invoiceId: string,

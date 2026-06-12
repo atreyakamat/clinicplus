@@ -22,7 +22,7 @@ export class AppointmentReminderService {
     // Find appointments that start within a small window around targetTime
     // (e.g., within 5 minutes of the target time to account for processing delays)
     const windowStart = new Date(targetTime.getTime() - 5 * 60 * 1000); // 5 minutes before
-    const windowEnd = new Date(targetTime.getTime() + 5 * 60 * 1000);   // 5 minutes after
+    const windowEnd = new Date(targetTime.getTime() + 5 * 60 * 1000); // 5 minutes after
 
     const appointments = await this.prisma.appointment.findMany({
       where: {
@@ -54,8 +54,10 @@ export class AppointmentReminderService {
 
     for (const appointment of appointments) {
       try {
-        const patientName = `${appointment.patient.firstName} ${appointment.patient.lastName || ''}`.trim();
-        const doctorName = `Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName || ''}`.trim();
+        const patientName =
+          `${appointment.patient.firstName} ${appointment.patient.lastName || ''}`.trim();
+        const doctorName =
+          `Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName || ''}`.trim();
         const appointmentTime = appointment.scheduledStart.toLocaleString();
 
         const messageContent = `Reminder: You have an appointment with ${doctorName} on ${appointmentTime}. Patient: ${patientName}`;
@@ -68,9 +70,13 @@ export class AppointmentReminderService {
             /* organizationId and branchId would come from appointment */ '',
             '',
           );
-          this.logger.log(`Appointment reminder sent via WhatsApp for appointment ${appointment.id}`);
+          this.logger.log(
+            `Appointment reminder sent via WhatsApp for appointment ${appointment.id}`,
+          );
         } catch (whatsappError) {
-          this.logger.warn(`WhatsApp failed for appointment ${appointment.id}, trying SMS: ${whatsappError.message}`);
+          this.logger.warn(
+            `WhatsApp failed for appointment ${appointment.id}, trying SMS: ${whatsappError.message}`,
+          );
 
           try {
             await this.messagesService.sendSms(
@@ -79,13 +85,21 @@ export class AppointmentReminderService {
               /* organizationId and branchId would come from appointment */ '',
               '',
             );
-            this.logger.log(`Appointment reminder sent via SMS for appointment ${appointment.id}`);
+            this.logger.log(
+              `Appointment reminder sent via SMS for appointment ${appointment.id}`,
+            );
           } catch (smsError) {
-            this.logger.error(`Both WhatsApp and SMS failed for appointment ${appointment.id}:`, smsError);
+            this.logger.error(
+              `Both WhatsApp and SMS failed for appointment ${appointment.id}:`,
+              smsError,
+            );
           }
         }
       } catch (error) {
-        this.logger.error(`Failed to process appointment reminder for appointment ${appointment.id}:`, error);
+        this.logger.error(
+          `Failed to process appointment reminder for appointment ${appointment.id}:`,
+          error,
+        );
       }
     }
   }

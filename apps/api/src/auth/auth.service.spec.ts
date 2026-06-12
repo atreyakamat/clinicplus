@@ -46,7 +46,9 @@ describe('AuthService', () => {
           provide: PrismaService,
           useValue: {
             loginAttempt: { create: jest.fn() },
-            userSession: { create: jest.fn().mockResolvedValue({ id: 'session-1' }) },
+            userSession: {
+              create: jest.fn().mockResolvedValue({ id: 'session-1' }),
+            },
           },
         },
       ],
@@ -64,7 +66,9 @@ describe('AuthService', () => {
 
   describe('validateUser', () => {
     it('should return user if credentials match', async () => {
-      jest.spyOn(usersService, 'findByEmail').mockResolvedValue(mockUser as any);
+      jest
+        .spyOn(usersService, 'findByEmail')
+        .mockResolvedValue(mockUser as any);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       const result = await service.validateUser('test@example.com', 'password');
@@ -74,7 +78,9 @@ describe('AuthService', () => {
     });
 
     it('should return null if password mismatch', async () => {
-      jest.spyOn(usersService, 'findByEmail').mockResolvedValue(mockUser as any);
+      jest
+        .spyOn(usersService, 'findByEmail')
+        .mockResolvedValue(mockUser as any);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       const result = await service.validateUser('test@example.com', 'wrong');
@@ -85,26 +91,34 @@ describe('AuthService', () => {
   describe('login', () => {
     it('should return tokens and user info on success', async () => {
       jest.spyOn(service, 'validateUser').mockResolvedValue(mockUser);
-      
-      const result = await service.login({ email: mockUser.email, password: 'password' });
-      
+
+      const result = await service.login({
+        email: mockUser.email,
+        password: 'password',
+      });
+
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('refreshToken');
       expect(result.sessionId).toBe('session-1');
-      expect(prisma.loginAttempt.create).toHaveBeenCalledWith(expect.objectContaining({
-        data: expect.objectContaining({ status: 'SUCCESS' })
-      }));
+      expect(prisma.loginAttempt.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'SUCCESS' }),
+        }),
+      );
     });
 
     it('should throw UnauthorizedException on failure', async () => {
       jest.spyOn(service, 'validateUser').mockResolvedValue(null);
-      
-      await expect(service.login({ email: 'bad@test.com', password: 'bad' }))
-        .rejects.toThrow(UnauthorizedException);
-        
-      expect(prisma.loginAttempt.create).toHaveBeenCalledWith(expect.objectContaining({
-        data: expect.objectContaining({ status: 'FAILED' })
-      }));
+
+      await expect(
+        service.login({ email: 'bad@test.com', password: 'bad' }),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(prisma.loginAttempt.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'FAILED' }),
+        }),
+      );
     });
   });
 });

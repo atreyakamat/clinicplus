@@ -10,10 +10,15 @@ describe('End-to-End Patient Journey (E2E) — Phase 19', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let jwtService: JwtService;
-  let org: any; let branch: any; let doctor: any; let token: string;
+  let org: any;
+  let branch: any;
+  let doctor: any;
+  let token: string;
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const mod = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = mod.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     app.useGlobalFilters(new AllExceptionsFilter());
@@ -21,18 +26,27 @@ describe('End-to-End Patient Journey (E2E) — Phase 19', () => {
     prisma = app.get(PrismaService);
     await app.init();
 
-    org = await prisma.organization.create({ data: { name: 'E2E Workflow', slug: `e2e-wf-${Date.now()}` } });
-    branch = await prisma.branch.create({ data: { name: 'E2E Branch', organizationId: org.id } });
+    org = await prisma.organization.create({
+      data: { name: 'E2E Workflow', slug: `e2e-wf-${Date.now()}` },
+    });
+    branch = await prisma.branch.create({
+      data: { name: 'E2E Branch', organizationId: org.id },
+    });
     doctor = await prisma.user.create({
       data: {
-        email: `e2e-dr-${Date.now()}@t.com`, passwordHash: 'h',
-        firstName: 'DrE2E', lastName: 'Test',
-        organizationId: org.id, branchId: branch.id,
+        email: `e2e-dr-${Date.now()}@t.com`,
+        passwordHash: 'h',
+        firstName: 'DrE2E',
+        lastName: 'Test',
+        organizationId: org.id,
+        branchId: branch.id,
       },
     });
     token = jwtService.sign({
-      sub: doctor.id, email: doctor.email,
-      organizationId: org.id, branchId: branch.id,
+      sub: doctor.id,
+      email: doctor.email,
+      organizationId: org.id,
+      branchId: branch.id,
       roles: ['Organization Owner'],
       permissions: ['*'],
     });
@@ -40,12 +54,19 @@ describe('End-to-End Patient Journey (E2E) — Phase 19', () => {
 
   afterAll(async () => {
     try {
-      const tablenames = await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames.map(({ tablename }) => tablename).filter(name => name !== '_prisma_migrations').map(name => `"public"."${name}"`).join(', ');
+      const tablenames =
+        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
+      const tables = tablenames
+        .map(({ tablename }) => tablename)
+        .filter((name) => name !== '_prisma_migrations')
+        .map((name) => `"public"."${name}"`)
+        .join(', ');
       if (tables.length > 0) {
         await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
     await app.close();
   });
 
@@ -54,7 +75,13 @@ describe('End-to-End Patient Journey (E2E) — Phase 19', () => {
     const patientRes = await request(app.getHttpServer())
       .post('/api/v1/patients')
       .set('Authorization', `Bearer ${token}`)
-      .send({ firstName: 'Jane', lastName: 'Doe', phone: '5559990001', gender: 'Female', email: 'jane.doe@example.com' });
+      .send({
+        firstName: 'Jane',
+        lastName: 'Doe',
+        phone: '5559990001',
+        gender: 'Female',
+        email: 'jane.doe@example.com',
+      });
     expect(patientRes.status).toBe(201);
     const patient = patientRes.body.data || patientRes.body;
     expect(patient.id).toBeDefined();
@@ -88,7 +115,11 @@ describe('End-to-End Patient Journey (E2E) — Phase 19', () => {
     const consultRes = await request(app.getHttpServer())
       .post('/api/v1/consultations')
       .set('Authorization', `Bearer ${token}`)
-      .send({ patientId, appointmentId, chiefComplaint: 'Fever and cough for 3 days' });
+      .send({
+        patientId,
+        appointmentId,
+        chiefComplaint: 'Fever and cough for 3 days',
+      });
     expect(consultRes.status).toBe(201);
     const consultation = consultRes.body.data || consultRes.body;
     const consultId = consultation.id;
@@ -109,8 +140,18 @@ describe('End-to-End Patient Journey (E2E) — Phase 19', () => {
         patientId,
         consultationId: consultId,
         items: [
-          { medicineName: 'Azithromycin', dosage: '500mg', frequency: 'Once daily', duration: '3 days' },
-          { medicineName: 'Paracetamol', dosage: '650mg', frequency: 'As needed', duration: '5 days' },
+          {
+            medicineName: 'Azithromycin',
+            dosage: '500mg',
+            frequency: 'Once daily',
+            duration: '3 days',
+          },
+          {
+            medicineName: 'Paracetamol',
+            dosage: '650mg',
+            frequency: 'As needed',
+            duration: '5 days',
+          },
         ],
       });
     expect(rxRes.status).toBe(201);
@@ -125,7 +166,12 @@ describe('End-to-End Patient Journey (E2E) — Phase 19', () => {
         invoiceNumber: `E2E-INV-${Date.now()}`,
         total: 150,
         items: [
-          { itemName: 'Consultation Fee', quantity: 1, unitPrice: 100, amount: 100 },
+          {
+            itemName: 'Consultation Fee',
+            quantity: 1,
+            unitPrice: 100,
+            amount: 100,
+          },
           { itemName: 'Medication', quantity: 1, unitPrice: 50, amount: 50 },
         ],
       });

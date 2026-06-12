@@ -17,7 +17,9 @@ export class FollowUpReminderService {
    */
   async sendFollowUpReminders(daysBefore: number) {
     const now = new Date();
-    const targetDate = new Date(now.getTime() + daysBefore * 24 * 60 * 60 * 1000);
+    const targetDate = new Date(
+      now.getTime() + daysBefore * 24 * 60 * 60 * 1000,
+    );
     targetDate.setHours(0, 0, 0, 0); // Set to start of day
 
     const startOfDay = targetDate;
@@ -59,8 +61,10 @@ export class FollowUpReminderService {
 
     for (const followUp of followUps) {
       try {
-        const patientName = `${followUp.patient.firstName} ${followUp.patient.lastName || ''}`.trim();
-        const doctorName = `Dr. ${followUp.doctor.firstName} ${followUp.doctor.lastName || ''}`.trim();
+        const patientName =
+          `${followUp.patient.firstName} ${followUp.patient.lastName || ''}`.trim();
+        const doctorName =
+          `Dr. ${followUp.doctor.firstName} ${followUp.doctor.lastName || ''}`.trim();
         const followUpDate = followUp.scheduledDate.toLocaleDateString();
 
         const messageContent = `Reminder: You have a follow-up appointment with ${doctorName} on ${followUpDate}. Patient: ${patientName}`;
@@ -73,9 +77,13 @@ export class FollowUpReminderService {
             /* organizationId and branchId would come from followUp */ '',
             '',
           );
-          this.logger.log(`Follow-up reminder sent via WhatsApp for follow-up ${followUp.id}`);
+          this.logger.log(
+            `Follow-up reminder sent via WhatsApp for follow-up ${followUp.id}`,
+          );
         } catch (whatsappError) {
-          this.logger.warn(`WhatsApp failed for follow-up ${followUp.id}, trying SMS: ${whatsappError.message}`);
+          this.logger.warn(
+            `WhatsApp failed for follow-up ${followUp.id}, trying SMS: ${whatsappError.message}`,
+          );
 
           try {
             await this.messagesService.sendSms(
@@ -84,13 +92,21 @@ export class FollowUpReminderService {
               /* organizationId and branchId would come from followUp */ '',
               '',
             );
-            this.logger.log(`Follow-up reminder sent via SMS for follow-up ${followUp.id}`);
+            this.logger.log(
+              `Follow-up reminder sent via SMS for follow-up ${followUp.id}`,
+            );
           } catch (smsError) {
-            this.logger.error(`Both WhatsApp and SMS failed for follow-up ${followUp.id}:`, smsError);
+            this.logger.error(
+              `Both WhatsApp and SMS failed for follow-up ${followUp.id}:`,
+              smsError,
+            );
           }
         }
       } catch (error) {
-        this.logger.error(`Failed to process follow-up reminder for follow-up ${followUp.id}:`, error);
+        this.logger.error(
+          `Failed to process follow-up reminder for follow-up ${followUp.id}:`,
+          error,
+        );
       }
     }
   }

@@ -19,9 +19,12 @@ export class TaskSchedulerService {
     this.runNotificationJob();
 
     // Then run every hour
-    this.notificationInterval = setInterval(() => {
-      this.runNotificationJob();
-    }, 60 * 60 * 1000); // 1 hour
+    this.notificationInterval = setInterval(
+      () => {
+        this.runNotificationJob();
+      },
+      60 * 60 * 1000,
+    ); // 1 hour
   }
 
   /**

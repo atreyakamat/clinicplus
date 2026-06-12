@@ -7,8 +7,8 @@ export declare class TimelineController {
         createdAt: Date;
         createdBy: string | null;
         organizationId: string;
-        description: string | null;
         patientId: string;
+        description: string | null;
         eventType: string;
         eventCategory: string;
         title: string;

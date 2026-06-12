@@ -26,24 +26,30 @@ export class BackupSchedulerService {
       now.getDate() + 1, // Tomorrow
       2, // 2:00 AM
       0, // 0 minutes
-      0  // 0 seconds
+      0, // 0 seconds
     );
 
     const msUntilNextRun = nextRun.getTime() - now.getTime();
 
     // Set interval to run daily at 2:00 AM
-    this.backupInterval = setInterval(() => {
-      this.performBackup();
-    }, 24 * 60 * 60 * 1000); // 24 hours
+    this.backupInterval = setInterval(
+      () => {
+        this.performBackup();
+      },
+      24 * 60 * 60 * 1000,
+    ); // 24 hours
 
     // Actually, let's set a timeout for the first run, then interval
     clearInterval(this.backupInterval);
     this.backupInterval = setTimeout(() => {
       this.performBackup();
       // Then set up recurring interval
-      this.backupInterval = setInterval(() => {
-        this.performBackup();
-      }, 24 * 60 * 60 * 1000);
+      this.backupInterval = setInterval(
+        () => {
+          this.performBackup();
+        },
+        24 * 60 * 60 * 1000,
+      );
     }, msUntilNextRun);
   }
 

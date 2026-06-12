@@ -27,7 +27,8 @@ let AuditInterceptor = class AuditInterceptor {
                 const orgId = data?.user?.organizationId;
                 const actorId = data?.user?.id;
                 if (orgId && orgId.length === 36) {
-                    this.auditService.log({
+                    this.auditService
+                        .log({
                         organizationId: orgId,
                         userId: actorId && actorId.length === 36 ? actorId : undefined,
                         action: 'LOGIN',
@@ -36,7 +37,8 @@ let AuditInterceptor = class AuditInterceptor {
                         afterData: { email: body.email },
                         ipAddress: request.ip,
                         userAgent: request.get('user-agent'),
-                    }).catch(err => console.error('Audit logging failed:', err));
+                    })
+                        .catch((err) => console.error('Audit logging failed:', err));
                 }
                 return;
             }
@@ -45,7 +47,8 @@ let AuditInterceptor = class AuditInterceptor {
             if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
                 const orgId = user.organizationId;
                 if (orgId && orgId.length === 36) {
-                    this.auditService.log({
+                    this.auditService
+                        .log({
                         organizationId: orgId,
                         userId: user.id,
                         action: method,
@@ -54,7 +57,8 @@ let AuditInterceptor = class AuditInterceptor {
                         afterData: body,
                         ipAddress: request.ip,
                         userAgent: request.get('user-agent'),
-                    }).catch(err => console.error('Audit logging failed:', err));
+                    })
+                        .catch((err) => console.error('Audit logging failed:', err));
                 }
             }
         }));

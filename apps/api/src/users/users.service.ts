@@ -74,7 +74,12 @@ export class UsersService {
     });
   }
 
-  async update(id: string, data: any, organizationId: string, branchId: string) {
+  async update(
+    id: string,
+    data: any,
+    organizationId: string,
+    branchId: string,
+  ) {
     return this.prisma.user.update({
       where: { id, organizationId, branchId },
       data,

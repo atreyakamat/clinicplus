@@ -29,9 +29,9 @@ export declare class StaffInvitationsController {
     findByToken(token: string): Promise<{
         organization: {
             id: string;
-            slug: string;
             name: string;
             legalName: string | null;
+            slug: string;
             logoUrl: string | null;
             website: string | null;
             email: string | null;
@@ -77,6 +77,7 @@ export declare class StaffInvitationsController {
         deletedBy: string | null;
         deleteReason: string | null;
         organizationId: string;
+        branchId: string;
         firstName: string;
         lastName: string;
         avatarUrl: string | null;
@@ -89,6 +90,5 @@ export declare class StaffInvitationsController {
         bio: string | null;
         consultationFee: import("@prisma/client/runtime/library").Decimal | null;
         signatureUrl: string | null;
-        branchId: string;
     }>;
 }

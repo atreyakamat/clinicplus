@@ -43,12 +43,19 @@ describe('Authentication System (E2E) — Phase 2', () => {
 
   afterAll(async () => {
     try {
-      const tablenames = await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames.map(({ tablename }) => tablename).filter(name => name !== '_prisma_migrations').map(name => `"public"."${name}"`).join(', ');
+      const tablenames =
+        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
+      const tables = tablenames
+        .map(({ tablename }) => tablename)
+        .filter((name) => name !== '_prisma_migrations')
+        .map((name) => `"public"."${name}"`)
+        .join(', ');
       if (tables.length > 0) {
         await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
     await app.close();
   });
 
@@ -220,8 +227,9 @@ describe('Authentication System (E2E) — Phase 2', () => {
     });
 
     it('should reject request without token', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/auth/profile');
+      const res = await request(app.getHttpServer()).get(
+        '/api/v1/auth/profile',
+      );
       expect(res.status).toBeDefined();
     });
 
@@ -271,8 +279,10 @@ describe('Authentication System (E2E) — Phase 2', () => {
   });
 
   describe('Password Hashing Verification', () => {
-      it('should store password as bcrypt hash, not plaintext', async () => {
-        const user = await prisma.user.findUniqueOrThrow({ where: { id: createdUserId } });
+    it('should store password as bcrypt hash, not plaintext', async () => {
+      const user = await prisma.user.findUniqueOrThrow({
+        where: { id: createdUserId },
+      });
       expect(user?.passwordHash).toBeDefined();
       expect(user?.passwordHash).not.toBe(testPassword);
       expect(user?.passwordHash).toMatch(/^\$2[aby]\$\d+\$/);

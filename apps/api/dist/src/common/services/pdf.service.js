@@ -12,7 +12,7 @@ const PDFDocument = require('pdfkit');
 let PdfService = class PdfService {
     addImageFromBase64(doc, base64String, x, y, options = {}) {
         try {
-            const base64Data = base64String.replace(/^data:image\/\w+;base64,/, "");
+            const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
             const buffer = Buffer.from(base64Data, 'base64');
             doc.image(buffer, x, y, options);
         }
@@ -29,13 +29,17 @@ let PdfService = class PdfService {
             doc.on('error', reject);
             const primaryColor = organization.primaryColor || '#1FA971';
             if (organization.letterheadUrl) {
-                this.addImageFromBase64(doc, organization.letterheadUrl, 0, 0, { width: 595.28 });
+                this.addImageFromBase64(doc, organization.letterheadUrl, 0, 0, {
+                    width: 595.28,
+                });
                 doc.moveDown(4);
             }
             else {
                 doc.rect(0, 0, 595.28, 100).fill(primaryColor);
                 if (organization.logoUrl) {
-                    this.addImageFromBase64(doc, organization.logoUrl, 50, 20, { height: 60 });
+                    this.addImageFromBase64(doc, organization.logoUrl, 50, 20, {
+                        height: 60,
+                    });
                 }
                 else {
                     doc
@@ -48,7 +52,9 @@ let PdfService = class PdfService {
                     .fillColor('#FFFFFF')
                     .fontSize(14)
                     .text(`Dr. ${prescription.doctor.firstName} ${prescription.doctor.lastName}`, 400, 30, { align: 'right' });
-                doc.fontSize(8).text(prescription.doctor.qualification || 'Medical Practitioner', 400, 50, { align: 'right' });
+                doc
+                    .fontSize(8)
+                    .text(prescription.doctor.qualification || 'Medical Practitioner', 400, 50, { align: 'right' });
             }
             doc.y = 120;
             doc
@@ -94,7 +100,10 @@ let PdfService = class PdfService {
                 this.addImageFromBase64(doc, prescription.doctor.signatureUrl, 400, signatureY - 40, { height: 40 });
             }
             doc.moveTo(400, signatureY).lineTo(545, signatureY).stroke('#CCCCCC');
-            doc.fillColor('#333333').fontSize(10).text(`Dr. ${prescription.doctor.firstName} ${prescription.doctor.lastName}`, 400, signatureY + 5);
+            doc
+                .fillColor('#333333')
+                .fontSize(10)
+                .text(`Dr. ${prescription.doctor.firstName} ${prescription.doctor.lastName}`, 400, signatureY + 5);
             doc
                 .fontSize(8)
                 .fillColor('#999999')
@@ -114,12 +123,16 @@ let PdfService = class PdfService {
             doc.on('error', reject);
             const primaryColor = organization.primaryColor || '#1FA971';
             if (organization.letterheadUrl) {
-                this.addImageFromBase64(doc, organization.letterheadUrl, 0, 0, { width: 595.28 });
+                this.addImageFromBase64(doc, organization.letterheadUrl, 0, 0, {
+                    width: 595.28,
+                });
                 doc.moveDown(4);
             }
             else {
                 if (organization.logoUrl) {
-                    this.addImageFromBase64(doc, organization.logoUrl, 50, 30, { height: 40 });
+                    this.addImageFromBase64(doc, organization.logoUrl, 50, 30, {
+                        height: 40,
+                    });
                 }
                 else {
                     doc

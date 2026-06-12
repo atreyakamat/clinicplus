@@ -40,6 +40,10 @@ export declare class InvoicesController {
     }>;
     download(id: string, req: any, res: any): Promise<void>;
     findAll(req: any): Promise<({
+        patient: {
+            firstName: string;
+            lastName: string;
+        };
         payments: {
             id: string;
             createdAt: Date;
@@ -56,10 +60,6 @@ export declare class InvoicesController {
             createdById: string | null;
             invoiceId: string;
         }[];
-        patient: {
-            firstName: string;
-            lastName: string;
-        };
     } & {
         id: string;
         status: import("@prisma/client").$Enums.InvoiceStatus;
@@ -80,22 +80,6 @@ export declare class InvoicesController {
         total: import("@prisma/client/runtime/library").Decimal;
     })[]>;
     findOne(id: string, req: any): Promise<{
-        payments: {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            organizationId: string;
-            branchId: string;
-            amount: import("@prisma/client/runtime/library").Decimal;
-            paymentMethod: string;
-            transactionReference: string | null;
-            paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
-            paidAt: Date | null;
-            isRefund: boolean;
-            originalPaymentId: string | null;
-            createdById: string | null;
-            invoiceId: string;
-        }[];
         patient: {
             id: string;
             email: string | null;
@@ -109,9 +93,9 @@ export declare class InvoicesController {
             deletedBy: string | null;
             deleteReason: string | null;
             organizationId: string;
+            branchId: string;
             firstName: string;
             lastName: string;
-            branchId: string;
             patientCode: string | null;
             middleName: string | null;
             gender: string | null;
@@ -131,6 +115,22 @@ export declare class InvoicesController {
             quantity: number;
             unitPrice: import("@prisma/client/runtime/library").Decimal;
             amount: import("@prisma/client/runtime/library").Decimal;
+            invoiceId: string;
+        }[];
+        payments: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            organizationId: string;
+            branchId: string;
+            amount: import("@prisma/client/runtime/library").Decimal;
+            paymentMethod: string;
+            transactionReference: string | null;
+            paymentStatus: import("@prisma/client").$Enums.PaymentStatus;
+            paidAt: Date | null;
+            isRefund: boolean;
+            originalPaymentId: string | null;
+            createdById: string | null;
             invoiceId: string;
         }[];
     } & {

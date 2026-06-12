@@ -51,9 +51,14 @@ describe('DocumentsService', () => {
         ...data,
         uploadedBy: mockUserId,
         organizationId: mockOrgId,
-      } as any);
+      });
 
-      const result = await service.create(data, mockOrgId, mockBranchId, mockUserId);
+      const result = await service.create(
+        data,
+        mockOrgId,
+        mockBranchId,
+        mockUserId,
+      );
 
       expect(result.id).toBe('doc-1');
       expect(result.uploadedBy).toBe(mockUserId);
@@ -62,8 +67,8 @@ describe('DocumentsService', () => {
           uploadedBy: mockUserId,
           organizationId: mockOrgId,
           branchId: mockBranchId,
-          title: 'Lab Report'
-        })
+          title: 'Lab Report',
+        }),
       });
     });
 
@@ -73,10 +78,12 @@ describe('DocumentsService', () => {
         title: 'Lab Report',
         fileUrl: 'http://test.com/file.pdf',
         patient: { id: 'pat-1', firstName: 'John', lastName: 'Doe' },
-        uploader: { id: 'user-1', firstName: 'Dr', lastName: 'Smith' }
+        uploader: { id: 'user-1', firstName: 'Dr', lastName: 'Smith' },
       };
 
-      jest.spyOn(prisma.medicalDocument, 'findFirst').mockResolvedValue(document as any);
+      jest
+        .spyOn(prisma.medicalDocument, 'findFirst')
+        .mockResolvedValue(document as any);
 
       const result = await service.findOne('doc-1', mockOrgId, mockBranchId);
 
@@ -87,10 +94,12 @@ describe('DocumentsService', () => {
     it('should list all documents for organization', async () => {
       const documents = [
         { id: 'doc-1', title: 'Report 1' },
-        { id: 'doc-2', title: 'Report 2' }
+        { id: 'doc-2', title: 'Report 2' },
       ];
 
-      jest.spyOn(prisma.medicalDocument, 'findMany').mockResolvedValue(documents as any);
+      jest
+        .spyOn(prisma.medicalDocument, 'findMany')
+        .mockResolvedValue(documents as any);
 
       const result = await service.findAll(mockOrgId, mockBranchId);
 
@@ -103,23 +112,23 @@ describe('DocumentsService', () => {
       const data = {
         title: 'Prescription',
         fileUrl: 'http://test.com/pres.pdf',
-        patientId: 'pat-1'
+        patientId: 'pat-1',
       } as any;
 
       jest.spyOn(prisma.medicalDocument, 'create').mockResolvedValue({
         id: 'doc-1',
         uploadedBy: mockUserId,
-        ...data
-      } as any);
+        ...data,
+      });
 
       await service.create(data, mockOrgId, mockBranchId, mockUserId);
 
       expect(prisma.medicalDocument.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            uploadedBy: mockUserId
-          })
-        })
+            uploadedBy: mockUserId,
+          }),
+        }),
       );
     });
 
@@ -127,10 +136,15 @@ describe('DocumentsService', () => {
       jest.spyOn(service, 'findOne').mockResolvedValue({ id: 'doc-1' } as any);
       jest.spyOn(prisma.medicalDocument, 'update').mockResolvedValue({
         id: 'doc-1',
-        title: 'Updated Title'
+        title: 'Updated Title',
       } as any);
 
-      const result = await service.update('doc-1', { title: 'Updated Title' }, mockOrgId, mockBranchId);
+      const result = await service.update(
+        'doc-1',
+        { title: 'Updated Title' },
+        mockOrgId,
+        mockBranchId,
+      );
 
       expect(result.title).toBe('Updated Title');
     });
@@ -147,41 +161,51 @@ describe('DocumentsService', () => {
         id: 'doc-1',
         ...data,
         uploadedBy: mockUserId,
-        organizationId: mockOrgId
-      } as any);
+        organizationId: mockOrgId,
+      });
 
-      const result = await service.create(data, mockOrgId, mockBranchId, mockUserId);
+      const result = await service.create(
+        data,
+        mockOrgId,
+        mockBranchId,
+        mockUserId,
+      );
 
       expect(result.title).toContain('Patient_Report');
     });
 
     it('should handle multiple document types', async () => {
       const documentTypes = ['LAB_REPORT', 'PRESCRIPTION', 'X_RAY', 'REFERRAL'];
-      
+
       for (const docType of documentTypes) {
         const data = {
           title: `Test ${docType}`,
           documentType: docType,
-          fileUrl: 'http://test.com/file.pdf'
+          fileUrl: 'http://test.com/file.pdf',
         } as any;
 
         jest.spyOn(prisma.medicalDocument, 'create').mockResolvedValue({
           id: `doc-${docType}`,
           ...data,
-          uploadedBy: mockUserId
-        } as any);
+          uploadedBy: mockUserId,
+        });
 
-        const result = await service.create(data, mockOrgId, mockBranchId, mockUserId);
+        const result = await service.create(
+          data,
+          mockOrgId,
+          mockBranchId,
+          mockUserId,
+        );
         expect(result.documentType).toBe(docType);
       }
     });
 
     it('should support filtering documents by patient', async () => {
-      const documents = [
-        { id: 'doc-1', patientId: 'pat-1' }
-      ];
+      const documents = [{ id: 'doc-1', patientId: 'pat-1' }];
 
-      jest.spyOn(prisma.medicalDocument, 'findMany').mockResolvedValue(documents as any);
+      jest
+        .spyOn(prisma.medicalDocument, 'findMany')
+        .mockResolvedValue(documents as any);
 
       await service.findAll(mockOrgId, mockBranchId);
 
@@ -191,36 +215,39 @@ describe('DocumentsService', () => {
 
   describe('MULTI-TENANT: Document Isolation', () => {
     it('should only retrieve documents for specified organization', async () => {
-      jest.spyOn(prisma.medicalDocument, 'findMany').mockResolvedValue([
-        { id: 'doc-1', organizationId: mockOrgId }
-      ] as any);
+      jest
+        .spyOn(prisma.medicalDocument, 'findMany')
+        .mockResolvedValue([{ id: 'doc-1', organizationId: mockOrgId }] as any);
 
       await service.findAll(mockOrgId, mockBranchId);
 
-      expect(prisma.medicalDocument.findMany).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({
-          organizationId: mockOrgId,
-          branchId: mockBranchId
-        })
-      }));
+      expect(prisma.medicalDocument.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationId: mockOrgId,
+            branchId: mockBranchId,
+          }),
+        }),
+      );
     });
 
     it('should prevent cross-organization document access', async () => {
       jest.spyOn(prisma.medicalDocument, 'findFirst').mockResolvedValue(null);
 
       await expect(
-        service.findOne('doc-1', mockOrgId2, mockBranchId)
+        service.findOne('doc-1', mockOrgId2, mockBranchId),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should enforce branch isolation within organization', async () => {
-      jest.spyOn(prisma.medicalDocument, 'findMany').mockResolvedValue([
-        { id: 'doc-1', branchId: mockBranchId }
-      ] as any);
+      jest
+        .spyOn(prisma.medicalDocument, 'findMany')
+        .mockResolvedValue([{ id: 'doc-1', branchId: mockBranchId }] as any);
 
       await service.findAll(mockOrgId, mockBranchId);
 
-      const callArgs = (prisma.medicalDocument.findMany as jest.Mock).mock.calls[0][0];
+      const callArgs = (prisma.medicalDocument.findMany as jest.Mock).mock
+        .calls[0][0];
       expect(callArgs.where.branchId).toBe(mockBranchId);
     });
   });
@@ -230,40 +257,46 @@ describe('DocumentsService', () => {
       jest.spyOn(prisma.medicalDocument, 'findFirst').mockResolvedValue(null);
 
       await expect(
-        service.findOne('doc-1', mockOrgId, mockBranchId)
+        service.findOne('doc-1', mockOrgId, mockBranchId),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should handle database error during creation', async () => {
       const data = { title: 'Report', fileUrl: 'http://test.com/file' } as any;
 
-      jest.spyOn(prisma.medicalDocument, 'create').mockRejectedValue(
-        new Error('Database connection failed')
-      );
+      jest
+        .spyOn(prisma.medicalDocument, 'create')
+        .mockRejectedValue(new Error('Database connection failed'));
 
       await expect(
-        service.create(data, mockOrgId, mockBranchId, mockUserId)
+        service.create(data, mockOrgId, mockBranchId, mockUserId),
       ).rejects.toThrow('Database connection failed');
     });
 
     it('should handle update error gracefully', async () => {
       jest.spyOn(service, 'findOne').mockResolvedValue({ id: 'doc-1' } as any);
-      jest.spyOn(prisma.medicalDocument, 'update').mockRejectedValue(
-        new Error('Update failed')
-      );
+      jest
+        .spyOn(prisma.medicalDocument, 'update')
+        .mockRejectedValue(new Error('Update failed'));
 
       await expect(
-        service.update('doc-1', { title: 'New' }, mockOrgId, mockBranchId)
+        service.update('doc-1', { title: 'New' }, mockOrgId, mockBranchId),
       ).rejects.toThrow('Update failed');
     });
 
     it('should verify document exists before deletion', async () => {
       jest.spyOn(service, 'findOne').mockResolvedValue({ id: 'doc-1' } as any);
-      jest.spyOn(prisma.medicalDocument, 'delete').mockResolvedValue({ id: 'doc-1' } as any);
+      jest
+        .spyOn(prisma.medicalDocument, 'delete')
+        .mockResolvedValue({ id: 'doc-1' } as any);
 
       const result = await service.remove('doc-1', mockOrgId, mockBranchId);
 
-      expect(service.findOne).toHaveBeenCalledWith('doc-1', mockOrgId, mockBranchId);
+      expect(service.findOne).toHaveBeenCalledWith(
+        'doc-1',
+        mockOrgId,
+        mockBranchId,
+      );
       expect(result.id).toBe('doc-1');
     });
   });
@@ -276,34 +309,36 @@ describe('DocumentsService', () => {
       jest.spyOn(prisma.medicalDocument, 'create').mockResolvedValue({
         id: 'doc-1',
         uploadedBy: testUserId,
-        ...data
-      } as any);
+        ...data,
+      });
 
       await service.create(data, mockOrgId, mockBranchId, testUserId);
 
       expect(prisma.medicalDocument.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            uploadedBy: testUserId
-          })
-        })
+            uploadedBy: testUserId,
+          }),
+        }),
       );
     });
 
     it('should include user details in document retrieval', async () => {
       const document = {
         id: 'doc-1',
-        uploader: { id: 'user-1', firstName: 'Dr', lastName: 'Smith' }
+        uploader: { id: 'user-1', firstName: 'Dr', lastName: 'Smith' },
       };
 
-      jest.spyOn(prisma.medicalDocument, 'findFirst').mockResolvedValue(document as any);
+      jest
+        .spyOn(prisma.medicalDocument, 'findFirst')
+        .mockResolvedValue(document as any);
 
       await service.findOne('doc-1', mockOrgId, mockBranchId);
 
       expect(prisma.medicalDocument.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
-          include: expect.any(Object)
-        })
+          include: expect.any(Object),
+        }),
       );
     });
 
@@ -313,8 +348,8 @@ describe('DocumentsService', () => {
       jest.spyOn(prisma.medicalDocument, 'create').mockResolvedValue({
         id: 'doc-1',
         organizationId: mockOrgId,
-        ...data
-      } as any);
+        ...data,
+      });
 
       await service.create(data, mockOrgId, mockBranchId, mockUserId);
 
@@ -322,9 +357,9 @@ describe('DocumentsService', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             organizationId: mockOrgId,
-            branchId: mockBranchId
-          })
-        })
+            branchId: mockBranchId,
+          }),
+        }),
       );
     });
   });

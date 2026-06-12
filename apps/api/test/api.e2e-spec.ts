@@ -10,36 +10,65 @@ describe('API Endpoint Testing (E2E) — Phase 13', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let jwtService: JwtService;
-  let org: any; let branch: any; let user: any; let token: string;
+  let org: any;
+  let branch: any;
+  let user: any;
+  let token: string;
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const mod = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = mod.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+    );
     app.useGlobalFilters(new AllExceptionsFilter());
     jwtService = app.get(JwtService);
     prisma = app.get(PrismaService);
     await app.init();
 
-    org = await prisma.organization.create({ data: { name: 'API Test', slug: `api-${Date.now()}` } });
-    branch = await prisma.branch.create({ data: { name: 'API Branch', organizationId: org.id } });
+    org = await prisma.organization.create({
+      data: { name: 'API Test', slug: `api-${Date.now()}` },
+    });
+    branch = await prisma.branch.create({
+      data: { name: 'API Branch', organizationId: org.id },
+    });
     user = await prisma.user.create({
-      data: { email: `api-${Date.now()}@t.com`, passwordHash: 'h', firstName: 'API', lastName: 'Test', organizationId: org.id, branchId: branch.id },
+      data: {
+        email: `api-${Date.now()}@t.com`,
+        passwordHash: 'h',
+        firstName: 'API',
+        lastName: 'Test',
+        organizationId: org.id,
+        branchId: branch.id,
+      },
     });
     token = jwtService.sign({
-      sub: user.id, email: user.email, organizationId: org.id, branchId: branch.id,
-      roles: ['Organization Owner'], permissions: ['*'],
+      sub: user.id,
+      email: user.email,
+      organizationId: org.id,
+      branchId: branch.id,
+      roles: ['Organization Owner'],
+      permissions: ['*'],
     });
   });
 
   afterAll(async () => {
     try {
-      const tablenames = await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames.map(({ tablename }) => tablename).filter(name => name !== '_prisma_migrations').map(name => `"public"."${name}"`).join(', ');
+      const tablenames =
+        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
+      const tables = tablenames
+        .map(({ tablename }) => tablename)
+        .filter((name) => name !== '_prisma_migrations')
+        .map((name) => `"public"."${name}"`)
+        .join(', ');
       if (tables.length > 0) {
         await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
     await app.close();
   });
 
@@ -52,14 +81,23 @@ describe('API Endpoint Testing (E2E) — Phase 13', () => {
     it('GET /api/v1/auth/register should be accessible', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/auth/register')
-        .send({ email: `health-${Date.now()}@t.com`, password: 'Pass123!', firstName: 'H', lastName: 'C', clinicName: 'HC', clinicSlug: `hc-${Date.now()}` });
+        .send({
+          email: `health-${Date.now()}@t.com`,
+          password: 'Pass123!',
+          firstName: 'H',
+          lastName: 'C',
+          clinicName: 'HC',
+          clinicSlug: `hc-${Date.now()}`,
+        });
       expect(res.status).toBeDefined();
     });
   });
 
   describe('Authentication Verification', () => {
     it('GET /api/v1/auth/profile without token returns 401', async () => {
-      const res = await request(app.getHttpServer()).get('/api/v1/auth/profile');
+      const res = await request(app.getHttpServer()).get(
+        '/api/v1/auth/profile',
+      );
       expect(res.status).toBeDefined();
     });
 
@@ -96,14 +134,16 @@ describe('API Endpoint Testing (E2E) — Phase 13', () => {
   describe('Validation Errors', () => {
     it('should return 400 for invalid patient data', async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/patients').set('Authorization', `Bearer ${token}`)
+        .post('/api/v1/patients')
+        .set('Authorization', `Bearer ${token}`)
         .send({ invalidField: true });
       expect(res.status).toBeDefined();
     });
 
     it('should return 400 for invalid appointment data', async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/appointments').set('Authorization', `Bearer ${token}`)
+        .post('/api/v1/appointments')
+        .set('Authorization', `Bearer ${token}`)
         .send({ invalid: true });
       expect(res.status).toBeDefined();
     });
@@ -168,7 +208,9 @@ describe('API Endpoint Testing (E2E) — Phase 13', () => {
 
     for (const [method, url] of endpoints) {
       it(`${method} ${url} returns 200 or 401`, async () => {
-        const req = request(app.getHttpServer())[method.toLowerCase() as 'get' | 'post'](url as string);
+        const req = request(app.getHttpServer())[
+          method.toLowerCase() as 'get' | 'post'
+        ](url);
         if (method === 'GET') {
           const res = await req.set('Authorization', `Bearer ${token}`);
           expect(res.status).toBeDefined();

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { RefundPaymentDto } from './dto/refund-payment.dto';
@@ -25,8 +29,13 @@ export class PaymentsService {
       throw new NotFoundException('Invoice not found');
     }
 
-    if (invoice.organizationId !== organizationId || invoice.branchId !== branchId) {
-      throw new BadRequestException('Invoice does not belong to this organization/branch');
+    if (
+      invoice.organizationId !== organizationId ||
+      invoice.branchId !== branchId
+    ) {
+      throw new BadRequestException(
+        'Invoice does not belong to this organization/branch',
+      );
     }
 
     // Calculate total paid amount for this invoice
@@ -60,7 +69,8 @@ export class PaymentsService {
         organizationId,
         branchId,
         createdById: userId,
-        paymentStatus: (createPaymentDto.paymentStatus as PaymentStatus) || 'PENDING',
+        paymentStatus:
+          (createPaymentDto.paymentStatus as PaymentStatus) || 'PENDING',
       },
     });
 
@@ -69,7 +79,11 @@ export class PaymentsService {
       await this.prisma.invoice.update({
         where: { id: createPaymentDto.invoiceId },
         data: {
-          status: (await this.calculateInvoiceStatus(createPaymentDto.invoiceId, organizationId, branchId)) as InvoiceStatus,
+          status: (await this.calculateInvoiceStatus(
+            createPaymentDto.invoiceId,
+            organizationId,
+            branchId,
+          )) as InvoiceStatus,
         },
       });
     }
@@ -77,11 +91,7 @@ export class PaymentsService {
     return payment;
   }
 
-  async findPaymentById(
-    id: string,
-    organizationId: string,
-    branchId: string,
-  ) {
+  async findPaymentById(id: string, organizationId: string, branchId: string) {
     const payment = await this.prisma.payment.findUnique({
       where: { id },
       include: {
@@ -95,7 +105,10 @@ export class PaymentsService {
       throw new NotFoundException('Payment not found');
     }
 
-    if (payment.organizationId !== organizationId || payment.branchId !== branchId) {
+    if (
+      payment.organizationId !== organizationId ||
+      payment.branchId !== branchId
+    ) {
       throw new NotFoundException('Payment not found');
     }
 
@@ -119,8 +132,13 @@ export class PaymentsService {
       throw new NotFoundException('Payment not found');
     }
 
-    if (payment.organizationId !== organizationId || payment.branchId !== branchId) {
-      throw new BadRequestException('Payment does not belong to this organization/branch');
+    if (
+      payment.organizationId !== organizationId ||
+      payment.branchId !== branchId
+    ) {
+      throw new BadRequestException(
+        'Payment does not belong to this organization/branch',
+      );
     }
 
     if (payment.paymentStatus !== 'PAID') {
@@ -128,7 +146,9 @@ export class PaymentsService {
     }
 
     if (new Decimal(refundPaymentDto.amount).gt(payment.amount)) {
-      throw new BadRequestException('Refund amount cannot exceed original payment amount');
+      throw new BadRequestException(
+        'Refund amount cannot exceed original payment amount',
+      );
     }
 
     // Calculate total refunded amount for this payment
@@ -144,7 +164,9 @@ export class PaymentsService {
 
     const alreadyRefunded = totalRefunded._sum.amount || new Decimal(0);
     if (alreadyRefunded.plus(refundPaymentDto.amount).gt(payment.amount)) {
-      throw new BadRequestException('Total refund amount cannot exceed original payment amount');
+      throw new BadRequestException(
+        'Total refund amount cannot exceed original payment amount',
+      );
     }
 
     // Create refund payment record
@@ -211,7 +233,11 @@ export class PaymentsService {
     await this.prisma.invoice.update({
       where: { id: payment.invoiceId },
       data: {
-        status: (await this.calculateInvoiceStatus(payment.invoiceId, organizationId, branchId)) as InvoiceStatus,
+        status: (await this.calculateInvoiceStatus(
+          payment.invoiceId,
+          organizationId,
+          branchId,
+        )) as InvoiceStatus,
       },
     });
 
@@ -232,8 +258,13 @@ export class PaymentsService {
       throw new NotFoundException('Invoice not found');
     }
 
-    if (invoice.organizationId !== organizationId || invoice.branchId !== branchId) {
-      throw new BadRequestException('Invoice does not belong to this organization/branch');
+    if (
+      invoice.organizationId !== organizationId ||
+      invoice.branchId !== branchId
+    ) {
+      throw new BadRequestException(
+        'Invoice does not belong to this organization/branch',
+      );
     }
 
     return this.prisma.payment.findMany({
@@ -277,10 +308,7 @@ export class PaymentsService {
     });
   }
 
-  async countPayments(
-    organizationId: string,
-    branchId: string,
-  ) {
+  async countPayments(organizationId: string, branchId: string) {
     return this.prisma.payment.count({
       where: {
         organizationId,

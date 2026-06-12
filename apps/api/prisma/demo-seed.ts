@@ -88,7 +88,7 @@ async function main() {
 
   // --- PHASE 1: 100 Patients ---
   console.log('📥 Seeding 100 Patients...');
-  const patients = [];
+  const patients: any[] = [];
   for (let i = 0; i < 100; i++) {
     const branch = faker.helpers.arrayElement(branches);
     patients.push({
@@ -113,7 +113,7 @@ async function main() {
   console.log('📅 Seeding 200 Appointments...');
   const actualPatients = await prisma.patient.findMany({ take: 100 });
 
-  const appointments = [];
+  const appointments: any[] = [];
   for (let i = 0; i < 200; i++) {
     const patient = faker.helpers.arrayElement(actualPatients);
     appointments.push({
@@ -159,7 +159,7 @@ async function main() {
   // Take exactly 50 for consultations
   consultationsToCreate = consultationsToCreate.slice(0, 50);
 
-  const consultations = [];
+  const consultations: any[] = [];
   for (const appt of consultationsToCreate) {
     consultations.push({
       organizationId: appt.organizationId,
@@ -271,14 +271,14 @@ async function main() {
   console.log('🔄 Seeding 20 Follow-Ups...');
   const followUpPatients = await prisma.patient.findMany({ take: 20 });
 
-  const followUps = [];
+  const followUps: any[] = [];
   for (const patient of followUpPatients) {
     followUps.push({
       organizationId: patient.organizationId,
       branchId: patient.branchId,
       patientId: patient.id,
       doctorId: demoDoctor.id,
-      scheduledDate: faker.date.future({ days: 30 }),
+      scheduledDate: faker.date.soon({ days: 30 }),
       status: 'PENDING'
     });
   }

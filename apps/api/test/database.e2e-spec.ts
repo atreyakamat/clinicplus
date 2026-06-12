@@ -9,7 +9,9 @@ describe('Database Integrity (E2E) — Phase 14', () => {
   let prisma: PrismaService;
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const mod = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = mod.createNestApplication();
     prisma = app.get(PrismaService);
     await app.init();
@@ -17,12 +19,19 @@ describe('Database Integrity (E2E) — Phase 14', () => {
 
   afterAll(async () => {
     try {
-      const tablenames = await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames.map(({ tablename }) => tablename).filter(name => name !== '_prisma_migrations').map(name => `"public"."${name}"`).join(', ');
+      const tablenames =
+        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
+      const tables = tablenames
+        .map(({ tablename }) => tablename)
+        .filter((name) => name !== '_prisma_migrations')
+        .map((name) => `"public"."${name}"`)
+        .join(', ');
       if (tables.length > 0) {
         await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
     await app.close();
   });
 
@@ -30,20 +39,34 @@ describe('Database Integrity (E2E) — Phase 14', () => {
     it('should enforce unique organization slug', async () => {
       const slug = `uniq-slug-${Date.now()}`;
       await prisma.organization.create({ data: { name: 'U1', slug } });
-      
     });
 
     it('should enforce unique invoice number per org', async () => {
-      const org = await prisma.organization.create({ data: { name: 'InvUniq', slug: `invuniq-${Date.now()}` } });
-      const branch = await prisma.branch.create({ data: { name: 'B', organizationId: org.id } });
+      const org = await prisma.organization.create({
+        data: { name: 'InvUniq', slug: `invuniq-${Date.now()}` },
+      });
+      const branch = await prisma.branch.create({
+        data: { name: 'B', organizationId: org.id },
+      });
       const patient = await prisma.patient.create({
-        data: { firstName: 'I', lastName: 'U', phone: '5551400001', organizationId: org.id, branchId: branch.id },
+        data: {
+          firstName: 'I',
+          lastName: 'U',
+          phone: '5551400001',
+          organizationId: org.id,
+          branchId: branch.id,
+        },
       });
       const invNum = `UNIQ-INV-${Date.now()}`;
       await prisma.invoice.create({
-        data: { patientId: patient.id, organizationId: org.id, branchId: branch.id, invoiceNumber: invNum, total: 10 },
+        data: {
+          patientId: patient.id,
+          organizationId: org.id,
+          branchId: branch.id,
+          invoiceNumber: invNum,
+          total: 10,
+        },
       });
-      
 
       await prisma.invoice.deleteMany({ where: { organizationId: org.id } });
       await prisma.patient.deleteMany({ where: { organizationId: org.id } });
@@ -52,13 +75,23 @@ describe('Database Integrity (E2E) — Phase 14', () => {
     });
 
     it('should enforce unique user email per org', async () => {
-      const org = await prisma.organization.create({ data: { name: 'EmailUniq', slug: `emailuniq-${Date.now()}` } });
-      const branch = await prisma.branch.create({ data: { name: 'B', organizationId: org.id } });
+      const org = await prisma.organization.create({
+        data: { name: 'EmailUniq', slug: `emailuniq-${Date.now()}` },
+      });
+      const branch = await prisma.branch.create({
+        data: { name: 'B', organizationId: org.id },
+      });
       const email = `uniq-${Date.now()}@t.com`;
       await prisma.user.create({
-        data: { email, passwordHash: 'h', firstName: 'U', lastName: 'U', organizationId: org.id, branchId: branch.id },
+        data: {
+          email,
+          passwordHash: 'h',
+          firstName: 'U',
+          lastName: 'U',
+          organizationId: org.id,
+          branchId: branch.id,
+        },
       });
-      
 
       await prisma.user.deleteMany({ where: { organizationId: org.id } });
       await prisma.branch.deleteMany({ where: { organizationId: org.id } });
@@ -67,25 +100,29 @@ describe('Database Integrity (E2E) — Phase 14', () => {
   });
 
   describe('Foreign Key Constraints', () => {
-    it('should enforce branch FK to organization', async () => {
-      
-    });
+    it('should enforce branch FK to organization', async () => {});
 
-    it('should enforce patient FK to organization', async () => {
-      
-    });
+    it('should enforce patient FK to organization', async () => {});
 
-    it('should enforce appointment FK to patient', async () => {
-      
-    });
+    it('should enforce appointment FK to patient', async () => {});
   });
 
   describe('Soft Delete Pattern', () => {
     it('should support soft delete on patient records', async () => {
-      const org = await prisma.organization.create({ data: { name: 'SDel', slug: `sdel-${Date.now()}` } });
-      const branch = await prisma.branch.create({ data: { name: 'B', organizationId: org.id } });
+      const org = await prisma.organization.create({
+        data: { name: 'SDel', slug: `sdel-${Date.now()}` },
+      });
+      const branch = await prisma.branch.create({
+        data: { name: 'B', organizationId: org.id },
+      });
       const patient = await prisma.patient.create({
-        data: { firstName: 'SD', lastName: 'Del', phone: '5551600001', organizationId: org.id, branchId: branch.id },
+        data: {
+          firstName: 'SD',
+          lastName: 'Del',
+          phone: '5551600001',
+          organizationId: org.id,
+          branchId: branch.id,
+        },
       });
 
       await prisma.patient.update({
@@ -93,7 +130,9 @@ describe('Database Integrity (E2E) — Phase 14', () => {
         data: { status: 'INACTIVE', deletedAt: new Date() },
       });
 
-      const deleted = await prisma.patient.findUnique({ where: { id: patient.id } });
+      const deleted = await prisma.patient.findUnique({
+        where: { id: patient.id },
+      });
       expect(deleted?.status).toBe('INACTIVE');
       expect(deleted?.deletedAt).toBeDefined();
 
@@ -105,10 +144,12 @@ describe('Database Integrity (E2E) — Phase 14', () => {
 
   describe('Transactions', () => {
     it('should rollback transaction on error', async () => {
-      const org = await prisma.organization.create({ data: { name: 'TxTest', slug: `txtest-${Date.now()}` } });
-      const branch = await prisma.branch.create({ data: { name: 'B', organizationId: org.id } });
-
-      
+      const org = await prisma.organization.create({
+        data: { name: 'TxTest', slug: `txtest-${Date.now()}` },
+      });
+      const branch = await prisma.branch.create({
+        data: { name: 'B', organizationId: org.id },
+      });
 
       await prisma.branch.delete({ where: { id: branch.id } });
       await prisma.organization.delete({ where: { id: org.id } });
@@ -117,7 +158,9 @@ describe('Database Integrity (E2E) — Phase 14', () => {
 
   describe('Audit Fields', () => {
     it('should have createdAt and updatedAt on core models', async () => {
-      const org = await prisma.organization.create({ data: { name: 'AuditTest', slug: `audit-${Date.now()}` } });
+      const org = await prisma.organization.create({
+        data: { name: 'AuditTest', slug: `audit-${Date.now()}` },
+      });
       expect(org.createdAt).toBeDefined();
       expect(org.updatedAt).toBeDefined();
       await prisma.organization.delete({ where: { id: org.id } });
@@ -126,11 +169,21 @@ describe('Database Integrity (E2E) — Phase 14', () => {
 
   describe('Indexes', () => {
     it('should have organizationId indexes on key tables', async () => {
-      const org = await prisma.organization.create({ data: { name: 'IdxTest', slug: `idx-${Date.now()}` } });
-      const branch = await prisma.branch.create({ data: { name: 'B', organizationId: org.id } });
+      const org = await prisma.organization.create({
+        data: { name: 'IdxTest', slug: `idx-${Date.now()}` },
+      });
+      const branch = await prisma.branch.create({
+        data: { name: 'B', organizationId: org.id },
+      });
 
       const patient = await prisma.patient.create({
-        data: { firstName: 'Idx', lastName: 'Test', phone: '5551800001', organizationId: org.id, branchId: branch.id },
+        data: {
+          firstName: 'Idx',
+          lastName: 'Test',
+          phone: '5551800001',
+          organizationId: org.id,
+          branchId: branch.id,
+        },
       });
       expect(patient.organizationId).toBe(org.id);
 
@@ -142,7 +195,16 @@ describe('Database Integrity (E2E) — Phase 14', () => {
 
   describe('Tenant Columns', () => {
     it('should have organizationId on all tenant-scoped tables', async () => {
-      const models = ['patient', 'appointment', 'invoice', 'consultation', 'prescription', 'task', 'followUp', 'message'] as const;
+      const models = [
+        'patient',
+        'appointment',
+        'invoice',
+        'consultation',
+        'prescription',
+        'task',
+        'followUp',
+        'message',
+      ] as const;
       for (const model of models) {
         const delegate = (prisma as any)[model];
         expect(delegate).toBeDefined();

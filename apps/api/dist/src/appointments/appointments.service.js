@@ -96,7 +96,8 @@ let AppointmentsService = class AppointmentsService {
         });
     }
     async findOne(id, organizationId, branchId) {
-        const appointment = await this.prisma.appointment.findFirst({ where: { id, organizationId, branchId },
+        const appointment = await this.prisma.appointment.findFirst({
+            where: { id, organizationId, branchId },
             include: {
                 patient: true,
                 doctor: {
@@ -109,7 +110,8 @@ let AppointmentsService = class AppointmentsService {
         return appointment;
     }
     async update(id, data, organizationId, branchId, updatedBy) {
-        const oldAppointment = await this.prisma.appointment.findFirst({ where: { id, organizationId, branchId },
+        const oldAppointment = await this.prisma.appointment.findFirst({
+            where: { id, organizationId, branchId },
             include: {
                 patient: {
                     select: { id: true, firstName: true, lastName: true },
@@ -138,7 +140,8 @@ let AppointmentsService = class AppointmentsService {
         return appointment;
     }
     async remove(id, organizationId, branchId, removedBy) {
-        const oldAppointment = await this.prisma.appointment.findFirst({ where: { id, organizationId, branchId },
+        const oldAppointment = await this.prisma.appointment.findFirst({
+            where: { id, organizationId, branchId },
             include: {
                 patient: {
                     select: { id: true, firstName: true, lastName: true },

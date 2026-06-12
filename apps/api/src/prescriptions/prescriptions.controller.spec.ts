@@ -56,7 +56,7 @@ describe('PrescriptionsController', () => {
       jest.spyOn(service, 'create').mockResolvedValue({ id: 'rx-1' } as any);
       await controller.create({ items: [] }, mockRequest);
       expect(service.create).toHaveBeenCalledWith(
-        expect.objectContaining({ organizationId: 'org-1', doctorId: 'doc-1' })
+        expect.objectContaining({ organizationId: 'org-1', doctorId: 'doc-1' }),
       );
     });
   });
@@ -65,7 +65,11 @@ describe('PrescriptionsController', () => {
     it('should pass query params to service', async () => {
       jest.spyOn(service, 'findAll').mockResolvedValue([]);
       await controller.findAll('pat-1', mockRequest);
-      expect(service.findAll).toHaveBeenCalledWith('org-1', 'branch-1', 'pat-1');
+      expect(service.findAll).toHaveBeenCalledWith(
+        'org-1',
+        'branch-1',
+        'pat-1',
+      );
     });
   });
 
@@ -83,19 +87,25 @@ describe('PrescriptionsController', () => {
         set: jest.fn(),
         end: jest.fn(),
       };
-      
+
       jest.spyOn(service, 'findOne').mockResolvedValue({ id: 'rx-1' } as any);
-      jest.spyOn(orgService, 'findOne').mockResolvedValue({ id: 'org-1' } as any);
-      jest.spyOn(pdfService, 'generatePrescriptionPdf').mockResolvedValue(Buffer.from('pdf-content'));
+      jest
+        .spyOn(orgService, 'findOne')
+        .mockResolvedValue({ id: 'org-1' } as any);
+      jest
+        .spyOn(pdfService, 'generatePrescriptionPdf')
+        .mockResolvedValue(Buffer.from('pdf-content'));
 
       await controller.download('rx-1', mockRequest, mockRes);
-      
+
       expect(service.findOne).toHaveBeenCalledWith('rx-1', 'org-1', 'branch-1');
       expect(orgService.findOne).toHaveBeenCalledWith('org-1');
       expect(pdfService.generatePrescriptionPdf).toHaveBeenCalled();
-      expect(mockRes.set).toHaveBeenCalledWith(expect.objectContaining({
-        'Content-Type': 'application/pdf'
-      }));
+      expect(mockRes.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          'Content-Type': 'application/pdf',
+        }),
+      );
       expect(mockRes.end).toHaveBeenCalled();
     });
   });

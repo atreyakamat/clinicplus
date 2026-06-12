@@ -39,16 +39,17 @@ export class BackupController {
 
   @Post('restore/:filename')
   @Permissions('backup:restore')
-  async restoreBackup(
-    @Request() req,
-    @Param('filename') filename: string,
-  ) {
+  async restoreBackup(@Request() req, @Param('filename') filename: string) {
     // Validate filename to prevent directory traversal
-    if (!filename.match(/^clinicos-backup-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.sql$/)) {
+    if (
+      !filename.match(
+        /^clinicos-backup-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.sql$/,
+      )
+    ) {
       throw new Error('Invalid backup filename');
     }
 
-    const backupPath = `/app/backups/${filename}`;
+    const backupPath = this.backupService.getBackupPath(filename);
     await this.backupService.restoreBackup(backupPath);
 
     return {
@@ -63,7 +64,7 @@ export class BackupController {
   async listBackups(@Request() req) {
     const backups = await this.backupService.listBackups();
     return {
-      backups: backups.map(backup => ({
+      backups: backups.map((backup) => ({
         name: backup.name,
         size: backup.size,
         date: backup.date.toISOString(),
@@ -97,16 +98,19 @@ export class BackupController {
   @Permissions('backup:read')
   async downloadBackup(
     @Param('filename') filename: string,
-    @Res() res: Response,
+    @Res() res,
   ) {
     // Validate filename to prevent directory traversal
-    if (!filename.match(/^clinicos-backup-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.sql$/)) {
+    if (
+      !filename.match(
+        /^clinicos-backup-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.sql$/,
+      )
+    ) {
       throw new Error('Invalid backup filename');
     }
 
-    const backupPath = `/app/backups/${filename}`;
+    const backupPath = this.backupService.getBackupPath(filename);
     try {
-      await this.backupService.backupDir; // Ensure directory exists
       return res.download(backupPath, filename);
     } catch (error) {
       throw new Error(`Backup file not found: ${filename}`);

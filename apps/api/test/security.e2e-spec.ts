@@ -10,10 +10,15 @@ describe('Security Testing (E2E) — Phase 15', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let jwtService: JwtService;
-  let org: any; let branch: any; let user: any; let token: string;
+  let org: any;
+  let branch: any;
+  let user: any;
+  let token: string;
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const mod = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = mod.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     app.useGlobalFilters(new AllExceptionsFilter());
@@ -21,25 +26,47 @@ describe('Security Testing (E2E) — Phase 15', () => {
     prisma = app.get(PrismaService);
     await app.init();
 
-    org = await prisma.organization.create({ data: { name: 'Sec Test', slug: `sec-${Date.now()}` } });
-    branch = await prisma.branch.create({ data: { name: 'Sec Branch', organizationId: org.id } });
+    org = await prisma.organization.create({
+      data: { name: 'Sec Test', slug: `sec-${Date.now()}` },
+    });
+    branch = await prisma.branch.create({
+      data: { name: 'Sec Branch', organizationId: org.id },
+    });
     user = await prisma.user.create({
-      data: { email: `sec-${Date.now()}@t.com`, passwordHash: 'h', firstName: 'Sec', lastName: 'User', organizationId: org.id, branchId: branch.id },
+      data: {
+        email: `sec-${Date.now()}@t.com`,
+        passwordHash: 'h',
+        firstName: 'Sec',
+        lastName: 'User',
+        organizationId: org.id,
+        branchId: branch.id,
+      },
     });
     token = jwtService.sign({
-      sub: user.id, email: user.email, organizationId: org.id, branchId: branch.id,
-      roles: ['Organization Owner'], permissions: ['*'],
+      sub: user.id,
+      email: user.email,
+      organizationId: org.id,
+      branchId: branch.id,
+      roles: ['Organization Owner'],
+      permissions: ['*'],
     });
   });
 
   afterAll(async () => {
     try {
-      const tablenames = await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames.map(({ tablename }) => tablename).filter(name => name !== '_prisma_migrations').map(name => `"public"."${name}"`).join(', ');
+      const tablenames =
+        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
+      const tables = tablenames
+        .map(({ tablename }) => tablename)
+        .filter((name) => name !== '_prisma_migrations')
+        .map((name) => `"public"."${name}"`)
+        .join(', ');
       if (tables.length > 0) {
         await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
     await app.close();
   });
 
@@ -71,8 +98,13 @@ describe('Security Testing (E2E) — Phase 15', () => {
   describe('XSS Prevention', () => {
     it('should reject XSS in patient name', async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/patients').set('Authorization', `Bearer ${token}`)
-        .send({ firstName: '<script>alert("xss")</script>', lastName: 'XSS', phone: '5551100001' });
+        .post('/api/v1/patients')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          firstName: '<script>alert("xss")</script>',
+          lastName: 'XSS',
+          phone: '5551100001',
+        });
       expect(res.status).toBeDefined();
     });
 
@@ -87,26 +119,35 @@ describe('Security Testing (E2E) — Phase 15', () => {
   describe('JWT Tampering', () => {
     it('should reject token with modified payload', async () => {
       const parts = token.split('.');
-      const tamperedPayload = Buffer.from('{"role":"super-admin"}').toString('base64url');
+      const tamperedPayload = Buffer.from('{"role":"super-admin"}').toString(
+        'base64url',
+      );
       const tampered = `${parts[0]}.${tamperedPayload}.${parts[2]}`;
       const res = await request(app.getHttpServer())
-        .get('/api/v1/patients').set('Authorization', `Bearer ${tampered}`);
+        .get('/api/v1/patients')
+        .set('Authorization', `Bearer ${tampered}`);
       expect(res.status).toBeDefined();
     });
 
     it('should reject token with invalid signature', async () => {
       const tampered = token.slice(0, -10) + 'aaaaaa';
       const res = await request(app.getHttpServer())
-        .get('/api/v1/patients').set('Authorization', `Bearer ${tampered}`);
+        .get('/api/v1/patients')
+        .set('Authorization', `Bearer ${tampered}`);
       expect(res.status).toBeDefined();
     });
 
     it('should reject token with alg:none attack', async () => {
-      const header = Buffer.from('{"alg":"none","typ":"JWT"}').toString('base64url');
-      const payload = Buffer.from('{"sub":"admin","role":"super-admin"}').toString('base64url');
+      const header = Buffer.from('{"alg":"none","typ":"JWT"}').toString(
+        'base64url',
+      );
+      const payload = Buffer.from(
+        '{"sub":"admin","role":"super-admin"}',
+      ).toString('base64url');
       const noneToken = `${header}.${payload}.`;
       const res = await request(app.getHttpServer())
-        .get('/api/v1/patients').set('Authorization', `Bearer ${noneToken}`);
+        .get('/api/v1/patients')
+        .set('Authorization', `Bearer ${noneToken}`);
       expect(res.status).toBeDefined();
     });
   });
@@ -118,7 +159,9 @@ describe('Security Testing (E2E) — Phase 15', () => {
     });
 
     it('should reject unauthenticated access to appointments', async () => {
-      const res = await request(app.getHttpServer()).get('/api/v1/appointments');
+      const res = await request(app.getHttpServer()).get(
+        '/api/v1/appointments',
+      );
       expect(res.status).toBeDefined();
     });
 
@@ -131,8 +174,15 @@ describe('Security Testing (E2E) — Phase 15', () => {
   describe('Mass Assignment', () => {
     it('should prevent setting organizationId via patient create', async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/patients').set('Authorization', `Bearer ${token}`)
-        .send({ firstName: 'Mass', lastName: 'Assign', phone: '5551200001', organizationId: 'fake-org', role: 'admin' });
+        .post('/api/v1/patients')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          firstName: 'Mass',
+          lastName: 'Assign',
+          phone: '5551200001',
+          organizationId: 'fake-org',
+          role: 'admin',
+        });
       const body = res.body.data || res.body;
       if (res.status === 201 && body.organizationId) {
         expect(body.organizationId).toBe(org.id);
@@ -143,22 +193,28 @@ describe('Security Testing (E2E) — Phase 15', () => {
   describe('Input Validation', () => {
     it('should reject invalid email format', async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/register').send({
+        .post('/api/v1/auth/register')
+        .send({
           email: 'not-an-email',
           password: 'Password1!',
-          firstName: 'Bad', lastName: 'Email',
-          clinicName: 'Test', clinicSlug: `bad-${Date.now()}`,
+          firstName: 'Bad',
+          lastName: 'Email',
+          clinicName: 'Test',
+          clinicSlug: `bad-${Date.now()}`,
         });
       expect(res.status).toBeDefined();
     });
 
     it('should reject weak password', async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/register').send({
+        .post('/api/v1/auth/register')
+        .send({
           email: `weak-${Date.now()}@t.com`,
           password: '123',
-          firstName: 'Weak', lastName: 'Pass',
-          clinicName: 'Test', clinicSlug: `weak-${Date.now()}`,
+          firstName: 'Weak',
+          lastName: 'Pass',
+          clinicName: 'Test',
+          clinicSlug: `weak-${Date.now()}`,
         });
       expect(res.status).toBeDefined();
     });
@@ -166,7 +222,8 @@ describe('Security Testing (E2E) — Phase 15', () => {
     it('should reject extremely long strings', async () => {
       const longStr = 'A'.repeat(10000);
       const res = await request(app.getHttpServer())
-        .post('/api/v1/patients').set('Authorization', `Bearer ${token}`)
+        .post('/api/v1/patients')
+        .set('Authorization', `Bearer ${token}`)
         .send({ firstName: longStr, lastName: 'Long', phone: '5551300001' });
       expect(res.status).toBeDefined();
     });
@@ -177,7 +234,7 @@ describe('Security Testing (E2E) — Phase 15', () => {
       const promises = Array.from({ length: 20 }, () =>
         request(app.getHttpServer())
           .get('/api/v1/patients/search?q=a')
-          .set('Authorization', `Bearer ${token}`)
+          .set('Authorization', `Bearer ${token}`),
       );
       const results = await Promise.all(promises);
       for (const res of results) {

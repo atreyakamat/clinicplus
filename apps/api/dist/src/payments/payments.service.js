@@ -26,7 +26,8 @@ let PaymentsService = class PaymentsService {
         if (!invoice) {
             throw new common_1.NotFoundException('Invoice not found');
         }
-        if (invoice.organizationId !== organizationId || invoice.branchId !== branchId) {
+        if (invoice.organizationId !== organizationId ||
+            invoice.branchId !== branchId) {
             throw new common_1.BadRequestException('Invoice does not belong to this organization/branch');
         }
         const totalPaid = await this.prisma.payment.aggregate({
@@ -78,7 +79,8 @@ let PaymentsService = class PaymentsService {
         if (!payment) {
             throw new common_1.NotFoundException('Payment not found');
         }
-        if (payment.organizationId !== organizationId || payment.branchId !== branchId) {
+        if (payment.organizationId !== organizationId ||
+            payment.branchId !== branchId) {
             throw new common_1.NotFoundException('Payment not found');
         }
         return payment;
@@ -91,7 +93,8 @@ let PaymentsService = class PaymentsService {
         if (!payment) {
             throw new common_1.NotFoundException('Payment not found');
         }
-        if (payment.organizationId !== organizationId || payment.branchId !== branchId) {
+        if (payment.organizationId !== organizationId ||
+            payment.branchId !== branchId) {
             throw new common_1.BadRequestException('Payment does not belong to this organization/branch');
         }
         if (payment.paymentStatus !== 'PAID') {
@@ -179,7 +182,8 @@ let PaymentsService = class PaymentsService {
         if (!invoice) {
             throw new common_1.NotFoundException('Invoice not found');
         }
-        if (invoice.organizationId !== organizationId || invoice.branchId !== branchId) {
+        if (invoice.organizationId !== organizationId ||
+            invoice.branchId !== branchId) {
             throw new common_1.BadRequestException('Invoice does not belong to this organization/branch');
         }
         return this.prisma.payment.findMany({

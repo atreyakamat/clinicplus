@@ -56,18 +56,22 @@ export class BackupService {
 
       // Execute backup
       await new Promise((resolve, reject) => {
-        exec(command, { env, maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
-          if (error) {
-            this.logger.error(`Backup failed: ${error.message}`);
-            reject(error);
-            return;
-          }
-          if (stderr) {
-            this.logger.warn(`Backup stderr: ${stderr}`);
-          }
-          this.logger.log(`Backup completed successfully: ${backupPath}`);
-          resolve(true);
-        });
+        exec(
+          command,
+          { env, maxBuffer: 1024 * 1024 * 10 },
+          (error, stdout, stderr) => {
+            if (error) {
+              this.logger.error(`Backup failed: ${error.message}`);
+              reject(error);
+              return;
+            }
+            if (stderr) {
+              this.logger.warn(`Backup stderr: ${stderr}`);
+            }
+            this.logger.log(`Backup completed successfully: ${backupPath}`);
+            resolve(true);
+          },
+        );
       });
 
       // Verify backup file was created
@@ -114,18 +118,24 @@ export class BackupService {
 
       // Execute restore
       await new Promise((resolve, reject) => {
-        exec(command, { env, maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
-          if (error) {
-            this.logger.error(`Restore failed: ${error.message}`);
-            reject(error);
-            return;
-          }
-          if (stderr) {
-            this.logger.warn(`Restore stderr: ${stderr}`);
-          }
-          this.logger.log(`Restore completed successfully from: ${backupPath}`);
-          resolve(true);
-        });
+        exec(
+          command,
+          { env, maxBuffer: 1024 * 1024 * 10 },
+          (error, stdout, stderr) => {
+            if (error) {
+              this.logger.error(`Restore failed: ${error.message}`);
+              reject(error);
+              return;
+            }
+            if (stderr) {
+              this.logger.warn(`Restore stderr: ${stderr}`);
+            }
+            this.logger.log(
+              `Restore completed successfully from: ${backupPath}`,
+            );
+            resolve(true);
+          },
+        );
       });
     } catch (error) {
       this.logger.error(`Failed to restore backup: ${error.message}`);
@@ -137,10 +147,14 @@ export class BackupService {
    * List all available backups
    * @returns Promise with array of backup file information
    */
-  async listBackups(): Promise<Array<{ name: string; path: string; size: number; date: Date }>> {
+  async listBackups(): Promise<
+    Array<{ name: string; path: string; size: number; date: Date }>
+  > {
     try {
       const files = await fs.readdir(this.backupDir);
-      const backupFiles = files.filter(file => file.startsWith('clinicos-backup-') && file.endsWith('.sql'));
+      const backupFiles = files.filter(
+        (file) => file.startsWith('clinicos-backup-') && file.endsWith('.sql'),
+      );
 
       const backups = await Promise.all(
         backupFiles.map(async (fileName) => {
@@ -152,7 +166,7 @@ export class BackupService {
             size: stats.size,
             date: stats.mtime,
           };
-        })
+        }),
       );
 
       // Sort by date descending (newest first)
@@ -172,19 +186,23 @@ export class BackupService {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - this.retentionDays);
 
-      const oldBackups = backups.filter(backup => backup.date < cutoffDate);
+      const oldBackups = backups.filter((backup) => backup.date < cutoffDate);
 
       for (const backup of oldBackups) {
         try {
           await fs.unlink(backup.path);
           this.logger.log(`Removed old backup: ${backup.name}`);
         } catch (error) {
-          this.logger.error(`Failed to remove old backup ${backup.name}: ${error.message}`);
+          this.logger.error(
+            `Failed to remove old backup ${backup.name}: ${error.message}`,
+          );
         }
       }
 
       if (oldBackups.length > 0) {
-        this.logger.log(`Cleaned up ${oldBackups.length} old backups (retention: ${this.retentionDays} days)`);
+        this.logger.log(
+          `Cleaned up ${oldBackups.length} old backups (retention: ${this.retentionDays} days)`,
+        );
       }
     } catch (error) {
       this.logger.error(`Failed to cleanup old backups: ${error.message}`);
@@ -231,5 +249,9 @@ export class BackupService {
         newestBackup: null,
       };
     }
+  }
+
+  getBackupPath(filename: string): string {
+    return join(this.backupDir, filename);
   }
 }

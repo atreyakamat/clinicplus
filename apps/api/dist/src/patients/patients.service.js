@@ -41,8 +41,8 @@ let PatientsService = class PatientsService {
                 AND: [
                     { firstName: data.firstName },
                     { lastName: data.lastName },
-                    { phone: data.phone }
-                ]
+                    { phone: data.phone },
+                ],
             });
         }
         if (duplicateCriteria.length > 0) {
@@ -54,7 +54,11 @@ let PatientsService = class PatientsService {
                 },
             });
             if (existing) {
-                const field = existing.email === data.email ? 'email' : (existing.phone === data.phone ? 'phone' : 'name/phone combination');
+                const field = existing.email === data.email
+                    ? 'email'
+                    : existing.phone === data.phone
+                        ? 'phone'
+                        : 'name/phone combination';
                 throw new common_1.ConflictException(`Patient with this ${field} already exists in this clinic`);
             }
         }
@@ -103,7 +107,8 @@ let PatientsService = class PatientsService {
     }
     async findOne(id, organizationId, branchId) {
         this.validateUuid(id);
-        const patient = await this.prisma.patient.findFirst({ where: { id, organizationId, branchId },
+        const patient = await this.prisma.patient.findFirst({
+            where: { id, organizationId, branchId },
             include: {
                 addresses: true,
                 emergencyContacts: true,

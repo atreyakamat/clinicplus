@@ -5,16 +5,19 @@ import { PrismaService } from '../prisma/prisma.service';
 export class TimelineService {
   constructor(private prisma: PrismaService) {}
 
-  async record(data: {
-    organizationId: string;
-    patientId: string;
-    eventType: string;
-    eventCategory: string;
-    title: string;
-    description?: string;
-    metadata?: any;
-    createdBy?: string;
-  }, tx?: any) {
+  async record(
+    data: {
+      organizationId: string;
+      patientId: string;
+      eventType: string;
+      eventCategory: string;
+      title: string;
+      description?: string;
+      metadata?: any;
+      createdBy?: string;
+    },
+    tx?: any,
+  ) {
     const db = tx || this.prisma;
     return db.timelineEvent.create({
       data: {

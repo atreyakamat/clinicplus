@@ -35,9 +35,9 @@ export declare class PaymentsController {
                 deletedBy: string | null;
                 deleteReason: string | null;
                 organizationId: string;
+                branchId: string;
                 firstName: string;
                 lastName: string;
-                branchId: string;
                 patientCode: string | null;
                 middleName: string | null;
                 gender: string | null;
@@ -140,9 +140,9 @@ export declare class PaymentsController {
                 deletedBy: string | null;
                 deleteReason: string | null;
                 organizationId: string;
+                branchId: string;
                 firstName: string;
                 lastName: string;
-                branchId: string;
                 patientCode: string | null;
                 middleName: string | null;
                 gender: string | null;
