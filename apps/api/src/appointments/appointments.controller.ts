@@ -13,6 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { stringify } from 'csv-stringify/sync';
+import { csvSafeRows } from '../common/csv';
 import { AppointmentsService } from './appointments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -45,16 +46,18 @@ export class AppointmentsController {
   async exportCsv(@Request() req, @Query() q: ListAppointmentsQueryDto, @Res() res) {
     const rows = await this.appointmentsService.exportRows(req.user, q);
     const csvData = stringify(
-      rows.map((a) => ({
-        start: a.scheduledStart.toISOString(),
-        end: a.scheduledEnd.toISOString(),
-        status: a.status,
-        type: a.appointmentType ?? '',
-        patient: `${a.patient?.firstName ?? ''} ${a.patient?.lastName ?? ''}`.trim(),
-        phone: a.patient?.phone ?? '',
-        doctor: `${a.doctor?.firstName ?? ''} ${a.doctor?.lastName ?? ''}`.trim(),
-        cancellationReason: a.cancellationReason ?? '',
-      })),
+      csvSafeRows(
+        rows.map((a) => ({
+          start: a.scheduledStart.toISOString(),
+          end: a.scheduledEnd.toISOString(),
+          status: a.status,
+          type: a.appointmentType ?? '',
+          patient: `${a.patient?.firstName ?? ''} ${a.patient?.lastName ?? ''}`.trim(),
+          phone: a.patient?.phone ?? '',
+          doctor: `${a.doctor?.firstName ?? ''} ${a.doctor?.lastName ?? ''}`.trim(),
+          cancellationReason: a.cancellationReason ?? '',
+        })),
+      ),
       {
         header: true,
         columns: [

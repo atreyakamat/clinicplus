@@ -19,6 +19,8 @@ import { PortalLoginDto, PortalOtpRequestDto, PortalOtpVerifyDto } from './dto/p
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 const BCRYPT_ROUNDS = 12;
+// Real bcrypt hash used only to equalize login timing on the no-match path.
+const TIMING_EQUALIZER_HASH = '$2b$12$paGMaEUVtDS5tfmGrXFAueRNB/tzWSCiHMOhPtEjKpmICwyvZ.Nga';
 
 /** Identical generic message so callers cannot enumerate accounts. */
 const GENERIC_SENT = { message: 'If the details match an enabled account, a login code has been sent.' };
@@ -193,6 +195,11 @@ export class PortalAuthService {
         matched = c;
         break;
       }
+    }
+    if (!matched) {
+      // Spend bcrypt time even when no clinic/patient matched, so response time
+      // does not reveal whether a clinic code + identifier is registered.
+      await compare(dto.password, TIMING_EQUALIZER_HASH);
     }
     if (!matched || !org) {
       await this.recordAttempt(key, 'FAILED', ctx, 'Invalid credentials');

@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Readable } from 'stream';
 import { randomBytes } from 'crypto';
@@ -10,6 +10,7 @@ import { PdfService } from '../common/services/pdf.service';
 import { StorageService } from '../storage/storage.service';
 import { ScheduleService, FREE_STATUSES } from '../doctors/schedule.service';
 import { LedgerService } from '../payments/ledger.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 import { StripeService } from '../payments/stripe.service';
 import { D, toMinorUnits } from '../invoices/billing.utils';
 import { assertUuid } from '../common/validation/uuid';
@@ -28,6 +29,8 @@ export interface StaffActor {
   id: string;
   organizationId: string;
   branchId: string;
+  /** True for Owner / Clinic Admin / Super Admin: may act across branches. */
+  orgWide: boolean;
 }
 
 @Injectable()
@@ -42,7 +45,22 @@ export class PortalService {
     private readonly schedule: ScheduleService,
     private readonly ledger: LedgerService,
     private readonly stripe: StripeService,
+    private readonly subscriptions: SubscriptionService,
   ) {}
+
+  /**
+   * Blocks new activity (bookings, online payments) for a clinic whose
+   * subscription is suspended, while leaving read access to records open.
+   * Patients bypass the staff JwtStrategy gate, so it is enforced here.
+   */
+  private async assertClinicActive(organizationId: string) {
+    const enforcement = await this.subscriptions.getEnforcement(organizationId);
+    if (!enforcement.active) {
+      throw new ForbiddenException(
+        'This clinic is not currently accepting online bookings or payments. Please contact the clinic.',
+      );
+    }
+  }
 
   // ================================================================ profile
 
@@ -190,6 +208,7 @@ export class PortalService {
     if (end <= start) throw new BadRequestException('scheduledEnd must be after scheduledStart');
     if (end.getTime() - start.getTime() > MAX_DURATION_MS) throw new BadRequestException('An appointment cannot be longer than 8 hours');
     if (start < new Date()) throw new BadRequestException('Cannot book an appointment in the past');
+    await this.assertClinicActive(ctx.organizationId);
 
     const appointment = await this.prisma.$transaction(async (tx) => {
       // Serialise against concurrent bookings for the same doctor.
@@ -383,6 +402,7 @@ export class PortalService {
   async createPayLink(ctx: PortalPatientContext, id: string) {
     assertUuid(id, 'invoiceId');
     if (!this.stripe.isEnabled()) throw new BadRequestException('online payments not configured');
+    await this.assertClinicActive(ctx.organizationId);
     const invoice = await this.prisma.invoice.findFirst({
       where: { id, organizationId: ctx.organizationId, patientId: ctx.patientId, deletedAt: null },
       include: { organization: { select: { name: true, currency: true } } },
@@ -502,7 +522,13 @@ export class PortalService {
   async enablePortal(actor: StaffActor, patientId: string, dto: EnablePortalDto) {
     assertUuid(patientId, 'patientId');
     const patient = await this.prisma.patient.findFirst({
-      where: { id: patientId, organizationId: actor.organizationId, status: { not: 'ARCHIVED' } },
+      // Branch-level staff may only act on patients in their own branch.
+      where: {
+        id: patientId,
+        organizationId: actor.organizationId,
+        status: { not: 'ARCHIVED' },
+        ...(actor.orgWide ? {} : { branchId: actor.branchId }),
+      },
       select: { id: true, firstName: true, branchId: true, phone: true },
     });
     if (!patient) throw new NotFoundException('Patient not found');
@@ -541,7 +567,11 @@ export class PortalService {
   async disablePortal(actor: StaffActor, patientId: string) {
     assertUuid(patientId, 'patientId');
     const patient = await this.prisma.patient.findFirst({
-      where: { id: patientId, organizationId: actor.organizationId },
+      where: {
+        id: patientId,
+        organizationId: actor.organizationId,
+        ...(actor.orgWide ? {} : { branchId: actor.branchId }),
+      },
       select: { id: true },
     });
     if (!patient) throw new NotFoundException('Patient not found');

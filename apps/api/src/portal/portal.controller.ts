@@ -141,6 +141,7 @@ export class PortalController {
       'Content-Disposition': `attachment; filename="${filename}"`,
       ...(fileSize ? { 'Content-Length': String(fileSize) } : {}),
       'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
     });
     stream.on('error', () => res.destroy());
     stream.pipe(res);

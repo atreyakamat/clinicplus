@@ -30,12 +30,7 @@ import { DuplicateCheckQueryDto, ListPatientsQueryDto, SearchPatientsQueryDto } 
 import { ArchivePatientDto, FamilyMemberDto, PatientNoteDto } from './dto/patient-subresources.dto';
 import { ImportPatientsQueryDto, isDryRun } from './dto/import-patients.dto';
 
-/** Neutralises spreadsheet formula injection in exported cells. */
-const csvSafe = (v: unknown) => {
-  if (v === null || v === undefined) return '';
-  const s = v instanceof Date ? v.toISOString().slice(0, 10) : String(v);
-  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
-};
+import { csvSafe } from '../common/csv';
 
 @Controller('api/v1/patients')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)

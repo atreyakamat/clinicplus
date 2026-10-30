@@ -28,6 +28,9 @@ const ORG_WIDE = new Set(ORG_WIDE_ROLE_NAMES.map(normalizeRoleName));
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 
 const BCRYPT_ROUNDS = 12;
+// A real bcrypt hash used only to spend bcrypt time on the account-missing path,
+// so login response time doesn't reveal whether an e-mail is registered.
+const TIMING_EQUALIZER_HASH = '$2b$12$paGMaEUVtDS5tfmGrXFAueRNB/tzWSCiHMOhPtEjKpmICwyvZ.Nga';
 
 export interface AuthContext {
   ipAddress?: string;
@@ -76,6 +79,9 @@ export class AuthService {
     if (user?.passwordHash && (await compare(password, user.passwordHash))) {
       return user;
     }
+    // Run a bcrypt compare even when the account is missing so response time
+    // does not reveal whether an e-mail is registered.
+    if (!user?.passwordHash) await compare(password, TIMING_EQUALIZER_HASH);
     return null;
   }
 

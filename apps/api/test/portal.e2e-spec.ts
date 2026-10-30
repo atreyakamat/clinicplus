@@ -149,6 +149,38 @@ describe('Patient portal (e2e)', () => {
         .send({});
       expect(res.status).toBe(404);
     });
+
+    it('branch-level staff cannot enable a portal for a patient in another branch (same tenant); org-wide can', async () => {
+      // Owner (org-wide) creates a second branch and a patient in it.
+      const branchRes = await request(app.getHttpServer())
+        .post('/api/v1/branches')
+        .set(auth(tenantA.owner))
+        .send({ name: uniq('Branch B'), timezone: 'Asia/Kolkata' });
+      expect(branchRes.status).toBe(201);
+      const otherBranchId = branchRes.body.data.id;
+
+      const patRes = await request(app.getHttpServer())
+        .post('/api/v1/patients')
+        .set(auth(tenantA.owner))
+        .set('X-Branch-Id', otherBranchId)
+        .send({ firstName: 'Branch', lastName: uniq('B'), gender: 'MALE', phone: `9${Math.floor(1e8 + Math.random() * 8e8)}` });
+      expect(patRes.status).toBe(201);
+      const otherBranchPatient = patRes.body.data.id;
+
+      // The receptionist is pinned to the main branch → must not reach this patient.
+      const denied = await request(app.getHttpServer())
+        .post(`/api/v1/portal/admin/patients/${otherBranchPatient}/enable`)
+        .set(auth(tenantA.receptionist))
+        .send({ mode: 'password' });
+      expect(denied.status).toBe(404);
+
+      // The owner is org-wide → may enable it.
+      const allowed = await request(app.getHttpServer())
+        .post(`/api/v1/portal/admin/patients/${otherBranchPatient}/enable`)
+        .set(auth(tenantA.owner))
+        .send({ mode: 'password' });
+      expect(allowed.status).toBe(200);
+    });
   });
 
   // =====================================================================

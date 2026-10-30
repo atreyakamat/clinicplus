@@ -1,6 +1,7 @@
 import { BadRequestException, Controller, Get, Param, Query, Request, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { stringify } from 'csv-stringify/sync';
+import { csvSafeRows } from '../common/csv';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -48,7 +49,7 @@ export class ReportsController {
     if (!(REPORT_NAMES as readonly string[]).includes(report)) throw new BadRequestException('Unknown report');
     const scope = await this.reports.scope(req.user, q);
     const { filename, rows } = await this.reports.csvRows(report, scope, q);
-    const csv = rows.length ? stringify(rows, { header: true }) : 'No data\n';
+    const csv = rows.length ? stringify(csvSafeRows(rows), { header: true }) : 'No data\n';
     await this.audit.log({
       organizationId: req.user.organizationId,
       userId: req.user.id,

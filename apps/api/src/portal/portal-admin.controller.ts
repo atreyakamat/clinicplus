@@ -17,7 +17,7 @@ export class PortalAdminController {
   constructor(private readonly portal: PortalService) {}
 
   private actor(req: any): StaffActor {
-    return { id: req.user.id, organizationId: req.user.organizationId, branchId: req.user.branchId };
+    return { id: req.user.id, organizationId: req.user.organizationId, branchId: req.user.branchId, orgWide: !!req.user.orgWide };
   }
 
   @Post('patients/:id/enable')
