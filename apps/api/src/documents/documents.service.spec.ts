@@ -1,366 +1,71 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { DocumentsService } from './documents.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { NotFoundException } from '@nestjs/common';
 
-describe('DocumentsService', () => {
-  let service: DocumentsService;
-  let prisma: PrismaService;
+const PDF = Buffer.from('%PDF-1.4\nhello\n%%EOF');
+const user = { id: 'u1', organizationId: 'org-1', branchId: 'br-1', permissions: [] };
 
-  const mockOrgId = 'org-1';
-  const mockBranchId = 'branch-1';
-  const mockUserId = 'user-1';
-  const mockOrgId2 = 'org-2';
+function build(overrides: { txError?: Error; infected?: boolean } = {}) {
+  const storage = { put: jest.fn().mockResolvedValue({}), delete: jest.fn().mockResolvedValue(undefined) };
+  const created: any[] = [];
+  const tx = {
+    medicalDocument: {
+      create: jest.fn().mockImplementation(({ data }) => {
+        if (overrides.txError) throw overrides.txError;
+        created.push(data);
+        return { ...data, uploadedAt: new Date() };
+      }),
+    },
+    labReport: { deleteMany: jest.fn(), findFirst: jest.fn().mockResolvedValue(null), create: jest.fn() },
+    imagingReport: { deleteMany: jest.fn(), findFirst: jest.fn().mockResolvedValue(null), create: jest.fn() },
+  };
+  const prisma = { $transaction: jest.fn().mockImplementation((cb) => cb(tx)) };
+  const tenant = {
+    patient: jest.fn().mockResolvedValue({ id: 'p1', branchId: 'br-1' }),
+    consultation: jest.fn().mockResolvedValue({ id: 'c1', patientId: 'p1' }),
+  };
+  const audit = { log: jest.fn() };
+  const timeline = { emit: jest.fn() };
+  const scanner = {
+    scanAndValidate: jest.fn().mockImplementation(async () => {
+      if (overrides.infected) throw new BadRequestException('infected');
+      return { status: 'SKIPPED', engine: 'off' };
+    }),
+  };
+  const svc = new DocumentsService(prisma as any, storage as any, tenant as any, audit as any, timeline as any, scanner as any);
+  return { svc, storage, tx, created, scanner, audit };
+}
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        DocumentsService,
-        {
-          provide: PrismaService,
-          useValue: {
-            medicalDocument: {
-              create: jest.fn(),
-              findMany: jest.fn(),
-              findUnique: jest.fn(),
-              findFirst: jest.fn(),
-              update: jest.fn(),
-              delete: jest.fn(),
-              count: jest.fn(),
-            },
-          },
-        },
-      ],
-    }).compile();
+const file = (buffer: Buffer) => ({ buffer, size: buffer.length, originalname: 'r.pdf', mimetype: 'application/pdf' }) as any;
 
-    service = module.get<DocumentsService>(DocumentsService);
-    prisma = module.get<PrismaService>(PrismaService);
+describe('DocumentsService.upload', () => {
+  it('stores bytes under a tenant-prefixed key with a sha256 checksum', async () => {
+    const { svc, storage, created, tx } = build();
+    const res = await svc.upload(file(PDF), { patientId: 'p1', documentType: 'LAB_REPORT', title: 'CBC', consultationId: 'c1' }, user);
+    const [key, body, mime] = storage.put.mock.calls[0];
+    expect(key).toMatch(/^org\/org-1\/documents\/[0-9a-f-]{36}\.pdf$/);
+    expect(body).toBe(PDF);
+    expect(mime).toBe('application/pdf');
+    expect(created[0]).toMatchObject({
+      storageKey: key,
+      checksum: createHash('sha256').update(PDF).digest('hex'),
+      fileSize: PDF.length,
+      organizationId: 'org-1',
+      uploadedBy: 'u1',
+    });
+    expect(tx.labReport.create).toHaveBeenCalledWith({ data: expect.objectContaining({ consultationId: 'c1', documentId: res.id }) });
+    expect(res).not.toHaveProperty('storageKey');
   });
 
-  describe('HAPPY PATH: Document Operations', () => {
-    it('should create a medical document with metadata', async () => {
-      const data = {
-        title: 'Lab Report',
-        fileUrl: 'http://test.com/file.pdf',
-        documentType: 'LAB_REPORT',
-        patientId: 'pat-1',
-      } as any;
-
-      jest.spyOn(prisma.medicalDocument, 'create').mockResolvedValue({
-        id: 'doc-1',
-        ...data,
-        uploadedBy: mockUserId,
-        organizationId: mockOrgId,
-      });
-
-      const result = await service.create(
-        data,
-        mockOrgId,
-        mockBranchId,
-        mockUserId,
-      );
-
-      expect(result.id).toBe('doc-1');
-      expect(result.uploadedBy).toBe(mockUserId);
-      expect(prisma.medicalDocument.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          uploadedBy: mockUserId,
-          organizationId: mockOrgId,
-          branchId: mockBranchId,
-          title: 'Lab Report',
-        }),
-      });
-    });
-
-    it('should retrieve document with full details', async () => {
-      const document = {
-        id: 'doc-1',
-        title: 'Lab Report',
-        fileUrl: 'http://test.com/file.pdf',
-        patient: { id: 'pat-1', firstName: 'John', lastName: 'Doe' },
-        uploader: { id: 'user-1', firstName: 'Dr', lastName: 'Smith' },
-      };
-
-      jest
-        .spyOn(prisma.medicalDocument, 'findFirst')
-        .mockResolvedValue(document as any);
-
-      const result = await service.findOne('doc-1', mockOrgId, mockBranchId);
-
-      expect(result.patient.firstName).toBe('John');
-      expect(result.uploader.firstName).toBe('Dr');
-    });
-
-    it('should list all documents for organization', async () => {
-      const documents = [
-        { id: 'doc-1', title: 'Report 1' },
-        { id: 'doc-2', title: 'Report 2' },
-      ];
-
-      jest
-        .spyOn(prisma.medicalDocument, 'findMany')
-        .mockResolvedValue(documents as any);
-
-      const result = await service.findAll(mockOrgId, mockBranchId);
-
-      expect(result.length).toBe(2);
-    });
+  it('removes the stored object when the DB write fails', async () => {
+    const { svc, storage } = build({ txError: new Error('db down') });
+    await expect(svc.upload(file(PDF), { patientId: 'p1', documentType: 'OTHER', title: 'x' }, user)).rejects.toThrow('db down');
+    expect(storage.delete).toHaveBeenCalledWith(storage.put.mock.calls[0][0]);
   });
 
-  describe('VALIDATION: Document Business Rules', () => {
-    it('should include uploadedBy when creating document', async () => {
-      const data = {
-        title: 'Prescription',
-        fileUrl: 'http://test.com/pres.pdf',
-        patientId: 'pat-1',
-      } as any;
-
-      jest.spyOn(prisma.medicalDocument, 'create').mockResolvedValue({
-        id: 'doc-1',
-        uploadedBy: mockUserId,
-        ...data,
-      });
-
-      await service.create(data, mockOrgId, mockBranchId, mockUserId);
-
-      expect(prisma.medicalDocument.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            uploadedBy: mockUserId,
-          }),
-        }),
-      );
-    });
-
-    it('should handle document update with new data', async () => {
-      jest.spyOn(service, 'findOne').mockResolvedValue({ id: 'doc-1' } as any);
-      jest.spyOn(prisma.medicalDocument, 'update').mockResolvedValue({
-        id: 'doc-1',
-        title: 'Updated Title',
-      } as any);
-
-      const result = await service.update(
-        'doc-1',
-        { title: 'Updated Title' },
-        mockOrgId,
-        mockBranchId,
-      );
-
-      expect(result.title).toBe('Updated Title');
-    });
-  });
-
-  describe('EDGE CASES: Document Scenarios', () => {
-    it('should handle documents with special characters in title', async () => {
-      const data = {
-        title: 'Patient_Report-2026_Q2 (Draft).pdf',
-        fileUrl: 'http://test.com/file.pdf',
-      } as any;
-
-      jest.spyOn(prisma.medicalDocument, 'create').mockResolvedValue({
-        id: 'doc-1',
-        ...data,
-        uploadedBy: mockUserId,
-        organizationId: mockOrgId,
-      });
-
-      const result = await service.create(
-        data,
-        mockOrgId,
-        mockBranchId,
-        mockUserId,
-      );
-
-      expect(result.title).toContain('Patient_Report');
-    });
-
-    it('should handle multiple document types', async () => {
-      const documentTypes = ['LAB_REPORT', 'PRESCRIPTION', 'X_RAY', 'REFERRAL'];
-
-      for (const docType of documentTypes) {
-        const data = {
-          title: `Test ${docType}`,
-          documentType: docType,
-          fileUrl: 'http://test.com/file.pdf',
-        } as any;
-
-        jest.spyOn(prisma.medicalDocument, 'create').mockResolvedValue({
-          id: `doc-${docType}`,
-          ...data,
-          uploadedBy: mockUserId,
-        });
-
-        const result = await service.create(
-          data,
-          mockOrgId,
-          mockBranchId,
-          mockUserId,
-        );
-        expect(result.documentType).toBe(docType);
-      }
-    });
-
-    it('should support filtering documents by patient', async () => {
-      const documents = [{ id: 'doc-1', patientId: 'pat-1' }];
-
-      jest
-        .spyOn(prisma.medicalDocument, 'findMany')
-        .mockResolvedValue(documents as any);
-
-      await service.findAll(mockOrgId, mockBranchId);
-
-      expect(prisma.medicalDocument.findMany).toHaveBeenCalled();
-    });
-  });
-
-  describe('MULTI-TENANT: Document Isolation', () => {
-    it('should only retrieve documents for specified organization', async () => {
-      jest
-        .spyOn(prisma.medicalDocument, 'findMany')
-        .mockResolvedValue([{ id: 'doc-1', organizationId: mockOrgId }] as any);
-
-      await service.findAll(mockOrgId, mockBranchId);
-
-      expect(prisma.medicalDocument.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            organizationId: mockOrgId,
-            branchId: mockBranchId,
-          }),
-        }),
-      );
-    });
-
-    it('should prevent cross-organization document access', async () => {
-      jest.spyOn(prisma.medicalDocument, 'findFirst').mockResolvedValue(null);
-
-      await expect(
-        service.findOne('doc-1', mockOrgId2, mockBranchId),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('should enforce branch isolation within organization', async () => {
-      jest
-        .spyOn(prisma.medicalDocument, 'findMany')
-        .mockResolvedValue([{ id: 'doc-1', branchId: mockBranchId }] as any);
-
-      await service.findAll(mockOrgId, mockBranchId);
-
-      const callArgs = (prisma.medicalDocument.findMany as jest.Mock).mock
-        .calls[0][0];
-      expect(callArgs.where.branchId).toBe(mockBranchId);
-    });
-  });
-
-  describe('TRANSACTION ROLLBACK: Error Handling', () => {
-    it('should throw NotFoundException when document not found', async () => {
-      jest.spyOn(prisma.medicalDocument, 'findFirst').mockResolvedValue(null);
-
-      await expect(
-        service.findOne('doc-1', mockOrgId, mockBranchId),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('should handle database error during creation', async () => {
-      const data = { title: 'Report', fileUrl: 'http://test.com/file' } as any;
-
-      jest
-        .spyOn(prisma.medicalDocument, 'create')
-        .mockRejectedValue(new Error('Database connection failed'));
-
-      await expect(
-        service.create(data, mockOrgId, mockBranchId, mockUserId),
-      ).rejects.toThrow('Database connection failed');
-    });
-
-    it('should handle update error gracefully', async () => {
-      jest.spyOn(service, 'findOne').mockResolvedValue({ id: 'doc-1' } as any);
-      jest
-        .spyOn(prisma.medicalDocument, 'update')
-        .mockRejectedValue(new Error('Update failed'));
-
-      await expect(
-        service.update('doc-1', { title: 'New' }, mockOrgId, mockBranchId),
-      ).rejects.toThrow('Update failed');
-    });
-
-    it('should verify document exists before deletion', async () => {
-      jest.spyOn(service, 'findOne').mockResolvedValue({ id: 'doc-1' } as any);
-      jest
-        .spyOn(prisma.medicalDocument, 'delete')
-        .mockResolvedValue({ id: 'doc-1' } as any);
-
-      const result = await service.remove('doc-1', mockOrgId, mockBranchId);
-
-      expect(service.findOne).toHaveBeenCalledWith(
-        'doc-1',
-        mockOrgId,
-        mockBranchId,
-      );
-      expect(result.id).toBe('doc-1');
-    });
-  });
-
-  describe('RBAC: Document Audit', () => {
-    it('should record uploadedBy user context', async () => {
-      const data = { title: 'Report', fileUrl: 'http://test.com/file' } as any;
-      const testUserId = 'user-admin-123';
-
-      jest.spyOn(prisma.medicalDocument, 'create').mockResolvedValue({
-        id: 'doc-1',
-        uploadedBy: testUserId,
-        ...data,
-      });
-
-      await service.create(data, mockOrgId, mockBranchId, testUserId);
-
-      expect(prisma.medicalDocument.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            uploadedBy: testUserId,
-          }),
-        }),
-      );
-    });
-
-    it('should include user details in document retrieval', async () => {
-      const document = {
-        id: 'doc-1',
-        uploader: { id: 'user-1', firstName: 'Dr', lastName: 'Smith' },
-      };
-
-      jest
-        .spyOn(prisma.medicalDocument, 'findFirst')
-        .mockResolvedValue(document as any);
-
-      await service.findOne('doc-1', mockOrgId, mockBranchId);
-
-      expect(prisma.medicalDocument.findFirst).toHaveBeenCalledWith(
-        expect.objectContaining({
-          include: expect.any(Object),
-        }),
-      );
-    });
-
-    it('should enforce organization context on all operations', async () => {
-      const data = { title: 'Report', fileUrl: 'http://test.com/file' } as any;
-
-      jest.spyOn(prisma.medicalDocument, 'create').mockResolvedValue({
-        id: 'doc-1',
-        organizationId: mockOrgId,
-        ...data,
-      });
-
-      await service.create(data, mockOrgId, mockBranchId, mockUserId);
-
-      expect(prisma.medicalDocument.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            organizationId: mockOrgId,
-            branchId: mockBranchId,
-          }),
-        }),
-      );
-    });
+  it('never stores infected files', async () => {
+    const { svc, storage } = build({ infected: true });
+    await expect(svc.upload(file(PDF), { patientId: 'p1', documentType: 'OTHER', title: 'x' }, user)).rejects.toThrow(BadRequestException);
+    expect(storage.put).not.toHaveBeenCalled();
   });
 });

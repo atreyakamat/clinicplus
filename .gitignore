@@ -1,1 +1,38 @@
-node_modules
+# dependencies
+node_modules/
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+apps/web/node_modules/.tmp/
+
+# test & coverage artifacts
+coverage/
+test-results*.txt
+test-results.log
+test-output.txt
+e2e_results_log.txt
+temp-counts.txt
+load_test_output.txt
+junit*.xml
+
+# environment / secrets (commit only .env.example)
+.env
+.env.*
+!.env.example
+
+# runtime storage (uploads, backups) - never commit patient data
+apps/api/backups/
+apps/api/storage/
+storage/
+
+# generated code bundles / scratch
+project_code_bundle.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

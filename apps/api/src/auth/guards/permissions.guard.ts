@@ -3,6 +3,11 @@ import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 import { normalizePermission } from '../access.utils';
 
+/**
+ * Permission check. Permissions are always derived from the database by
+ * JwtStrategy (never from the token payload) and there is NO wildcard: a user
+ * holds a permission only if one of their roles grants it.
+ */
 @Injectable()
 export class PermissionsGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
@@ -12,23 +17,18 @@ export class PermissionsGuard implements CanActivate {
       PERMISSIONS_KEY,
       [context.getHandler(), context.getClass()],
     );
-    if (!requiredPermissions) {
+    if (!requiredPermissions || requiredPermissions.length === 0) {
       return true;
     }
     const { user } = context.switchToHttp().getRequest();
-    if (!user || !user.permissions) {
+    if (!user || !Array.isArray(user.permissions)) {
       return false;
     }
-    const grantedPermissions = new Set(
+    const granted = new Set(
       (user.permissions as string[]).map(normalizePermission),
     );
-
-    if (grantedPermissions.has('*')) {
-      return true;
-    }
-
     return requiredPermissions
       .map(normalizePermission)
-      .every((permission) => grantedPermissions.has(permission));
+      .every((permission) => granted.has(permission));
   }
 }

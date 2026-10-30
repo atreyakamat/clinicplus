@@ -1,18 +1,10 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Request,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { RolesService } from './roles.service';
+import { CreateRoleDto, UpdateRoleDto } from './dto/role.dto';
 
 @Controller('api/v1/roles')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -20,29 +12,32 @@ export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Get()
-  @Permissions('roles:read')
+  @Permissions('roles.view')
   findAll(@Request() req) {
-    return this.rolesService.findAll(req.user.organizationId);
+    return this.rolesService.findAll(req.user);
   }
 
   @Get(':id')
-  @Permissions('roles:read')
-  findOne(@Param('id') id: string) {
-    return this.rolesService.findOne(id);
+  @Permissions('roles.view')
+  findOne(@Param('id') id: string, @Request() req) {
+    return this.rolesService.findOne(id, req.user);
   }
 
   @Post()
-  @Permissions('roles:create')
-  create(@Body() data: any, @Request() req) {
-    return this.rolesService.create({
-      ...data,
-      organizationId: req.user.organizationId,
-    });
+  @Permissions('roles.create')
+  create(@Body() dto: CreateRoleDto, @Request() req) {
+    return this.rolesService.create(dto, req.user);
   }
 
   @Patch(':id')
-  @Permissions('roles:update')
-  update(@Param('id') id: string, @Body() data: any) {
-    return this.rolesService.update(id, data);
+  @Permissions('roles.update')
+  update(@Param('id') id: string, @Body() dto: UpdateRoleDto, @Request() req) {
+    return this.rolesService.update(id, dto, req.user);
+  }
+
+  @Delete(':id')
+  @Permissions('roles.delete')
+  remove(@Param('id') id: string, @Request() req) {
+    return this.rolesService.remove(id, req.user);
   }
 }

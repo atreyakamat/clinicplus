@@ -43,28 +43,6 @@ export class TimelineInterceptor implements NestInterceptor {
                 title =
                   method === 'POST' ? 'New Appointment' : 'Appointment Updated';
                 break;
-              case 'consultations':
-                eventType =
-                  method === 'POST'
-                    ? 'CONSULTATION_STARTED'
-                    : 'CONSULTATION_UPDATED';
-                title =
-                  method === 'POST'
-                    ? 'Consultation Started'
-                    : 'Consultation Updated';
-                break;
-              case 'prescriptions':
-                eventType = 'PRESCRIPTION_GENERATED';
-                title = 'Prescription Issued';
-                break;
-              case 'invoices':
-                eventType = 'INVOICE_GENERATED';
-                title = 'Billing Generated';
-                break;
-              case 'payments':
-                eventType = 'PAYMENT_COLLECTED';
-                title = 'Payment Received';
-                break;
               default:
                 return;
             }

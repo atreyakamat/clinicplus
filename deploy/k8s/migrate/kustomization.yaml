@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Migration Job only. Applied per environment through overlays/<env>/migrate, which adds
+# the environment's image tag via the shared images component.
+namespace: clinicplus
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: clinicplus
+      app.kubernetes.io/managed-by: kustomize
+    includeSelectors: false
+
+resources:
+  - job.yaml

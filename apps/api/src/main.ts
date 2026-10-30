@@ -1,32 +1,48 @@
+import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { Logger, LogLevel } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import * as Sentry from '@sentry/nestjs';
-import { nodeProfilingIntegration } from '@sentry/profiling-node';
-import { json, urlencoded } from 'express';
+import { AppModule } from './app.module';
+import { configureApp } from './app.setup';
+
+const LOG_LEVELS: Record<string, LogLevel[]> = {
+  error: ['error'],
+  warn: ['error', 'warn'],
+  log: ['error', 'warn', 'log'],
+  debug: ['error', 'warn', 'log', 'debug'],
+  verbose: ['error', 'warn', 'log', 'debug', 'verbose'],
+};
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-
-  Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    integrations: [nodeProfilingIntegration()],
-    tracesSampleRate: 1.0,
-    profilesSampleRate: 1.0,
-    environment: process.env.NODE_ENV || 'development',
+  const logLevel = process.env.LOG_LEVEL || 'log';
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    logger: LOG_LEVELS[logLevel] ?? LOG_LEVELS.log,
+    // Raw body is kept so provider webhooks (Stripe, Twilio) can verify signatures.
+    rawBody: true,
   });
+  const config = app.get(ConfigService);
+  const logger = new Logger('Bootstrap');
 
-  app.use(json({ limit: '10mb' }));
-  app.use(urlencoded({ extended: true, limit: '10mb' }));
+  const sentryDsn = config.get<string>('SENTRY_DSN');
+  if (sentryDsn) {
+    Sentry.init({
+      dsn: sentryDsn,
+      tracesSampleRate: Number(config.get('SENTRY_TRACES_SAMPLE_RATE') ?? 0.1),
+      environment: config.get<string>('NODE_ENV') || 'development',
+      sendDefaultPii: false,
+    });
+  }
 
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-  app.useGlobalFilters(new AllExceptionsFilter());
-  app.useGlobalInterceptors(new TransformInterceptor());
+  configureApp(app);
 
-  app.enableCors();
-
-  await app.listen(process.env.PORT ?? 3000);
+  const port = config.get<number>('PORT') ?? 3000;
+  await app.listen(port);
+  logger.log(`ClinicPlus API listening on port ${port} (${config.get('NODE_ENV')})`);
 }
-bootstrap();
+bootstrap().catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error('Fatal: API failed to start', err instanceof Error ? err.message : err);
+  process.exit(1);
+});

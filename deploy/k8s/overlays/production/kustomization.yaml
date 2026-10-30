@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Production: managed PostgreSQL (DATABASE_URL in the clinicplus-secrets Secret), S3 object
+# storage, 3+ API replicas across zones, TLS via cert-manager.
+# Before the first install: edit the host in patches below, the DB CIDR in
+# networkpolicy-db.yaml and the image tags in images/kustomization.yaml.
+namespace: clinicplus
+
+resources:
+  - ../../base
+
+components:
+  - images
+
+configMapGenerator:
+  - name: clinicplus-config
+    behavior: merge
+    envs:
+      - config.env
+
+patches:
+  - path: networkpolicy-db.yaml
+  - path: scale.yaml
+  - target:
+      kind: Ingress
+      name: clinicplus
+    patch: |-
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: clinic.example.com
+      - op: replace
+        path: /spec/rules/0/host
+        value: clinic.example.com

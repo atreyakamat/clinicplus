@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { validateEnv } from './config/env.validation';
 import { AuthModule } from './auth/auth.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { BranchesModule } from './branches/branches.module';
@@ -33,15 +35,34 @@ import { TimelineInterceptor } from './common/interceptors/timeline.interceptor'
 import { HealthModule } from './health/health.module';
 import { NotificationModule } from './notifications/notification.module';
 import { TaskSchedulerModule } from './tasks/task-scheduler.module';
-import { TaskSchedulerService } from './tasks/task-scheduler.service';
 import { BackupModule } from './backup/backup.module';
-import { BackupSchedulerService } from './backup/backup-scheduler.service';
+import { TenantModule } from './common/tenant/tenant.module';
+import { MailModule } from './common/mail/mail.module';
+import { StaffInvitationsModule } from './staff-invitations/staff-invitations.module';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
+import { DoctorsModule } from './doctors/doctors.module';
+import { ClinicSettingsModule } from './clinic-settings/clinic-settings.module';
+import { ClinicalModule } from './clinical/clinical.module';
+import { StorageModule } from './storage/storage.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { CampaignsModule } from './campaigns/campaigns.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        throttlers: [{ name: 'default', ttl: 60_000, limit: 600 }],
+        skipIf: () => config.get('NODE_ENV') === 'test',
+      }),
+    }),
     PrismaModule,
+    TenantModule,
+    MailModule,
     AuditModule,
+    AuditLogsModule,
     AuthModule,
     OrganizationsModule,
     BranchesModule,
@@ -49,6 +70,7 @@ import { BackupSchedulerService } from './backup/backup-scheduler.service';
     UsersModule,
     RolesModule,
     PermissionsModule,
+    StaffInvitationsModule,
     PatientsModule,
     AppointmentsModule,
     QueuesModule,
@@ -69,20 +91,20 @@ import { BackupSchedulerService } from './backup/backup-scheduler.service';
     NotificationModule,
     TaskSchedulerModule,
     BackupModule,
+    DoctorsModule,
+    ClinicSettingsModule,
+    ClinicalModule,
+    StorageModule,
+    ReviewsModule,
+    CampaignsModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
-    TaskSchedulerService,
-    BackupSchedulerService,
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: AuditInterceptor,
-    },
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: TimelineInterceptor,
-    },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: TimelineInterceptor },
   ],
 })
 export class AppModule {}

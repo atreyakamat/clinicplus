@@ -1,121 +1,55 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { MessagingService } from './messaging.service';
 
+/**
+ * Backwards-compatible SMS facade used by other modules (staff invitations, review requests).
+ * All sending goes through MessagingService and the configured driver (console | twilio).
+ */
 @Injectable()
 export class SmsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly messaging: MessagingService) {}
 
   /**
-   * Send an SMS message
-   * In a production implementation, this would integrate with:
-   * - Twilio
-   * - AWS SNS
-   * - Nexmo
-   * - Or similar SMS gateway service
+   * Sends an SMS to a raw phone number. No Message row is written (there is no patient).
+   * `success` is true only when the provider accepted the message; with the console
+   * driver it is false and `status` is NOT_SENT_CONSOLE.
    */
   async sendSms(
     to: string,
     content: string,
-    organizationId: string,
-    branchId: string,
-  ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-    // Placeholder implementation
-    // In a real implementation, this would:
-    // 1. Validate the phone number format
-    // 2. Send the SMS via the chosen SMS gateway
-    // 3. Return the result with message ID or error
-
-    // Basic validation
+    _organizationId: string,
+    _branchId: string,
+  ): Promise<{ success: boolean; messageId?: string; error?: string; status?: string; driver?: string }> {
     if (!to || !content) {
       throw new BadRequestException('Phone number and content are required');
     }
-
-    // TODO: Implement actual SMS gateway integration
-    // Example for Twilio:
-    /*
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const client = require('twilio')(accountSid, authToken);
-
-    try {
-      const message = await client.messages.create({
-        body: content,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: to
-      });
-
-      return {
-        success: true,
-        messageId: message.sid
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-    */
-
-    // Placeholder: Simulate SMS sending with possible failure
-    // In production, this would be replaced with actual SMS gateway integration
-    const isSuccessful = Math.random() > 0.1; // 90% success rate for simulation
-
-    if (isSuccessful) {
-      // Simulate generating a message ID
-      const messageId = `sm_${Math.random().toString(36).substr(2, 9)}`;
-      return { success: true, messageId };
-    } else {
-      return { success: false, error: 'Simulated SMS gateway failure' };
-    }
+    const res = await this.messaging.sendToNumber(to, content, 'SMS');
+    const success = this.messaging.isAccepted(res.deliveryStatus);
+    return {
+      success,
+      messageId: ('externalId' in res && res.externalId) || undefined,
+      error: success ? undefined : (res.errorMessage ?? undefined),
+      status: res.deliveryStatus,
+      driver: this.messaging.driver.name,
+    };
   }
 
   /**
-   * Send SMS and save message record with proper delivery tracking
+   * Sends a message to a patient of `organizationId` and records it. Treated as non-essential:
+   * patients who replied STOP are not messaged (400). Uses the patient's preferred channel.
    */
-  async sendAndRecord(
-    patientId: string,
-    content: string,
-    organizationId: string,
-    branchId: string,
-  ) {
-    // Get patient phone number
-    const patient = await this.prisma.patient.findUnique({
-      where: { id: patientId },
-      select: { phone: true },
-    });
-
-    if (!patient?.phone) {
-      throw new BadRequestException('Patient phone number not found');
-    }
-
-    const smsResult = await this.sendSms(
-      patient.phone,
-      content,
+  async sendAndRecord(patientId: string, content: string, organizationId: string, branchId: string) {
+    const message = await this.messaging.sendToPatientOrThrow({
       organizationId,
       branchId,
-    );
-
-    // Create message record with delivery status based on SMS result
-    const message = await this.prisma.message.create({
-      data: {
-        patientId,
-        messageBody: content,
-        channel: 'SMS',
-        direction: 'OUTBOUND',
-        deliveryStatus: smsResult.success ? 'SENT' : 'FAILED',
-        organizationId,
-        branchId,
-      },
+      patientId,
+      body: content,
+      essential: false,
     });
-
-    // In a real implementation, we would update the message record
-    // with the actual message ID from the SMS gateway and potentially
-    // set up webhooks to update delivery status when we receive callbacks
-
     return {
       ...message,
-      gatewayMessageId: smsResult.messageId,
-      gatewayError: smsResult.error,
+      gatewayMessageId: message.externalId ?? undefined,
+      gatewayError: this.messaging.isAccepted(message.deliveryStatus) ? undefined : (message.errorMessage ?? undefined),
     };
   }
 }

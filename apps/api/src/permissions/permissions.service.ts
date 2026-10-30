@@ -1,43 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { normalizePermission } from '../auth/access.utils';
+import { isValidPermissionKey } from '../auth/access-policy';
 
 @Injectable()
 export class PermissionsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(data: Prisma.PermissionCreateInput) {
-    return this.prisma.permission.create({
-      data,
+  /** The organization's permission catalog (only keys known to the current build). */
+  async findAll(organizationId: string) {
+    const rows = await this.prisma.permission.findMany({
+      where: { organizationId },
+      select: { id: true, module: true, action: true, description: true },
+      orderBy: [{ module: 'asc' }, { action: 'asc' }],
     });
-  }
-
-  async findAll(organizationId?: string, branchId?: string) {
-    const where: any = {};
-    if (organizationId) where.organizationId = organizationId;
-    if (branchId) where.branchId = branchId;
-
-    return this.prisma.permission.findMany({
-      where,
-    });
-  }
-
-  async findOne(id: string) {
-    return this.prisma.permission.findUnique({
-      where: { id },
-    });
-  }
-
-  async update(id: string, data: Prisma.PermissionUpdateInput) {
-    return this.prisma.permission.update({
-      where: { id },
-      data,
-    });
-  }
-
-  async remove(id: string) {
-    return this.prisma.permission.delete({
-      where: { id },
-    });
+    return rows
+      .map((p) => ({ ...p, key: normalizePermission(`${p.module}.${p.action}`) }))
+      .filter((p) => isValidPermissionKey(p.key));
   }
 }

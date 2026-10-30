@@ -1,0 +1,149 @@
+# Zero-trust networking for the namespace: deny everything, then allow exactly
+#   ingress-controller → web:8080 → api:3000 → postgres:5432
+#   api/jobs → HTTPS 443 (S3, Stripe, Twilio, Sentry), all pods → cluster DNS.
+# Requires a CNI that enforces NetworkPolicy (Calico, Cilium, AWS VPC CNI w/ policy agent,
+# GKE Dataplane V2, AKS with Azure/Calico policy).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  labels:
+    clinicplus.io/phase: pre
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  labels:
+    clinicplus.io/phase: pre
+spec:
+  podSelector: {}
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: web-allow-ingress-controller
+  labels:
+    clinicplus.io/phase: pre
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: clinicplus-web
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        # ingress-nginx controller pods (adjust if your controller lives elsewhere)
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: web-allow-egress-to-api
+  labels:
+    clinicplus.io/phase: pre
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: clinicplus-web
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: clinicplus-api
+      ports:
+        - protocol: TCP
+          port: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-allow-ingress-from-web
+  labels:
+    clinicplus.io/phase: pre
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: clinicplus-api
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: clinicplus-web
+      ports:
+        - protocol: TCP
+          port: 3000
+---
+# Database access for pods labelled clinicplus.io/db-client=true (api, migrate Job, backup
+# CronJob). Base: an in-namespace Postgres (dev overlay). Production overlays replace `to`
+# with the managed database's CIDR (see overlays/production/networkpolicy-db.yaml).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: db-clients-allow-postgres
+  labels:
+    clinicplus.io/phase: pre
+spec:
+  podSelector:
+    matchLabels:
+      clinicplus.io/db-client: "true"
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: clinicplus-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+# Outbound HTTPS for pods labelled clinicplus.io/egress-https=true (api, backup CronJob):
+# S3, Stripe, Twilio, Sentry. Cloud metadata endpoints are excluded (no credential theft via
+# SSRF); use IRSA/Workload Identity rather than node credentials.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-https-egress
+  labels:
+    clinicplus.io/phase: pre
+spec:
+  podSelector:
+    matchLabels:
+      clinicplus.io/egress-https: "true"
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.169.254/32
+              - 169.254.170.2/32
+      ports:
+        - protocol: TCP
+          port: 443

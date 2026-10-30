@@ -1,22 +1,14 @@
-import {
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  IsString,
-  IsUUID,
-  IsIn,
-} from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsNotEmpty, IsNumber, IsString, MaxLength, Min } from 'class-validator';
 
 export class RefundPaymentDto {
-  @IsNotEmpty()
-  @IsUUID()
-  paymentId: string;
-
-  @IsNotEmpty()
-  @IsNumber()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2, allowNaN: false, allowInfinity: false })
+  @Min(0.01)
   amount: number;
 
-  @IsOptional()
   @IsString()
-  reason?: string;
+  @IsNotEmpty()
+  @MaxLength(500)
+  reason: string;
 }

@@ -1,0 +1,115 @@
+# In-cluster PostgreSQL 16 for the dev overlay only (no HA, no PITR). Production uses a
+# managed database. Runs as the image's postgres uid (70) to satisfy PSA "restricted".
+apiVersion: v1
+kind: Service
+metadata:
+  name: clinicplus-postgres
+  labels:
+    clinicplus.io/phase: pre
+    app.kubernetes.io/name: clinicplus-postgres
+    app.kubernetes.io/component: database
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: clinicplus-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: clinicplus-postgres
+  labels:
+    clinicplus.io/phase: pre
+    app.kubernetes.io/name: clinicplus-postgres
+    app.kubernetes.io/component: database
+spec:
+  serviceName: clinicplus-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: clinicplus-postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: clinicplus-postgres
+        app.kubernetes.io/component: database
+    spec:
+      serviceAccountName: clinicplus-app
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: clinicplus
+            - name: POSTGRES_DB
+              value: clinicplus
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: clinicplus-secrets
+                  key: POSTGRES_PASSWORD
+            # Subdirectory so initdb does not trip over lost+found on the volume root.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "clinicplus", "-d", "clinicplus", "-h", "127.0.0.1"]
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "clinicplus", "-d", "clinicplus", "-h", "127.0.0.1"]
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: run
+              mountPath: /var/run/postgresql
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: run
+          emptyDir: {}
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi

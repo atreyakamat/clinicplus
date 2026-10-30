@@ -1,254 +1,153 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+/**
+ * Security regression suite: injection, token tampering, broken access control,
+ * mass assignment, input limits and path traversal. Uses real logins only.
+ */
+import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { AllExceptionsFilter } from './../src/common/filters/all-exceptions.filter';
-import { PrismaService } from '../src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../src/prisma/prisma.service';
+import { auth, createPatient, createTenant, createTestApp, Tenant, uniq } from './helpers/app';
 
-describe('Security Testing (E2E) — Phase 15', () => {
+const b64url = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
+
+describe('Security (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let jwtService: JwtService;
-  let org: any;
-  let branch: any;
-  let user: any;
-  let token: string;
+  let t: Tenant;
+  let other: Tenant;
+  const http = () => request(app.getHttpServer());
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = mod.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
-    app.useGlobalFilters(new AllExceptionsFilter());
-    jwtService = app.get(JwtService);
-    prisma = app.get(PrismaService);
-    await app.init();
-
-    org = await prisma.organization.create({
-      data: { name: 'Sec Test', slug: `sec-${Date.now()}` },
-    });
-    branch = await prisma.branch.create({
-      data: { name: 'Sec Branch', organizationId: org.id },
-    });
-    user = await prisma.user.create({
-      data: {
-        email: `sec-${Date.now()}@t.com`,
-        passwordHash: 'h',
-        firstName: 'Sec',
-        lastName: 'User',
-        organizationId: org.id,
-        branchId: branch.id,
-      },
-    });
-    token = jwtService.sign({
-      sub: user.id,
-      email: user.email,
-      organizationId: org.id,
-      branchId: branch.id,
-      roles: ['Organization Owner'],
-      permissions: ['*'],
-    });
+    ({ app, prisma } = await createTestApp());
+    t = await createTenant(app, prisma, 'Sec', { roles: ['Organization Owner', 'Receptionist', 'Doctor'] });
+    other = await createTenant(app, prisma, 'SecOther', { roles: ['Organization Owner'] });
   });
 
   afterAll(async () => {
-    try {
-      const tablenames =
-        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames
-        .map(({ tablename }) => tablename)
-        .filter((name) => name !== '_prisma_migrations')
-        .map((name) => `"public"."${name}"`)
-        .join(', ');
-      if (tables.length > 0) {
-        await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
-      }
-    } catch (e) {
-      console.error(e);
-    }
     await app.close();
   });
 
-  describe('SQL Injection', () => {
-    it('should reject SQL injection in search query', async () => {
-      const res = await request(app.getHttpServer())
-        .get("/api/v1/patients/search?q='; DROP TABLE patients; --")
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBeDefined();
-      const body = res.body.data || res.body;
-      expect(Array.isArray(body)).toBe(true);
+  describe('SQL injection', () => {
+    it('treats injection payloads in search/filter params as data', async () => {
+      const payload = encodeURIComponent("' OR 1=1; DROP TABLE users; --");
+      const users = await http().get(`/api/v1/users?search=${payload}`).set(auth(t.owner));
+      expect(users.status).toBe(200);
+      expect(users.body.data).toEqual([]);
+      const audit = await http().get(`/api/v1/audit-logs?action=${payload}`).set(auth(t.owner));
+      expect(audit.status).toBe(200);
+      expect(await prisma.user.count()).toBeGreaterThan(0);
     });
 
-    it('should reject SQL injection in login email', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/login')
-        .send({ email: "' OR '1'='1", password: "' OR '1'='1" });
-      expect(res.status).toBeDefined();
+    it('rejects injection in login e-mail with 400', async () => {
+      const res = await http().post('/api/v1/auth/login').send({ email: "admin'--", password: 'x' });
+      expect(res.status).toBe(400);
     });
 
-    it('should reject SQL injection in patient ID', async () => {
-      const res = await request(app.getHttpServer())
-        .get("/api/v1/patients/'; DROP TABLE patients; --")
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBeDefined();
+    it('rejects injection in path ids with 400', async () => {
+      const res = await http().get(`/api/v1/roles/${encodeURIComponent("1' OR '1'='1")}`).set(auth(t.owner));
+      expect(res.status).toBe(400);
     });
   });
 
-  describe('XSS Prevention', () => {
-    it('should reject XSS in patient name', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/patients')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
-          firstName: '<script>alert("xss")</script>',
-          lastName: 'XSS',
-          phone: '5551100001',
-        });
-      expect(res.status).toBeDefined();
-    });
-
-    it('should reject XSS in search query', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/patients/search?q=<script>alert(1)</script>')
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBeDefined();
+  describe('stored XSS', () => {
+    it('stores markup as inert text (rendering is escaped by the client)', async () => {
+      const name = `<script>alert(1)</script>${uniq('r')}`;
+      const res = await http().post('/api/v1/roles').set(auth(t.owner)).send({ name, permissions: [] });
+      expect(res.status).toBe(201);
+      expect(res.body.data.name).toBe(name);
+      expect(res.headers['content-type']).toMatch(/application\/json/);
     });
   });
 
-  describe('JWT Tampering', () => {
-    it('should reject token with modified payload', async () => {
-      const parts = token.split('.');
-      const tamperedPayload = Buffer.from('{"role":"super-admin"}').toString(
-        'base64url',
-      );
-      const tampered = `${parts[0]}.${tamperedPayload}.${parts[2]}`;
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/patients')
-        .set('Authorization', `Bearer ${tampered}`);
-      expect(res.status).toBeDefined();
+  describe('JWT tampering', () => {
+    it('rejects a token whose payload was modified', async () => {
+      const [h, , s] = t.receptionist.token.split('.');
+      const forged = `${h}.${b64url({ sub: t.owner.id, roles: ['Organization Owner'], permissions: ['*'] })}.${s}`;
+      expect((await http().get('/api/v1/auth/profile').set(auth(forged))).status).toBe(401);
     });
 
-    it('should reject token with invalid signature', async () => {
-      const tampered = token.slice(0, -10) + 'aaaaaa';
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/patients')
-        .set('Authorization', `Bearer ${tampered}`);
-      expect(res.status).toBeDefined();
+    it('rejects alg:none tokens', async () => {
+      const none = `${b64url({ alg: 'none', typ: 'JWT' })}.${b64url({ sub: t.owner.id })}.`;
+      expect((await http().get('/api/v1/auth/profile').set(auth(none))).status).toBe(401);
     });
 
-    it('should reject token with alg:none attack', async () => {
-      const header = Buffer.from('{"alg":"none","typ":"JWT"}').toString(
-        'base64url',
-      );
-      const payload = Buffer.from(
-        '{"sub":"admin","role":"super-admin"}',
-      ).toString('base64url');
-      const noneToken = `${header}.${payload}.`;
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/patients')
-        .set('Authorization', `Bearer ${noneToken}`);
-      expect(res.status).toBeDefined();
+    it('rejects a token signed with another secret', async () => {
+      const foreign = new JwtService({ secret: 'not-the-real-secret-0123456789abcdef' }).sign({ sub: t.owner.id });
+      expect((await http().get('/api/v1/auth/profile').set(auth(foreign))).status).toBe(401);
+    });
+
+    it('ignores privilege claims in a validly signed token (permissions come from the DB)', async () => {
+      const jwt = app.get(JwtService);
+      const elevated = jwt.sign({ sub: t.receptionist.id, roles: ['Super Admin'], permissions: ['admin.view', 'roles.create'] });
+      expect((await http().post('/api/v1/roles').set(auth(elevated)).send({ name: 'Escalate', permissions: [] })).status).toBe(403);
+      expect((await http().get('/api/v1/platform/metrics').set(auth(elevated))).status).toBe(403);
     });
   });
 
-  describe('Broken Access Control', () => {
-    it('should reject unauthenticated access to patients', async () => {
-      const res = await request(app.getHttpServer()).get('/api/v1/patients');
-      expect(res.status).toBeDefined();
-    });
-
-    it('should reject unauthenticated access to appointments', async () => {
-      const res = await request(app.getHttpServer()).get(
-        '/api/v1/appointments',
-      );
-      expect(res.status).toBeDefined();
-    });
-
-    it('should reject unauthenticated access to invoices', async () => {
-      const res = await request(app.getHttpServer()).get('/api/v1/invoices');
-      expect(res.status).toBeDefined();
-    });
-  });
-
-  describe('Mass Assignment', () => {
-    it('should prevent setting organizationId via patient create', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/patients')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
-          firstName: 'Mass',
-          lastName: 'Assign',
-          phone: '5551200001',
-          organizationId: 'fake-org',
-          role: 'admin',
-        });
-      const body = res.body.data || res.body;
-      if (res.status === 201 && body.organizationId) {
-        expect(body.organizationId).toBe(org.id);
+  describe('broken access control', () => {
+    it('denies unauthenticated access', async () => {
+      for (const url of ['/api/v1/patients', '/api/v1/appointments', '/api/v1/invoices', '/api/v1/users']) {
+        expect((await http().get(url)).status).toBe(401);
       }
     });
-  });
 
-  describe('Input Validation', () => {
-    it('should reject invalid email format', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
-        .send({
-          email: 'not-an-email',
-          password: 'Password1!',
-          firstName: 'Bad',
-          lastName: 'Email',
-          clinicName: 'Test',
-          clinicSlug: `bad-${Date.now()}`,
-        });
-      expect(res.status).toBeDefined();
+    it('denies cross-tenant reads with 404', async () => {
+      const patient = await createPatient(app, t.receptionist);
+      expect((await http().get(`/api/v1/patients/${patient.id}`).set(auth(other.owner))).status).toBe(404);
+      expect((await http().get(`/api/v1/users/${t.doctor.id}`).set(auth(other.owner))).status).toBe(404);
     });
 
-    it('should reject weak password', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
-        .send({
-          email: `weak-${Date.now()}@t.com`,
-          password: '123',
-          firstName: 'Weak',
-          lastName: 'Pass',
-          clinicName: 'Test',
-          clinicSlug: `weak-${Date.now()}`,
-        });
-      expect(res.status).toBeDefined();
-    });
-
-    it('should reject extremely long strings', async () => {
-      const longStr = 'A'.repeat(10000);
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/patients')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ firstName: longStr, lastName: 'Long', phone: '5551300001' });
-      expect(res.status).toBeDefined();
+    it('a clinic owner cannot download or create whole-database backups (platform only)', async () => {
+      expect((await http().post('/api/v1/backup/create').set(auth(t.owner))).status).toBe(403);
+      expect((await http().get('/api/v1/backup/list').set(auth(t.owner))).status).toBe(403);
+      expect((await http().get('/api/v1/backup/download/clinicos-backup-2026-01-01T00-00-00-000Z.sql').set(auth(t.owner))).status).toBe(403);
     });
   });
 
-  describe('Rate Limit Protection', () => {
-    it('should handle rapid requests without crash', async () => {
-      const promises = Array.from({ length: 20 }, () =>
-        request(app.getHttpServer())
-          .get('/api/v1/patients/search?q=a')
-          .set('Authorization', `Bearer ${token}`),
-      );
-      const results = await Promise.all(promises);
-      for (const res of results) {
-        expect(res.status).toBeDefined();
-      }
+  describe('mass assignment', () => {
+    it('ignores organizationId/branchId supplied by the client', async () => {
+      const patient = await createPatient(app, t.receptionist, { organizationId: other.org.id, branchId: other.branch.id });
+      const row = await prisma.patient.findUniqueOrThrow({ where: { id: patient.id } });
+      expect(row.organizationId).toBe(t.org.id);
+    });
+
+    it('cannot change status or e-mail through the profile endpoint', async () => {
+      const res = await http().patch(`/api/v1/users/${t.receptionist.id}`).set(auth(t.receptionist)).send({ status: 'INACTIVE', email: 'x@evil.test', organizationId: other.org.id });
+      expect(res.status).toBe(200);
+      const row = await prisma.user.findUniqueOrThrow({ where: { id: t.receptionist.id } });
+      expect(row).toMatchObject({ status: 'ACTIVE', email: t.receptionist.email, organizationId: t.org.id });
     });
   });
 
-  describe('Path Traversal', () => {
-    it('should reject path traversal attempts', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/patients/../../../etc/passwd')
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBeDefined();
+  describe('input validation', () => {
+    it('rejects invalid e-mail and weak passwords at registration', async () => {
+      const base = { firstName: 'A', lastName: 'B', clinicName: 'Sec Clinic', clinicSlug: uniq('sec') };
+      expect((await http().post('/api/v1/auth/register').send({ ...base, email: 'nope', password: 'Strong-Pass-1' })).status).toBe(400);
+      expect((await http().post('/api/v1/auth/register').send({ ...base, email: `${uniq('a')}@example.test`, password: 'password' })).status).toBe(400);
+    });
+
+    it('rejects oversized strings', async () => {
+      const res = await http().post('/api/v1/roles').set(auth(t.owner)).send({ name: 'x'.repeat(5000), permissions: [] });
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe('path traversal', () => {
+    it('rejects traversal in backup file names before touching the filesystem', async () => {
+      // Owner is denied before validation; the guard order means traversal never reaches the service.
+      const res = await http().get('/api/v1/backup/download/..%2F..%2F.env').set(auth(t.owner));
+      expect([400, 403, 404]).toContain(res.status);
+    });
+
+    it('rejects traversal-looking invitation tokens', async () => {
+      expect((await http().get('/api/v1/staff-invitations/token/..%2F..%2Fetc')).status).toBe(404);
+    });
+  });
+
+  describe('robustness', () => {
+    it('handles a burst of concurrent requests', async () => {
+      const results = await Promise.all(Array.from({ length: 25 }, () => http().get('/api/v1/roles').set(auth(t.owner))));
+      expect(results.every((r) => r.status === 200)).toBe(true);
     });
   });
 });

@@ -4,46 +4,27 @@ import { AnalyticsService } from './analytics.service';
 
 describe('AnalyticsController', () => {
   let controller: AnalyticsController;
-  let service: AnalyticsService;
-
-  const mockRequest = {
-    user: {
-      id: 'doc-1',
-      organizationId: 'org-1',
-      branchId: 'branch-1',
-    },
-  };
+  const service = { doctor: jest.fn(), overview: jest.fn() };
+  const req = { user: { id: 'doc-1', organizationId: 'org-1', branchId: 'branch-1', permissions: [] } };
 
   beforeEach(async () => {
+    jest.resetAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AnalyticsController],
-      providers: [
-        {
-          provide: AnalyticsService,
-          useValue: {
-            getDoctorDashboard: jest.fn(),
-          },
-        },
-      ],
+      providers: [{ provide: AnalyticsService, useValue: service }],
     }).compile();
-
-    controller = module.get<AnalyticsController>(AnalyticsController);
-    service = module.get<AnalyticsService>(AnalyticsService);
+    controller = module.get(AnalyticsController);
   });
 
-  describe('getDoctorDashboard', () => {
-    it('should call service with injected user context', async () => {
-      jest
-        .spyOn(service, 'getDoctorDashboard')
-        .mockResolvedValue({ stats: {}, chartData: [] } as any);
+  it('doctor/me always uses the caller id (never a client-supplied doctor)', async () => {
+    service.doctor.mockResolvedValue({});
+    await controller.myDoctorAnalytics({ from: '2026-01-01' } as any, req);
+    expect(service.doctor).toHaveBeenCalledWith(req.user, 'doc-1', { from: '2026-01-01' }, true);
+  });
 
-      const result = await controller.getDoctorDashboard(mockRequest);
-      expect(result).toBeDefined();
-      expect(service.getDoctorDashboard).toHaveBeenCalledWith(
-        'doc-1',
-        'org-1',
-        'branch-1',
-      );
-    });
+  it('doctors/:id marks self only when the id is the caller', async () => {
+    service.doctor.mockResolvedValue({});
+    await controller.doctorAnalytics('doc-2', {} as any, req);
+    expect(service.doctor).toHaveBeenCalledWith(req.user, 'doc-2', {}, false);
   });
 });

@@ -1,213 +1,235 @@
-import { Test, TestingModule } from '@nestjs/testing';
+/**
+ * Database integrity: unique constraints, foreign keys, soft delete, transactional writes,
+ * race-safe sequence numbers, audit timestamps, tenant columns and indexes.
+ * Everything runs inside suite-owned tenants; nothing is deleted or truncated.
+ */
 import { INestApplication } from '@nestjs/common';
-import { AppModule } from '../src/app.module';
-import { AllExceptionsFilter } from './../src/common/filters/all-exceptions.filter';
+import { Prisma } from '@prisma/client';
+import request from 'supertest';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { auth, createPatient, createTenant, createTestApp, Tenant, uniq } from './helpers/app';
 
-describe('Database Integrity (E2E) — Phase 14', () => {
+const phone = () => `9${Math.floor(100000000 + Math.random() * 899999999)}`;
+const prismaCode = (e: unknown) => (e as any)?.code as string | undefined;
+
+describe('Database integrity (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let A: Tenant;
+  let B: Tenant;
+  let patient: any;
+  const http = () => request(app.getHttpServer());
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = mod.createNestApplication();
-    prisma = app.get(PrismaService);
-    await app.init();
+    ({ app, prisma } = await createTestApp());
+    A = await createTenant(app, prisma, 'DbA');
+    B = await createTenant(app, prisma, 'DbB', { roles: ['Organization Owner', 'Receptionist'] });
+    patient = await createPatient(app, A.receptionist);
   });
 
   afterAll(async () => {
-    try {
-      const tablenames =
-        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames
-        .map(({ tablename }) => tablename)
-        .filter((name) => name !== '_prisma_migrations')
-        .map((name) => `"public"."${name}"`)
-        .join(', ');
-      if (tables.length > 0) {
-        await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
-      }
-    } catch (e) {
-      console.error(e);
-    }
     await app.close();
   });
 
-  describe('Unique Constraints', () => {
-    it('should enforce unique organization slug', async () => {
-      const slug = `uniq-slug-${Date.now()}`;
-      await prisma.organization.create({ data: { name: 'U1', slug } });
+  describe('unique constraints', () => {
+    it('organization slug is globally unique', async () => {
+      await expect(prisma.organization.create({ data: { name: 'Dup', slug: A.org.slug } })).rejects.toMatchObject({ code: 'P2002' });
     });
 
-    it('should enforce unique invoice number per org', async () => {
-      const org = await prisma.organization.create({
-        data: { name: 'InvUniq', slug: `invuniq-${Date.now()}` },
-      });
-      const branch = await prisma.branch.create({
-        data: { name: 'B', organizationId: org.id },
-      });
-      const patient = await prisma.patient.create({
-        data: {
-          firstName: 'I',
-          lastName: 'U',
-          phone: '5551400001',
-          organizationId: org.id,
-          branchId: branch.id,
-        },
-      });
-      const invNum = `UNIQ-INV-${Date.now()}`;
-      await prisma.invoice.create({
-        data: {
-          patientId: patient.id,
-          organizationId: org.id,
-          branchId: branch.id,
-          invoiceNumber: invNum,
-          total: 10,
-        },
-      });
-
-      await prisma.invoice.deleteMany({ where: { organizationId: org.id } });
-      await prisma.patient.deleteMany({ where: { organizationId: org.id } });
-      await prisma.branch.deleteMany({ where: { organizationId: org.id } });
-      await prisma.organization.delete({ where: { id: org.id } });
+    it('user email is unique within an organization', async () => {
+      const err = await prisma.user
+        .create({
+          data: { organizationId: A.org.id, branchId: A.branch.id, email: A.doctor.email, passwordHash: 'x', firstName: 'D', lastName: 'Up' },
+        })
+        .catch((e) => e);
+      expect(prismaCode(err)).toBe('P2002');
     });
 
-    it('should enforce unique user email per org', async () => {
-      const org = await prisma.organization.create({
-        data: { name: 'EmailUniq', slug: `emailuniq-${Date.now()}` },
-      });
-      const branch = await prisma.branch.create({
-        data: { name: 'B', organizationId: org.id },
-      });
-      const email = `uniq-${Date.now()}@t.com`;
-      await prisma.user.create({
-        data: {
-          email,
-          passwordHash: 'h',
-          firstName: 'U',
-          lastName: 'U',
-          organizationId: org.id,
-          branchId: branch.id,
-        },
-      });
+    it('invoice number is unique per organization (but may repeat across organizations)', async () => {
+      const inv = await http()
+        .post('/api/v1/invoices')
+        .set(auth(A.receptionist))
+        .send({ patientId: patient.id, items: [{ itemName: 'Consultation', quantity: 1, unitPrice: 100 }] });
+      expect(inv.status).toBe(201);
+      const base = { patientId: patient.id, organizationId: A.org.id, branchId: A.branch.id, invoiceNumber: inv.body.data.invoiceNumber, total: 1 };
+      expect(prismaCode(await prisma.invoice.create({ data: base }).catch((e) => e))).toBe('P2002');
 
-      await prisma.user.deleteMany({ where: { organizationId: org.id } });
-      await prisma.branch.deleteMany({ where: { organizationId: org.id } });
-      await prisma.organization.delete({ where: { id: org.id } });
+      const pB = await createPatient(app, B.receptionist);
+      const other = await prisma.invoice.create({
+        data: { ...base, patientId: pB.id, organizationId: B.org.id, branchId: B.branch.id },
+      });
+      expect(other.invoiceNumber).toBe(inv.body.data.invoiceNumber);
+    });
+
+    it('patient code is unique per organization; API maps the clash to 409', async () => {
+      const code = `DUP-${Date.now().toString(36).toUpperCase()}`;
+      const first = await createPatient(app, A.receptionist, { patientCode: code });
+      expect(first.patientCode).toBe(code);
+      const second = await http()
+        .post('/api/v1/patients')
+        .set(auth(A.receptionist))
+        .send({ firstName: 'Dup', lastName: 'Code', phone: phone(), patientCode: code });
+      expect(second.status).toBe(409);
+      // Same code is fine in another organization.
+      const inB = await createPatient(app, B.receptionist, { patientCode: code });
+      expect(inB.patientCode).toBe(code);
     });
   });
 
-  describe('Foreign Key Constraints', () => {
-    it('should enforce branch FK to organization', async () => {});
+  describe('foreign keys', () => {
+    const ghost = '00000000-0000-4000-8000-00000000dead';
 
-    it('should enforce patient FK to organization', async () => {});
+    it('rejects rows pointing at missing parents', async () => {
+      expect(prismaCode(await prisma.branch.create({ data: { name: 'Orphan', organizationId: ghost } }).catch((e) => e))).toBe('P2003');
+      expect(
+        prismaCode(
+          await prisma.patient.create({ data: { firstName: 'O', lastName: 'Rphan', organizationId: ghost, branchId: A.branch.id } }).catch((e) => e),
+        ),
+      ).toBe('P2003');
+      expect(
+        prismaCode(
+          await prisma.appointment
+            .create({
+              data: {
+                organizationId: A.org.id,
+                branchId: A.branch.id,
+                patientId: ghost,
+                doctorId: A.doctor.id,
+                scheduledStart: new Date(),
+                scheduledEnd: new Date(Date.now() + 900_000),
+              },
+            })
+            .catch((e) => e),
+        ),
+      ).toBe('P2003');
+    });
 
-    it('should enforce appointment FK to patient', async () => {});
-  });
-
-  describe('Soft Delete Pattern', () => {
-    it('should support soft delete on patient records', async () => {
-      const org = await prisma.organization.create({
-        data: { name: 'SDel', slug: `sdel-${Date.now()}` },
-      });
-      const branch = await prisma.branch.create({
-        data: { name: 'B', organizationId: org.id },
-      });
-      const patient = await prisma.patient.create({
-        data: {
-          firstName: 'SD',
-          lastName: 'Del',
-          phone: '5551600001',
-          organizationId: org.id,
-          branchId: branch.id,
-        },
-      });
-
-      await prisma.patient.update({
-        where: { id: patient.id },
-        data: { status: 'INACTIVE', deletedAt: new Date() },
-      });
-
-      const deleted = await prisma.patient.findUnique({
-        where: { id: patient.id },
-      });
-      expect(deleted?.status).toBe('INACTIVE');
-      expect(deleted?.deletedAt).toBeDefined();
-
-      await prisma.patient.delete({ where: { id: patient.id } });
-      await prisma.branch.delete({ where: { id: branch.id } });
-      await prisma.organization.delete({ where: { id: org.id } });
+    it('API returns 404 (not 500) for references to missing rows', async () => {
+      const res = await http().post('/api/v1/invoices').set(auth(A.receptionist)).send({ patientId: ghost, items: [{ itemName: 'X', quantity: 1, unitPrice: 1 }] });
+      expect(res.status).toBe(404);
     });
   });
 
-  describe('Transactions', () => {
-    it('should rollback transaction on error', async () => {
-      const org = await prisma.organization.create({
-        data: { name: 'TxTest', slug: `txtest-${Date.now()}` },
-      });
-      const branch = await prisma.branch.create({
-        data: { name: 'B', organizationId: org.id },
-      });
+  describe('soft delete', () => {
+    it('archiving keeps the row (deletedAt set) and restore clears it', async () => {
+      const p = await createPatient(app, A.receptionist);
+      const del = await http().delete(`/api/v1/patients/${p.id}`).set(auth(A.owner)).send({ reason: 'Duplicate record' });
+      expect(del.status).toBe(200);
+      const row = await prisma.patient.findUnique({ where: { id: p.id } });
+      expect(row).not.toBeNull();
+      expect(row!.deletedAt).toBeInstanceOf(Date);
 
-      await prisma.branch.delete({ where: { id: branch.id } });
-      await prisma.organization.delete({ where: { id: org.id } });
+      const list = await http().get(`/api/v1/patients?q=${encodeURIComponent(p.lastName)}`).set(auth(A.owner));
+      expect(list.body.data.map((x: any) => x.id)).not.toContain(p.id);
+
+      const restored = await http().post(`/api/v1/patients/${p.id}/restore`).set(auth(A.owner));
+      expect(restored.status).toBe(201);
+      expect((await prisma.patient.findUnique({ where: { id: p.id } }))!.deletedAt).toBeNull();
     });
   });
 
-  describe('Audit Fields', () => {
-    it('should have createdAt and updatedAt on core models', async () => {
-      const org = await prisma.organization.create({
-        data: { name: 'AuditTest', slug: `audit-${Date.now()}` },
-      });
-      expect(org.createdAt).toBeDefined();
-      expect(org.updatedAt).toBeDefined();
-      await prisma.organization.delete({ where: { id: org.id } });
+  describe('transactions and concurrency', () => {
+    it('a failed patient create leaves no partial child rows', async () => {
+      const code = `TX-${Date.now().toString(36).toUpperCase()}`;
+      await createPatient(app, A.receptionist, { patientCode: code });
+      const street = uniq('Rollback Street');
+      const res = await http()
+        .post('/api/v1/patients')
+        .set(auth(A.receptionist))
+        .send({ firstName: 'Tx', lastName: 'Fail', phone: phone(), patientCode: code, addresses: [{ addressLine1: street, city: 'Pune' }] });
+      expect(res.status).toBe(409);
+      expect(await prisma.patientAddress.count({ where: { organizationId: A.org.id, addressLine1: street } })).toBe(0);
+    });
+
+    it('interactive transactions roll back on error', async () => {
+      const name = uniq('TxBranch');
+      await expect(
+        prisma.$transaction(async (tx) => {
+          await tx.branch.create({ data: { name, organizationId: A.org.id } });
+          throw new Error('boom');
+        }),
+      ).rejects.toThrow('boom');
+      expect(await prisma.branch.count({ where: { name } })).toBe(0);
+    });
+
+    // Code/number allocation takes a per-org advisory lock, so bursts never collide.
+    it('concurrent registrations get distinct patient codes', async () => {
+      const results = await Promise.all(
+        Array.from({ length: 12 }, (_, i) =>
+          http().post('/api/v1/patients').set(auth(A.receptionist)).send({ firstName: `Race${i}`, lastName: uniq('R'), phone: phone() }),
+        ),
+      );
+      expect(results.map((r) => r.status)).toEqual(Array(12).fill(201));
+      const codes = results.map((r) => r.body.data.patientCode);
+      expect(new Set(codes).size).toBe(codes.length);
+    });
+
+    it('concurrent invoices get distinct numbers', async () => {
+      const results = await Promise.all(
+        Array.from({ length: 12 }, () =>
+          http()
+            .post('/api/v1/invoices')
+            .set(auth(A.receptionist))
+            .send({ patientId: patient.id, items: [{ itemName: 'Dressing', quantity: 1, unitPrice: 50 }] }),
+        ),
+      );
+      expect(results.map((r) => r.status)).toEqual(Array(12).fill(201));
+      const numbers = results.map((r) => r.body.data.invoiceNumber);
+      expect(new Set(numbers).size).toBe(numbers.length);
+    });
+
+    it('concurrent full payments cannot overpay an invoice', async () => {
+      const inv = await http()
+        .post('/api/v1/invoices')
+        .set(auth(A.receptionist))
+        .send({ patientId: patient.id, items: [{ itemName: 'Procedure', quantity: 1, unitPrice: 800 }], issue: true });
+      expect(inv.status).toBe(201);
+      const results = await Promise.all(
+        Array.from({ length: 3 }, () =>
+          http().post(`/api/v1/invoices/${inv.body.data.id}/payments`).set(auth(A.receptionist)).send({ amount: 800, paymentMethod: 'CASH' }),
+        ),
+      );
+      expect(results.filter((r) => r.status === 201)).toHaveLength(1);
+      expect(results.every((r) => r.status < 500)).toBe(true);
+      const paid = await prisma.payment.aggregate({ where: { invoiceId: inv.body.data.id, paymentStatus: 'PAID' }, _sum: { amount: true } });
+      expect(Number(paid._sum.amount)).toBe(800);
+      expect((await prisma.invoice.findUnique({ where: { id: inv.body.data.id } }))!.status).toBe('PAID');
     });
   });
 
-  describe('Indexes', () => {
-    it('should have organizationId indexes on key tables', async () => {
-      const org = await prisma.organization.create({
-        data: { name: 'IdxTest', slug: `idx-${Date.now()}` },
-      });
-      const branch = await prisma.branch.create({
-        data: { name: 'B', organizationId: org.id },
-      });
-
-      const patient = await prisma.patient.create({
-        data: {
-          firstName: 'Idx',
-          lastName: 'Test',
-          phone: '5551800001',
-          organizationId: org.id,
-          branchId: branch.id,
-        },
-      });
-      expect(patient.organizationId).toBe(org.id);
-
-      await prisma.patient.delete({ where: { id: patient.id } });
-      await prisma.branch.delete({ where: { id: branch.id } });
-      await prisma.organization.delete({ where: { id: org.id } });
+  describe('audit fields', () => {
+    it('createdAt is set and updatedAt advances on update', async () => {
+      const p = await createPatient(app, A.receptionist);
+      const before = await prisma.patient.findUniqueOrThrow({ where: { id: p.id } });
+      expect(before.createdAt).toBeInstanceOf(Date);
+      await new Promise((r) => setTimeout(r, 20));
+      const upd = await http().patch(`/api/v1/patients/${p.id}`).set(auth(A.receptionist)).send({ occupation: 'Teacher' });
+      expect(upd.status).toBe(200);
+      const after = await prisma.patient.findUniqueOrThrow({ where: { id: p.id } });
+      expect(after.updatedAt.getTime()).toBeGreaterThan(before.updatedAt.getTime());
+      expect(after.createdBy).toBe(A.receptionist.id);
     });
   });
 
-  describe('Tenant Columns', () => {
-    it('should have organizationId on all tenant-scoped tables', async () => {
-      const models = [
-        'patient',
-        'appointment',
-        'invoice',
-        'consultation',
-        'prescription',
-        'task',
-        'followUp',
-        'message',
-      ] as const;
-      for (const model of models) {
-        const delegate = (prisma as any)[model];
-        expect(delegate).toBeDefined();
+  describe('schema: tenant columns and indexes', () => {
+    const TENANT_MODELS = ['Patient', 'Appointment', 'Consultation', 'Prescription', 'Invoice', 'Payment', 'FollowUp', 'Task', 'MedicalDocument', 'QueueEntry'];
+
+    it('tenant-scoped models carry a required organizationId', () => {
+      const models = Prisma.dmmf.datamodel.models;
+      for (const name of TENANT_MODELS) {
+        const model = models.find((m) => m.name === name);
+        expect({ name, found: !!model }).toEqual({ name, found: true });
+        const field = model!.fields.find((f) => f.name === 'organizationId');
+        expect({ name, required: field?.isRequired }).toEqual({ name, required: true });
+      }
+    });
+
+    it('hot tenant tables are indexed by organization_id', async () => {
+      const rows = await prisma.$queryRaw<Array<{ tablename: string; indexdef: string }>>`
+        SELECT tablename, indexdef FROM pg_indexes WHERE schemaname = 'public' AND indexdef LIKE '%organization_id%'`;
+      const indexed = new Set(rows.map((r) => r.tablename));
+      for (const table of ['patients', 'appointments', 'invoices', 'consultations']) {
+        expect({ table, indexed: indexed.has(table) }).toEqual({ table, indexed: true });
       }
     });
   });

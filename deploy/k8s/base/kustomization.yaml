@@ -1,0 +1,30 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Base for every environment. Do not apply directly — use an overlay:
+#   kubectl apply -k deploy/k8s/overlays/<dev|staging|production>
+# secret.example.yaml is intentionally NOT listed: the `clinicplus-secrets` Secret is
+# provided out-of-band (External Secrets / Sealed Secrets / kubectl create secret).
+namespace: clinicplus
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: clinicplus
+      app.kubernetes.io/managed-by: kustomize
+    includeSelectors: false
+
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - networkpolicies.yaml
+  - api.yaml
+  - web.yaml
+  - ingress.yaml
+  - backup-cronjob.yaml
+
+configMapGenerator:
+  - name: clinicplus-config
+    envs:
+      - config.env
+    options:
+      labels:
+        clinicplus.io/phase: pre

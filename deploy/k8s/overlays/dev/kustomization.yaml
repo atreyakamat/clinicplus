@@ -1,0 +1,57 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Self-contained demo / dev cluster (kind, minikube, k3d, Docker Desktop):
+#   in-cluster PostgreSQL 16 (StatefulSet) + MinIO (S3) + api + web, single replicas, no HPA/PDB,
+#   plain HTTP ingress on http://clinicplus.localtest.me (resolves to 127.0.0.1).
+# Secrets come from secrets.env (git-ignored):  cp secrets.env.example secrets.env  and edit.
+# NOT for real patient data.
+namespace: clinicplus
+
+resources:
+  - ../../base
+  - postgres.yaml
+  - minio.yaml
+  - networkpolicies-dev.yaml
+
+components:
+  - images
+
+secretGenerator:
+  - name: clinicplus-secrets
+    envs:
+      - secrets.env
+    options:
+      # Fixed name: the migrate Job (separate kustomization) references it by name.
+      disableNameSuffixHash: true
+      labels:
+        clinicplus.io/phase: pre
+
+configMapGenerator:
+  - name: clinicplus-config
+    behavior: merge
+    envs:
+      - config.env
+
+patches:
+  - path: single-replica.yaml
+  - target:
+      kind: Ingress
+      name: clinicplus
+    patch: |-
+      - op: replace
+        path: /metadata/annotations
+        value:
+          nginx.ingress.kubernetes.io/ssl-redirect: "false"
+          nginx.ingress.kubernetes.io/proxy-body-size: 25m
+      - op: remove
+        path: /spec/tls
+      - op: replace
+        path: /spec/rules/0/host
+        value: clinicplus.localtest.me
+  - target:
+      kind: PersistentVolumeClaim
+      name: clinicplus-backups
+    patch: |-
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: 2Gi

@@ -1,220 +1,212 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+/**
+ * Full patient journey through the real API, each step performed by the role
+ * that does it in a clinic:
+ *   Receptionist: register → book → check in → invoice → collect payment
+ *   Nurse:        vitals
+ *   Doctor:       consultation → diagnosis → complete → prescription → follow-up
+ *   Accountant:   partial refund
+ * Then the timeline must show the journey.
+ */
+import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from './../src/app.module';
-import { AllExceptionsFilter } from './../src/common/filters/all-exceptions.filter';
-import { PrismaService } from './../src/prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
-import { faker } from '@faker-js/faker';
+import { PrismaService } from '../src/prisma/prisma.service';
+import { auth, createTenant, createTestApp, futureSlot, Tenant, uniq } from './helpers/app';
 
-describe('Production Readiness: E2E Workflow Validation', () => {
+describe('Patient journey workflow (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let jwtService: JwtService;
-  let authToken: string;
-  let orgId: string;
-  let branchId: string;
-  let doctorId: string;
+  let A: Tenant;
+  const http = () => request(app.getHttpServer());
+
+  // Shared journey state (steps run in order).
+  const s: Record<string, any> = {};
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
-    app.useGlobalFilters(new AllExceptionsFilter());
-    jwtService = app.get<JwtService>(JwtService);
-    await app.init();
-
-    prisma = app.get<PrismaService>(PrismaService);
-
-    const org = await prisma.organization.create({
-      data: { name: 'QA Test Clinic', slug: `qa-test-${faker.string.uuid()}` },
-    });
-    orgId = org.id;
-
-    const branch = await prisma.branch.create({
-      data: { name: 'QA Main', organizationId: orgId },
-    });
-    branchId = branch.id;
-
-    const doctor = await prisma.user.create({
-      data: {
-        email: `qa-doc-${faker.internet.email()}`,
-        passwordHash: 'hashed',
-        firstName: 'QA',
-        lastName: 'Doctor',
-        organizationId: orgId,
-        branchId: branchId,
-      },
-    });
-    doctorId = doctor.id;
-
-    authToken = jwtService.sign({
-      sub: doctor.id,
-      email: doctor.email,
-      organizationId: orgId,
-      branchId: branchId,
-      roles: ['Organization Owner'],
-      permissions: ['*'],
-    });
+    ({ app, prisma } = await createTestApp());
+    A = await createTenant(app, prisma, 'Journey');
   });
 
   afterAll(async () => {
-    try {
-      const tablenames =
-        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames
-        .map(({ tablename }) => tablename)
-        .filter((name) => name !== '_prisma_migrations')
-        .map((name) => `"public"."${name}"`)
-        .join(', ');
-      if (tables.length > 0) {
-        await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
-      }
-    } catch (e) {
-      console.error(e);
-    }
     await app.close();
   });
 
-  describe('Workflow 1: New Patient Journey', () => {
-    it('should complete registration -> appointment -> consultation -> billing -> follow-up', async () => {
-      const patientRes = await request(app.getHttpServer())
-        .post('/api/v1/patients')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({
-          firstName: 'Workflow',
-          lastName: 'One',
-          phone: '9999999999',
-          gender: 'Male',
-        });
-
-      console.log(patientRes.status, patientRes.body);
-      const patientId = patientRes.body.id || patientRes.body.data?.id;
-
-      const apptRes = await request(app.getHttpServer())
-        .post('/api/v1/appointments')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({
-          patientId,
-          doctorId,
-          scheduledStart: new Date().toISOString(),
-          scheduledEnd: new Date(Date.now() + 1800000).toISOString(),
-        });
-
-      const appointmentId = apptRes.body.id || apptRes.body.data?.id;
-
-      await request(app.getHttpServer())
-        .post('/api/v1/queues/check-in')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ appointmentId });
-
-      const consultRes = await request(app.getHttpServer())
-        .post('/api/v1/consultations')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ patientId, appointmentId, chiefComplaint: 'Checkup' });
-
-      const consultId = consultRes.body.id || consultRes.body.data?.id;
-
-      await request(app.getHttpServer())
-        .post('/api/v1/prescriptions')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({
-          patientId,
-          consultationId: consultId,
-          items: [{ medicineName: 'Paracetamol', dosage: '500mg' }],
-        });
-
-      const invRes = await request(app.getHttpServer())
-        .post('/api/v1/invoices')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({
-          patientId,
-          invoiceNumber: `INV-WF1-${faker.string.alphanumeric(4)}`,
-          total: 50,
-          items: [
-            {
-              itemName: 'Consultation',
-              quantity: 1,
-              unitPrice: 50,
-              amount: 50,
-            },
-          ],
-        });
-
-      const invoiceId = invRes.body.id || invRes.body.data?.id;
-
-      await request(app.getHttpServer())
-        .post(`/api/v1/invoices/${invoiceId}/payments`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ amount: 50, paymentMethod: 'CASH', paymentStatus: 'PAID' });
-
-      await request(app.getHttpServer())
-        .post('/api/v1/follow-ups')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({
-          patientId,
-          scheduledDate: new Date(Date.now() + 604800000).toISOString(),
-        });
-
-      const finalPatient = await prisma.patient.findUnique({
-        where: { id: patientId },
-        include: {
-          appointments: true,
-          consultations: true,
-          invoices: { include: { payments: true } },
-          followUps: true,
-        },
-      });
-
-      expect(finalPatient?.appointments.length).toBe(1);
-      expect(finalPatient?.consultations.length).toBe(1);
-      expect(finalPatient?.invoices.length).toBe(1);
-      expect(finalPatient?.invoices[0]?.payments.length).toBe(1);
-      expect(finalPatient?.followUps.length).toBe(1);
-    });
+  it('1. receptionist registers the patient', async () => {
+    const res = await http()
+      .post('/api/v1/patients')
+      .set(auth(A.receptionist))
+      .send({ firstName: 'Workflow', lastName: uniq('Journey'), gender: 'MALE', phone: `98${Math.floor(10000000 + Math.random() * 89999999)}` });
+    expect(res.status).toBe(201);
+    expect(res.body.data.organizationId).toBe(A.org.id);
+    expect(res.body.data.branchId).toBe(A.branch.id);
+    s.patient = res.body.data;
   });
 
-  describe('Workflow 2: Multi-Tenant Isolation', () => {
-    it('should NOT allow Organization B to access Organization A patients (real request)', async () => {
-      const orgB = await prisma.organization.create({
-        data: { name: 'Org B Isolation', slug: `iso-b-${Date.now()}` },
-      });
-      const branchB = await prisma.branch.create({
-        data: { name: 'Branch B', organizationId: orgB.id },
-      });
-      const userB = await prisma.user.create({
-        data: {
-          email: `iso-b-${Date.now()}@test.com`,
-          passwordHash: 'hash',
-          firstName: 'Isolation',
-          lastName: 'B',
-          organizationId: orgB.id,
-          branchId: branchB.id,
-        },
-      });
-      const tokenB = jwtService.sign({
-        sub: userB.id,
-        email: userB.email,
-        organizationId: orgB.id,
-        branchId: branchB.id,
-        roles: ['Organization Owner'],
-        permissions: ['*'],
-      });
+  it('2. receptionist books an appointment with the doctor', async () => {
+    const res = await http()
+      .post('/api/v1/appointments')
+      .set(auth(A.receptionist))
+      .send({ patientId: s.patient.id, doctorId: A.doctor.id, ...futureSlot(1, 10, 30) });
+    expect(res.status).toBe(201);
+    expect(res.body.data.doctorId).toBe(A.doctor.id);
+    expect(['SCHEDULED', 'CONFIRMED']).toContain(res.body.data.status);
+    s.appointment = res.body.data;
+  });
 
-      const res = await request(app.getHttpServer())
-        .get(
-          `/api/v1/patients/${(await prisma.patient.findFirst({ where: { organizationId: orgId } }))?.id}`,
-        )
-        .set('Authorization', `Bearer ${tokenB}`);
+  it('3. receptionist checks the patient in (queue token issued)', async () => {
+    const res = await http().post('/api/v1/queues/check-in').set(auth(A.receptionist)).send({ appointmentId: s.appointment.id });
+    expect(res.status).toBe(201);
+    expect(res.body.data.tokenNumber).toBeGreaterThan(0);
+    const appt = await http().get(`/api/v1/appointments/${s.appointment.id}`).set(auth(A.receptionist));
+    expect(appt.body.data.status).toBe('CHECKED_IN');
+    const live = await http().get('/api/v1/queues/live').set(auth(A.doctor));
+    expect(live.status).toBe(200);
+    expect(live.body.data.entries.map((e: any) => e.id)).toContain(res.body.data.id);
+  });
 
-      expect(res.status).toBeDefined();
+  it('4. doctor starts the consultation for the appointment', async () => {
+    const res = await http()
+      .post('/api/v1/consultations')
+      .set(auth(A.doctor))
+      .send({ patientId: s.patient.id, appointmentId: s.appointment.id, chiefComplaint: 'Fever and sore throat' });
+    expect(res.status).toBe(201);
+    expect(res.body.data.doctorId).toBe(A.doctor.id);
+    expect(res.body.data.appointmentId).toBe(s.appointment.id);
+    s.consultation = res.body.data;
+  });
 
-      await prisma.user.delete({ where: { id: userB.id } });
-      await prisma.branch.delete({ where: { id: branchB.id } });
-      await prisma.organization.delete({ where: { id: orgB.id } });
+  it('5. nurse records vitals', async () => {
+    const res = await http()
+      .post('/api/v1/vitals')
+      .set(auth(A.nurse))
+      .send({ consultationId: s.consultation.id, temperature: 38.4, pulse: 96, bloodPressureSystolic: 122, bloodPressureDiastolic: 80, spo2: 97 });
+    expect(res.status).toBe(201);
+  });
+
+  it('6. doctor adds a diagnosis and issues a prescription', async () => {
+    const dx = await http()
+      .post('/api/v1/diagnoses')
+      .set(auth(A.doctor))
+      .send({ consultationId: s.consultation.id, diagnosisName: 'Acute pharyngitis', icdCode: 'J02.9' });
+    expect(dx.status).toBe(201);
+
+    const res = await http()
+      .post('/api/v1/prescriptions')
+      .set(auth(A.doctor))
+      .send({
+        patientId: s.patient.id,
+        consultationId: s.consultation.id,
+        items: [{ medicineName: 'Paracetamol 500mg', dosage: '1 tab', frequency: 'TDS', duration: '5 days' }],
+      });
+    expect(res.status).toBe(201);
+    expect(res.body.data.status).toBe('ACTIVE');
+    expect(res.body.data.items).toHaveLength(1);
+    s.prescription = res.body.data;
+  });
+
+  it('7. doctor completes the consultation → appointment COMPLETED', async () => {
+    const done = await http().post(`/api/v1/consultations/${s.consultation.id}/complete`).set(auth(A.doctor));
+    expect(done.status).toBe(201);
+    expect(done.body.data.status).toBe('COMPLETED');
+
+    const appt = await http().get(`/api/v1/appointments/${s.appointment.id}`).set(auth(A.receptionist));
+    expect(appt.body.data.status).toBe('COMPLETED');
+
+    // The record is now locked: no further prescriptions against it.
+    const late = await http()
+      .post('/api/v1/prescriptions')
+      .set(auth(A.doctor))
+      .send({ patientId: s.patient.id, consultationId: s.consultation.id, items: [{ medicineName: 'Late drug' }] });
+    expect(late.status).toBe(409);
+  });
+
+  it('8. receptionist raises an invoice and collects full payment → invoice PAID', async () => {
+    const inv = await http()
+      .post('/api/v1/invoices')
+      .set(auth(A.receptionist))
+      .send({ patientId: s.patient.id, appointmentId: s.appointment.id, items: [{ itemName: 'Consultation', quantity: 1, unitPrice: 500 }], issue: true });
+    expect(inv.status).toBe(201);
+    expect(Number(inv.body.data.total)).toBe(500);
+    s.invoice = inv.body.data;
+
+    const pay = await http()
+      .post(`/api/v1/invoices/${s.invoice.id}/payments`)
+      .set(auth(A.receptionist))
+      .send({ amount: 500, paymentMethod: 'CASH' });
+    expect(pay.status).toBe(201);
+    s.payment = pay.body.data;
+
+    const after = await http().get(`/api/v1/invoices/${s.invoice.id}`).set(auth(A.accountant));
+    expect(after.body.data.status).toBe('PAID');
+    expect(Number(after.body.data.balance)).toBe(0);
+  });
+
+  it('9. accountant can refund part of the payment (receptionist cannot)', async () => {
+    expect(
+      (await http().post(`/api/v1/payments/${s.payment.id}/refund`).set(auth(A.receptionist)).send({ amount: 50, reason: 'Discount' })).status,
+    ).toBe(403);
+    const r = await http().post(`/api/v1/payments/${s.payment.id}/refund`).set(auth(A.accountant)).send({ amount: 50, reason: 'Discount' });
+    expect(r.status).toBe(201);
+  });
+
+  it('10. doctor schedules a follow-up and records an outcome', async () => {
+    const scheduledDate = new Date(Date.now() + 7 * 86_400_000).toISOString();
+    const fu = await http()
+      .post('/api/v1/follow-ups')
+      .set(auth(A.doctor))
+      .send({ patientId: s.patient.id, consultationId: s.consultation.id, scheduledDate, reason: 'Review recovery' });
+    expect(fu.status).toBe(201);
+    expect(fu.body.data.status).toBe('PENDING');
+    expect(fu.body.data.doctorId).toBe(A.doctor.id);
+    s.followUp = fu.body.data;
+
+    const outcome = await http()
+      .post(`/api/v1/follow-ups/${s.followUp.id}/outcomes`)
+      .set(auth(A.doctor))
+      .send({ outcomeType: 'IMPROVING', remarks: 'Recovered fully', complete: true });
+    expect(outcome.status).toBe(201);
+    const after = await http().get(`/api/v1/follow-ups/${s.followUp.id}`).set(auth(A.doctor));
+    expect(after.body.data.outcomes).toHaveLength(1);
+  });
+
+  it('11. the timeline shows the journey', async () => {
+    const res = await http().get(`/api/v1/timeline?patientId=${s.patient.id}&limit=200`).set(auth(A.owner));
+    expect(res.status).toBe(200);
+    const types: string[] = res.body.data.map((e: any) => e.eventType);
+    for (const t of [
+      'PATIENT_REGISTERED',
+      'APPOINTMENT_BOOKED',
+      'CONSULTATION_STARTED',
+      'VITALS_RECORDED',
+      'DIAGNOSIS_ADDED',
+      'CONSULTATION_COMPLETED',
+      'PRESCRIPTION_ISSUED',
+      'PAYMENT_COLLECTED',
+      'PAYMENT_REFUNDED',
+      'FOLLOW_UP_CREATED',
+    ]) {
+      expect(types).toContain(t);
+    }
+  });
+
+  it('12. the persisted graph is consistent and tenant-scoped', async () => {
+    const p = await prisma.patient.findUnique({
+      where: { id: s.patient.id },
+      include: {
+        appointments: true,
+        consultations: { include: { prescriptions: true } },
+        invoices: { include: { payments: true } },
+        followUps: { include: { outcomes: true } },
+      },
     });
+    expect(p!.appointments).toHaveLength(1);
+    expect(p!.consultations).toHaveLength(1);
+    expect(p!.consultations[0].prescriptions).toHaveLength(1);
+    expect(p!.invoices).toHaveLength(1);
+    expect(p!.invoices[0].payments.length).toBeGreaterThanOrEqual(1);
+    expect(p!.followUps).toHaveLength(1);
+    expect(p!.followUps[0].outcomes).toHaveLength(1);
+    for (const row of [p!.appointments[0], p!.consultations[0], p!.invoices[0], p!.followUps[0]]) {
+      expect((row as any).organizationId).toBe(A.org.id);
+    }
   });
 });

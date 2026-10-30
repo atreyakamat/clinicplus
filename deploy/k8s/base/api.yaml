@@ -1,0 +1,183 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clinicplus-api
+  labels:
+    app.kubernetes.io/name: clinicplus-api
+    app.kubernetes.io/component: api
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: clinicplus-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: clinicplus-api
+        app.kubernetes.io/component: api
+        # NetworkPolicy roles (see networkpolicies.yaml)
+        clinicplus.io/db-client: "true"
+        clinicplus.io/egress-https: "true"
+    spec:
+      serviceAccountName: clinicplus-app
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: clinicplus-api
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: clinicplus-api
+      containers:
+        - name: api
+          image: clinicplus-api # set per overlay via kustomize `images:`
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: clinicplus-config
+            - secretRef:
+                name: clinicplus-secrets
+          env:
+            - name: NODE_OPTIONS
+              value: --max-old-space-size=512
+            # In-app backups (UI-triggered) write here; the CronJob uses its own PVC.
+            - name: BACKUP_DIR
+              value: /app/backups
+          resources:
+            requests:
+              cpu: 250m
+              memory: 384Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          # /health/live: process is up (no dependency checks). /health/ready: DB reachable.
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 36 # up to 3 minutes for boot + access sync
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 4
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              # Give Service endpoints / ingress time to drop this pod before SIGTERM.
+              exec:
+                command: ["sleep", "10"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: storage
+              mountPath: /app/storage
+            - name: backups
+              mountPath: /app/backups
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+        # STORAGE_DRIVER=s3 in K8s; this only backs the local driver fallback / temp files.
+        - name: storage
+          emptyDir:
+            sizeLimit: 1Gi
+        # UI-triggered in-app backups are ephemeral here; durable backups come from the
+        # clinicplus-backup CronJob.
+        - name: backups
+          emptyDir:
+            sizeLimit: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clinicplus-api
+  labels:
+    app.kubernetes.io/name: clinicplus-api
+    app.kubernetes.io/component: api
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: clinicplus-api
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: clinicplus-api
+  labels:
+    app.kubernetes.io/name: clinicplus-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: clinicplus-api
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: clinicplus-api
+  labels:
+    app.kubernetes.io/name: clinicplus-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: clinicplus-api

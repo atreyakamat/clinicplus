@@ -1,341 +1,250 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { AllExceptionsFilter } from './../src/common/filters/all-exceptions.filter';
-import { PrismaService } from '../src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcryptjs';
+import { hash } from 'bcryptjs';
+import { PrismaService } from '../src/prisma/prisma.service';
+import { MailService } from '../src/common/mail/mail.service';
+import { createTestApp, createTenant, login, Tenant, TEST_PASSWORD, uniq } from './helpers/app';
 
-describe('Authentication System (E2E) — Phase 2', () => {
+describe('Authentication (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let jwtService: JwtService;
-
-  let org: any;
-  let branch: any;
-  let createdUserId: string;
-  let accessToken: string;
-  let refreshToken: string;
-  let sessionId: string;
-  const testEmail = `auth-test-${Date.now()}@clinicos.com`;
-  const testPassword = 'SecurePass123!';
+  let tenant: Tenant;
+  const http = () => request(app.getHttpServer());
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
-    app.useGlobalFilters(new AllExceptionsFilter());
-    jwtService = app.get<JwtService>(JwtService);
-    prisma = app.get<PrismaService>(PrismaService);
-    await app.init();
-
-    org = await prisma.organization.create({
-      data: { name: 'Auth Test Org', slug: `auth-${Date.now()}` },
-    });
-    branch = await prisma.branch.create({
-      data: { name: 'Auth Branch', organizationId: org.id },
-    });
+    ({ app, prisma } = await createTestApp());
+    tenant = await createTenant(app, prisma, 'AuthClinic', { roles: ['Organization Owner', 'Receptionist'] });
   });
 
   afterAll(async () => {
-    try {
-      const tablenames =
-        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames
-        .map(({ tablename }) => tablename)
-        .filter((name) => name !== '_prisma_migrations')
-        .map((name) => `"public"."${name}"`)
-        .join(', ');
-      if (tables.length > 0) {
-        await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
-      }
-    } catch (e) {
-      console.error(e);
-    }
     await app.close();
   });
 
-  describe('POST /api/v1/auth/register', () => {
-    it('should register a new clinic and owner', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
-        .send({
-          email: testEmail,
-          password: testPassword,
-          firstName: 'Auth',
-          lastName: 'Tester',
-          clinicName: 'Auth Test Clinic',
-          clinicSlug: `auth-clinic-${Date.now()}`,
-          phone: '1234567890',
-        });
+  describe('register', () => {
+    const base = () => ({
+      email: `${uniq('owner')}@example.test`,
+      password: 'Strong-Pass-1',
+      firstName: 'Riya',
+      lastName: 'Shah',
+      clinicName: 'Riya Clinic',
+      clinicSlug: uniq('riya'),
+    });
 
-      if (res.status !== 201) {
-        console.error('Register failed:', res.status, JSON.stringify(res.body));
+    it('creates organization, branch and owner, then allows login with owner permissions', async () => {
+      const payload = base();
+      const res = await http().post('/api/v1/auth/register').send(payload);
+      expect(res.status).toBe(201);
+      expect(res.body.data.organizationId).toBeDefined();
+      expect(res.body.data.branchId).toBeDefined();
+
+      const session = await login(app, payload.email, payload.password);
+      expect(session.user.roles).toEqual(['Organization Owner']);
+      expect(session.user.permissions).toEqual(expect.arrayContaining(['patients.view', 'invoices.create', 'users.invite']));
+      expect(session.user).not.toHaveProperty('passwordHash');
+
+      const roles = await prisma.role.count({ where: { organizationId: res.body.data.organizationId } });
+      expect(roles).toBeGreaterThanOrEqual(7);
+    });
+
+    it('rejects weak passwords with 400 and a validation list', async () => {
+      const res = await http().post('/api/v1/auth/register').send({ ...base(), password: 'weakpass' });
+      expect(res.status).toBe(400);
+      expect(res.body.errors.join(' ')).toMatch(/Password must/);
+    });
+
+    it('rejects invalid slugs', async () => {
+      const res = await http().post('/api/v1/auth/register').send({ ...base(), clinicSlug: 'Bad Slug!' });
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 409 for a duplicate e-mail (case-insensitive) and for a duplicate slug', async () => {
+      const payload = base();
+      expect((await http().post('/api/v1/auth/register').send(payload)).status).toBe(201);
+      const dupEmail = await http().post('/api/v1/auth/register').send({ ...payload, email: payload.email.toUpperCase(), clinicSlug: uniq('other') });
+      expect(dupEmail.status).toBe(409);
+      const dupSlug = await http().post('/api/v1/auth/register').send({ ...payload, email: `${uniq('x')}@example.test` });
+      expect(dupSlug.status).toBe(409);
+    });
+  });
+
+  describe('login', () => {
+    it('returns tokens and a scrubbed user for valid credentials', async () => {
+      const res = await http().post('/api/v1/auth/login').send({ email: tenant.owner.email, password: TEST_PASSWORD });
+      expect(res.status).toBe(200);
+      expect(res.body.data.accessToken).toEqual(expect.any(String));
+      expect(res.body.data.refreshToken).toEqual(expect.any(String));
+      expect(res.body.data.sessionId).toEqual(expect.any(String));
+      expect(res.body.data.user.email).toBe(tenant.owner.email);
+      expect(JSON.stringify(res.body)).not.toMatch(/passwordHash|refreshTokenHash/);
+    });
+
+    it('returns 401 for a wrong password and records the failed attempt', async () => {
+      const res = await http().post('/api/v1/auth/login').send({ email: tenant.receptionist.email, password: 'Wrong-Pass-1' });
+      expect(res.status).toBe(401);
+      expect(res.body.message).toBe('Invalid credentials');
+      const attempts = await prisma.loginAttempt.count({ where: { email: tenant.receptionist.email, status: 'FAILED' } });
+      expect(attempts).toBeGreaterThanOrEqual(1);
+    });
+
+    it('returns 401 for an unknown e-mail without revealing whether it exists', async () => {
+      const res = await http().post('/api/v1/auth/login').send({ email: 'nobody@example.test', password: 'Whatever-1' });
+      expect(res.status).toBe(401);
+      expect(res.body.message).toBe('Invalid credentials');
+    });
+
+    it('returns 400 for a malformed body', async () => {
+      const res = await http().post('/api/v1/auth/login').send({ email: 'not-an-email', password: '' });
+      expect(res.status).toBe(400);
+    });
+
+    it('locks the account after too many failed attempts (429)', async () => {
+      const email = `${uniq('lock')}@example.test`;
+      const user = await prisma.user.create({
+        data: { email, passwordHash: 'x', firstName: 'L', lastName: 'U', organizationId: tenant.org.id, branchId: tenant.branch.id },
+      });
+      for (let i = 0; i < 5; i++) {
+        const r = await http().post('/api/v1/auth/login').send({ email, password: 'Wrong-Pass-1' });
+        expect(r.status).toBe(401);
       }
-      expect(res.status).toBeDefined();
-      const body = res.body.data || res.body;
-      expect(body.organizationId || body.message).toBeDefined();
-      createdUserId = body.userId;
-    });
-
-    it('should reject duplicate email registration', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
-        .send({
-          email: testEmail,
-          password: testPassword,
-          firstName: 'Auth',
-          lastName: 'Tester',
-          clinicName: 'Another Clinic',
-          clinicSlug: `another-clinic-${Date.now()}`,
-          phone: '1234567890',
-        });
-
-      expect(res.status).toBeDefined();
-    });
-
-    it('should reject registration with missing required fields', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
-        .send({ email: 'incomplete@test.com' });
-      expect(res.status).toBeDefined();
+      const locked = await http().post('/api/v1/auth/login').send({ email, password: TEST_PASSWORD });
+      expect(locked.status).toBe(429);
+      await prisma.user.delete({ where: { id: user.id } });
     });
   });
 
-  describe('POST /api/v1/auth/login', () => {
-    it('should login with valid credentials and return tokens', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/login')
-        .send({ email: testEmail, password: testPassword });
-
-      expect(res.status).toBeDefined();
-      const body = res.body.data || res.body;
-      expect(body.accessToken).toBeDefined();
-      expect(body.refreshToken).toBeDefined();
-      expect(body.sessionId).toBeDefined();
-      expect(body.user).toBeDefined();
-
-      accessToken = body.accessToken;
-      refreshToken = body.refreshToken;
-      sessionId = body.sessionId;
+  describe('tokens and sessions', () => {
+    it('rejects requests without a token, with a malformed token and with an expired token', async () => {
+      expect((await http().get('/api/v1/auth/profile')).status).toBe(401);
+      expect((await http().get('/api/v1/auth/profile').set('Authorization', 'Bearer not.a.jwt')).status).toBe(401);
+      const jwt = app.get(JwtService);
+      const expired = jwt.sign({ sub: tenant.owner.id, email: tenant.owner.email }, { expiresIn: -10 });
+      expect((await http().get('/api/v1/auth/profile').set('Authorization', `Bearer ${expired}`)).status).toBe(401);
     });
 
-    it('should reject invalid password', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/login')
-        .send({ email: testEmail, password: 'WrongPassword!' });
-      expect(res.status).toBeDefined();
+    it('rejects a token signed with a different secret', async () => {
+      const forged = new JwtService({ secret: 'super-secret' }).sign({ sub: tenant.owner.id, email: tenant.owner.email, permissions: ['*'] });
+      expect((await http().get('/api/v1/patients').set('Authorization', `Bearer ${forged}`)).status).toBe(401);
     });
 
-    it('should reject non-existent email', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/login')
-        .send({ email: 'nonexistent@test.com', password: testPassword });
-      expect(res.status).toBeDefined();
+    it('ignores roles/permissions claims carried in a token and derives them from the database', async () => {
+      const jwt = app.get(JwtService);
+      const elevated = jwt.sign({ sub: tenant.receptionist.id, email: tenant.receptionist.email, roles: ['Organization Owner'], permissions: ['*', 'users.invite'] });
+      const profile = await http().get('/api/v1/auth/profile').set('Authorization', `Bearer ${elevated}`);
+      expect(profile.status).toBe(200);
+      expect(profile.body.data.roles).toEqual(['Receptionist']);
+      expect(profile.body.data.permissions).not.toContain('*');
+      const invite = await http().post('/api/v1/staff-invitations/invite').set('Authorization', `Bearer ${elevated}`).send({ email: 'a@b.test', roleId: '00000000-0000-4000-8000-000000000000' });
+      expect(invite.status).toBe(403);
     });
 
-    it('should reject empty credentials', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/login')
-        .send({});
-      expect(res.status).toBeDefined();
+    it('refreshes with rotation, rejects the old refresh token and revokes the session on reuse', async () => {
+      const s = await login(app, tenant.owner.email);
+      const r1 = await http().post('/api/v1/auth/refresh').send({ refreshToken: s.refreshToken, sessionId: s.sessionId });
+      expect(r1.status).toBe(200);
+      expect(r1.body.data.refreshToken).not.toBe(s.refreshToken);
+      const reuse = await http().post('/api/v1/auth/refresh').send({ refreshToken: s.refreshToken, sessionId: s.sessionId });
+      expect(reuse.status).toBe(401);
+      const afterReuse = await http().post('/api/v1/auth/refresh').send({ refreshToken: r1.body.data.refreshToken, sessionId: s.sessionId });
+      expect(afterReuse.status).toBe(401);
+      const session = await prisma.userSession.findUnique({ where: { id: s.sessionId } });
+      expect(session?.status).toBe('INACTIVE');
     });
 
-    it('should record failed login attempts', async () => {
-      await request(app.getHttpServer())
-        .post('/api/v1/auth/login')
-        .send({ email: testEmail, password: 'wrong' });
-
-      const attempts = await prisma.loginAttempt.findMany({
-        where: { email: testEmail, status: 'FAILED' },
-      });
-      expect(attempts.length).toBeGreaterThanOrEqual(1);
+    it('rejects refresh for an expired session', async () => {
+      const s = await login(app, tenant.owner.email);
+      await prisma.userSession.update({ where: { id: s.sessionId }, data: { expiresAt: new Date(Date.now() - 1000) } });
+      const res = await http().post('/api/v1/auth/refresh').send({ refreshToken: s.refreshToken, sessionId: s.sessionId });
+      expect(res.status).toBe(401);
     });
 
-    it('should record successful login attempts', async () => {
-      const attempts = await prisma.loginAttempt.findMany({
-        where: { email: testEmail, status: 'SUCCESS' },
-      });
-      expect(attempts.length).toBeGreaterThanOrEqual(1);
-    });
-  });
-
-  describe('POST /api/v1/auth/refresh', () => {
-    it('should refresh access token with valid refresh token', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/refresh')
-        .send({ refreshToken, sessionId });
-
-      expect(res.status).toBeDefined();
-      const body = res.body.data || res.body;
-      expect(body.accessToken).toBeDefined();
-      expect(body.refreshToken).toBeDefined();
-      expect(body.refreshToken).not.toBe(refreshToken);
-
-      refreshToken = body.refreshToken;
-      accessToken = body.accessToken;
+    it('logout ends only the caller\'s own session', async () => {
+      const a = await login(app, tenant.owner.email);
+      const b = await login(app, tenant.receptionist.email);
+      const foreign = await http().post('/api/v1/auth/logout').set('Authorization', `Bearer ${b.accessToken}`).send({ sessionId: a.sessionId });
+      expect(foreign.status).toBe(401);
+      expect((await prisma.userSession.findUnique({ where: { id: a.sessionId } }))?.status).toBe('ACTIVE');
+      const own = await http().post('/api/v1/auth/logout').set('Authorization', `Bearer ${a.accessToken}`).send({ sessionId: a.sessionId });
+      expect(own.status).toBe(200);
+      expect((await prisma.userSession.findUnique({ where: { id: a.sessionId } }))?.status).toBe('INACTIVE');
+      const refresh = await http().post('/api/v1/auth/refresh').send({ refreshToken: a.refreshToken, sessionId: a.sessionId });
+      expect(refresh.status).toBe(401);
     });
 
-    it('should reject refresh with invalid session', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/refresh')
-        .send({ refreshToken: 'invalid-token', sessionId: 'fake-session' });
-      expect(res.status).toBeDefined();
-    });
-
-    it('should reject refresh with empty body', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/refresh')
-        .send({});
-      expect(res.status).toBeDefined();
-    });
-
-    it('should rotate refresh token on each refresh', async () => {
-      const res1 = await request(app.getHttpServer())
-        .post('/api/v1/auth/refresh')
-        .send({ refreshToken, sessionId });
-
-      expect(res1.status).toBe(201);
-      const token1 = res1.body.data?.refreshToken || res1.body.refreshToken;
-
-      const res2 = await request(app.getHttpServer())
-        .post('/api/v1/auth/refresh')
-        .send({ refreshToken: token1, sessionId });
-
-      expect(res2.status).toBe(201);
-      const token2 = res2.body.data?.refreshToken || res2.body.refreshToken;
-      expect(token2).not.toBe(token1);
-
-      refreshToken = token2;
-      accessToken = res2.body.data?.accessToken || res2.body.accessToken;
+    it('lists active sessions and logout-all ends them', async () => {
+      const s = await login(app, tenant.receptionist.email);
+      const list = await http().get('/api/v1/auth/sessions').set('Authorization', `Bearer ${s.accessToken}`);
+      expect(list.status).toBe(200);
+      expect(list.body.data.length).toBeGreaterThanOrEqual(1);
+      const all = await http().post('/api/v1/auth/logout-all').set('Authorization', `Bearer ${s.accessToken}`);
+      expect(all.status).toBe(200);
+      const active = await prisma.userSession.count({ where: { userId: tenant.receptionist.id, status: 'ACTIVE' } });
+      expect(active).toBe(0);
     });
   });
 
-  describe('GET /api/v1/auth/profile', () => {
-    it('should return user profile with valid token', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/auth/profile')
-        .set('Authorization', `Bearer ${accessToken}`);
-
-      expect(res.status).toBeDefined();
-      const body = res.body.data || res.body;
-      expect(body.email).toBe(testEmail);
+  describe('password management', () => {
+    it('changes the password with the correct current password and revokes other sessions', async () => {
+      const email = `${uniq('pw')}@example.test`;
+      await prisma.user.create({ data: { email, passwordHash: await hash(TEST_PASSWORD, 4), firstName: 'P', lastName: 'W', organizationId: tenant.org.id, branchId: tenant.branch.id } });
+      const s1 = await login(app, email);
+      const s2 = await login(app, email);
+      const wrong = await http().post('/api/v1/auth/change-password').set('Authorization', `Bearer ${s1.accessToken}`).send({ currentPassword: 'Nope-123', newPassword: 'Another-Pass-1' });
+      expect(wrong.status).toBe(401);
+      const weak = await http().post('/api/v1/auth/change-password').set('Authorization', `Bearer ${s1.accessToken}`).send({ currentPassword: TEST_PASSWORD, newPassword: 'short' });
+      expect(weak.status).toBe(400);
+      const ok = await http().post('/api/v1/auth/change-password').set('Authorization', `Bearer ${s1.accessToken}`).send({ currentPassword: TEST_PASSWORD, newPassword: 'Another-Pass-1' });
+      expect(ok.status).toBe(200);
+      expect((await prisma.userSession.findUnique({ where: { id: s2.sessionId } }))?.status).toBe('INACTIVE');
+      expect((await prisma.userSession.findUnique({ where: { id: s1.sessionId } }))?.status).toBe('ACTIVE');
+      expect((await http().post('/api/v1/auth/login').send({ email, password: TEST_PASSWORD })).status).toBe(401);
+      expect((await http().post('/api/v1/auth/login').send({ email, password: 'Another-Pass-1' })).status).toBe(200);
     });
 
-    it('should reject request without token', async () => {
-      const res = await request(app.getHttpServer()).get(
-        '/api/v1/auth/profile',
-      );
-      expect(res.status).toBeDefined();
-    });
+    it('forgot/reset flow issues a single-use, expiring token and never reveals account existence', async () => {
+      const email = `${uniq('reset')}@example.test`;
+      const user = await prisma.user.create({ data: { email, passwordHash: await hash(TEST_PASSWORD, 4), firstName: 'R', lastName: 'S', organizationId: tenant.org.id, branchId: tenant.branch.id } });
+      const unknown = await http().post('/api/v1/auth/forgot-password').send({ email: 'ghost@example.test' });
+      // The raw token only travels in the e-mailed link; capture it from the mail service.
+      const mail = app.get(MailService);
+      const sendSpy = jest.spyOn(mail, 'send');
+      const known = await http().post('/api/v1/auth/forgot-password').send({ email });
+      expect(unknown.status).toBe(200);
+      expect(known.status).toBe(200);
+      expect(unknown.body.data.message).toBe(known.body.data.message);
+      const reset = await prisma.passwordReset.findFirst({ where: { userId: user.id }, orderBy: { createdAt: 'desc' } });
+      expect(reset).toBeTruthy();
+      const mailed = sendSpy.mock.calls.map((c) => c[0]).find((m) => m.to === email);
+      sendSpy.mockRestore();
+      const rawToken = /token=([0-9a-f]{64})/.exec(mailed?.text ?? '')?.[1];
+      expect(rawToken).toBeDefined();
+      // Only a hash is stored, and nothing token-like is echoed to the caller.
+      expect(reset!.token).not.toBe(rawToken);
+      expect(JSON.stringify(known.body)).not.toContain(rawToken!);
 
-    it('should reject request with invalid token', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/auth/profile')
-        .set('Authorization', 'Bearer invalid-token-here');
-      expect(res.status).toBeDefined();
-    });
-
-    it('should reject tampered JWT token', async () => {
-      const tampered = accessToken.slice(0, -10) + 'a1b2c3d4e5';
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/auth/profile')
-        .set('Authorization', `Bearer ${tampered}`);
-      expect(res.status).toBeDefined();
-    });
-
-    it('should reject expired JWT token', async () => {
-      const expiredToken = jwtService.sign(
-        { sub: createdUserId, email: testEmail },
-        { expiresIn: '0s' },
-      );
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/auth/profile')
-        .set('Authorization', `Bearer ${expiredToken}`);
-      expect(res.status).toBeDefined();
-    });
-  });
-
-  describe('POST /api/v1/auth/logout', () => {
-    it('should logout and invalidate session', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/logout')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .send({ sessionId });
-
-      expect(res.status).toBeDefined();
-    });
-
-    it('should reject refresh after logout (revoked session)', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/refresh')
-        .send({ refreshToken, sessionId });
-      expect(res.status).toBeDefined();
+      const bad = await http().post('/api/v1/auth/reset-password').send({ token: 'deadbeef', newPassword: 'Reset-Pass-1' });
+      expect(bad.status).toBe(400);
+      const ok = await http().post('/api/v1/auth/reset-password').send({ token: rawToken, newPassword: 'Reset-Pass-1' });
+      expect(ok.status).toBe(200);
+      const again = await http().post('/api/v1/auth/reset-password').send({ token: rawToken, newPassword: 'Reset-Pass-2' });
+      expect(again.status).toBe(400);
+      expect((await http().post('/api/v1/auth/login').send({ email, password: 'Reset-Pass-1' })).status).toBe(200);
     });
   });
 
-  describe('Password Hashing Verification', () => {
-    it('should store password as bcrypt hash, not plaintext', async () => {
-      const user = await prisma.user.findUniqueOrThrow({
-        where: { id: createdUserId },
-      });
-      expect(user?.passwordHash).toBeDefined();
-      expect(user?.passwordHash).not.toBe(testPassword);
-      expect(user?.passwordHash).toMatch(/^\$2[aby]\$\d+\$/);
-    });
-  });
-
-  describe('Concurrent Sessions', () => {
-    let session2Id: string;
-    let token2: string;
-
-    it('should allow multiple active sessions for same user', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/login')
-        .send({ email: testEmail, password: testPassword });
-
-      expect(res.status).toBeDefined();
-      const body = res.body.data || res.body;
-      session2Id = body.sessionId;
-      token2 = body.accessToken;
-
-      const sessions = await prisma.userSession.findMany({
-        where: { userId: createdUserId, status: 'ACTIVE' },
-      });
-      expect(sessions.length).toBeGreaterThanOrEqual(1);
+  describe('security headers and error envelope', () => {
+    it('sets helmet security headers', async () => {
+      const res = await http().get('/health');
+      expect(res.headers['x-content-type-options']).toBe('nosniff');
+      expect(res.headers['x-frame-options']).toBeDefined();
+      expect(res.headers['x-powered-by']).toBeUndefined();
     });
 
-    it('should allow logout of single session without affecting others', async () => {
-      await request(app.getHttpServer())
-        .post('/api/v1/auth/logout')
-        .set('Authorization', `Bearer ${token2}`)
-        .send({ sessionId: session2Id });
-
-      const sessions = await prisma.userSession.findMany({
-        where: { userId: createdUserId, status: 'ACTIVE' },
-      });
-      expect(sessions.length).toBe(0);
-    });
-  });
-
-  describe('JWT Token Structure', () => {
-    it('should contain standard JWT claims', async () => {
-      const decoded: any = jwtService.decode(accessToken);
-      expect(decoded).toBeDefined();
-      expect(decoded.sub).toBe(createdUserId);
-      expect(decoded.email).toBe(testEmail);
-      expect(decoded.iat).toBeDefined();
-      expect(decoded.exp).toBeDefined();
-    });
-
-    it('should include org/branch context in JWT', async () => {
-      const decoded: any = jwtService.decode(accessToken);
-      expect(decoded.organizationId).toBeDefined();
-      expect(decoded.roles).toBeDefined();
+    it('returns a uniform error envelope without stack traces', async () => {
+      const res = await http().get('/api/v1/patients/not-a-uuid').set('Authorization', `Bearer ${tenant.owner.token}`);
+      expect([400, 404]).toContain(res.status);
+      expect(res.body).toEqual(expect.objectContaining({ statusCode: res.status, message: expect.any(String), path: expect.any(String) }));
+      expect(JSON.stringify(res.body)).not.toMatch(/at .*\.ts:\d+/);
     });
   });
 });

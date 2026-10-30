@@ -1,114 +1,101 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Param,
-  Patch,
+  Controller,
   Delete,
-  UseGuards,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
   Request,
-  UseInterceptors,
+  Res,
   UploadedFile,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { DocumentsService } from './documents.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { FileValidationPipe } from '../common/pipes/file-validation.pipe';
-import { MalwareScannerService } from '../security/malware-scanner.service';
+import { FileValidationPipe, maxUploadBytes } from '../common/pipes/file-validation.pipe';
+import { DownloadQueryDto, ListDocumentsQueryDto, UpdateDocumentDto, UploadDocumentDto } from './dto/document.dto';
+
+const meta = (req: any) => ({ ip: req.ip, userAgent: req.get?.('user-agent') });
 
 @Controller('api/v1/documents')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class DocumentsController {
-  constructor(
-    private readonly documentsService: DocumentsService,
-    private readonly malwareScannerService: MalwareScannerService,
-  ) {}
+  constructor(private readonly documentsService: DocumentsService) {}
 
+  /**
+   * multipart/form-data: file + patientId, documentType, title[, consultationId, reportDate].
+   * The response contains only the new document (uploaders may lack documents.view).
+   */
   @Post('upload')
-  @Permissions('documents:create')
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadFile(
+  @Permissions('documents.upload')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      // Hard cap at the parser (+1 byte so the pipe can report the configured limit).
+      limits: { fileSize: maxUploadBytes() + 1, files: 1 },
+    }),
+  )
+  upload(
     @UploadedFile(FileValidationPipe) file: Express.Multer.File,
-    @Body() body: { patientId: string; documentType: string; title: string },
+    @Body() dto: UploadDocumentDto,
     @Request() req,
   ) {
-    // Malware scanning hook
-    await this.malwareScannerService.scanAndValidate(file);
-
-    // In a real implementation, upload to Cloudflare R2 / S3
-    // For now, simulate storage and record in DB
-    const fileUrl = `https://storage.clinicos.com/${req.user.organizationId}/${file.originalname}`;
-
-    return this.documentsService.create(
-      {
-        patientId: body.patientId,
-        organizationId: req.user.organizationId,
-        branchId: req.user.branchId,
-        uploadedBy: req.user.id,
-        title: body.title,
-        documentType: body.documentType,
-        fileUrl,
-        mimeType: file.mimetype,
-        fileSize: file.size,
-      },
-      req.user.organizationId,
-      req.user.branchId,
-      req.user.id,
-    );
-  }
-
-  @Post()
-  @Permissions('documents:create')
-  create(@Body() data: any, @Request() req) {
-    return this.documentsService.create(
-      data,
-      req.user.organizationId,
-      req.user.branchId,
-      req.user.id,
-    );
+    return this.documentsService.upload(file, dto, req.user, meta(req));
   }
 
   @Get()
-  @Permissions('documents:read')
-  findAll(@Request() req) {
-    return this.documentsService.findAll(
-      req.user.organizationId,
-      req.user.branchId,
-    );
+  @Permissions('documents.view')
+  findAll(@Query() query: ListDocumentsQueryDto, @Request() req) {
+    return this.documentsService.findAll(req.user, query);
+  }
+
+  /** Authenticated streaming download; every access is audit-logged. */
+  @Get(':id/download')
+  @Permissions('documents.view')
+  async download(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() q: DownloadQueryDto,
+    @Request() req,
+    @Res() res: Response,
+  ) {
+    const disposition = q.disposition ?? 'attachment';
+    const file = await this.documentsService.openForDownload(id, req.user, disposition, meta(req));
+    const asciiName = file.filename.replace(/[^\x20-\x7e]/g, '_').replace(/"/g, '');
+    res.set({
+      'Content-Type': file.mimeType,
+      'Content-Disposition': `${disposition}; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(file.filename)}`,
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+      ...(file.fileSize ? { 'Content-Length': String(file.fileSize) } : {}),
+      ...(file.checksum ? { 'X-Checksum-SHA256': file.checksum } : {}),
+    });
+    file.stream.on('error', () => res.destroy());
+    file.stream.pipe(res);
   }
 
   @Get(':id')
-  @Permissions('documents:read')
-  findOne(@Param('id') id: string, @Request() req) {
-    return this.documentsService.findOne(
-      id,
-      req.user.organizationId,
-      req.user.branchId,
-    );
+  @Permissions('documents.view')
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.documentsService.findOne(id, req.user);
   }
 
   @Patch(':id')
-  @Permissions('documents:update')
-  update(@Param('id') id: string, @Body() data: any, @Request() req) {
-    return this.documentsService.update(
-      id,
-      data,
-      req.user.organizationId,
-      req.user.branchId,
-    );
+  @Permissions('documents.update')
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateDocumentDto, @Request() req) {
+    return this.documentsService.update(id, dto, req.user);
   }
 
   @Delete(':id')
-  @Permissions('documents:delete')
-  remove(@Param('id') id: string, @Request() req) {
-    return this.documentsService.remove(
-      id,
-      req.user.organizationId,
-      req.user.branchId,
-    );
+  @Permissions('documents.delete')
+  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.documentsService.remove(id, req.user);
   }
 }
