@@ -383,6 +383,18 @@ async function main() {
     },
   });
 
+  // Enable the self-service portal for one demo patient so the patient side is demoable.
+  const portalPhone = '9800000001';
+  await prisma.patient.update({
+    where: { id: mainPatients[0].id },
+    data: {
+      phone: portalPhone,
+      email: 'demo.patient@sunrise.demo',
+      portalEnabled: true,
+      portalPasswordHash: await bcrypt.hash(PASSWORD, 10),
+    },
+  });
+
   const logins = [
     ['Owner (also Doctor)', owner.email],
     ['Clinic Admin', admin.email],
@@ -392,8 +404,11 @@ async function main() {
     ['Nurse', nurse.email],
     ['Accountant', accountant.email],
   ];
-  console.log('\nDemo tenant ready. Logins (password: ' + (process.env.SEED_PASSWORD ? '$SEED_PASSWORD' : PASSWORD) + '):');
+  const pwLabel = process.env.SEED_PASSWORD ? '$SEED_PASSWORD' : PASSWORD;
+  console.log('\nDemo tenant ready. Staff logins at /auth/login (password: ' + pwLabel + '):');
   for (const [role, email] of logins) console.log(`  ${role.padEnd(24)} ${email}`);
+  console.log('\nPatient portal at /portal/login:');
+  console.log(`  Clinic code: ${DEMO_SLUG}   Phone: ${portalPhone}   Password: ${pwLabel}`);
 }
 
 main()

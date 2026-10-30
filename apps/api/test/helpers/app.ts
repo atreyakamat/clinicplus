@@ -100,11 +100,29 @@ export async function createTenant(
   app: INestApplication,
   prisma: PrismaService,
   name = 'Clinic',
-  opts: { roles?: RoleName[]; branchTimezone?: string } = {},
+  opts: {
+    roles?: RoleName[];
+    branchTimezone?: string;
+    // Subscription controls. Default ENTERPRISE/ACTIVE so plan limits (branches/
+    // staff) never accidentally fire for unrelated suites — a fresh tenant
+    // already has one user per role (7) plus a branch. Subscription tests pass
+    // `plan: 'STARTER'` etc. explicitly, or mutate the org via prisma afterwards.
+    plan?: 'STARTER' | 'GROWTH' | 'ENTERPRISE';
+    subscriptionStatus?: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED';
+    trialEndsAt?: Date | null;
+    currentPeriodEnd?: Date | null;
+  } = {},
 ): Promise<Tenant> {
   const slug = uniq(name.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
   const org = await prisma.organization.create({
-    data: { name: `${name} ${slug}`, slug, subscriptionPlan: 'STARTER', subscriptionStatus: 'ACTIVE' },
+    data: {
+      name: `${name} ${slug}`,
+      slug,
+      subscriptionPlan: opts.plan ?? 'ENTERPRISE',
+      subscriptionStatus: opts.subscriptionStatus ?? 'ACTIVE',
+      ...(opts.trialEndsAt !== undefined ? { trialEndsAt: opts.trialEndsAt } : {}),
+      ...(opts.currentPeriodEnd !== undefined ? { currentPeriodEnd: opts.currentPeriodEnd } : {}),
+    },
   });
   const branch = await prisma.branch.create({
     data: { name: 'Main Branch', organizationId: org.id, timezone: opts.branchTimezone ?? 'Asia/Kolkata', city: 'Pune', country: 'India' },

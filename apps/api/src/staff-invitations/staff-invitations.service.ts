@@ -14,6 +14,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TenantAssertService } from '../common/tenant/tenant-assert.service';
 import { MailService } from '../common/mail/mail.service';
 import { AuditService } from '../common/services/audit.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 import { AuthService, AuthContext } from '../auth/auth.service';
 import { SmsService } from '../messages/sms.service';
 import { Actor, SUPER_ADMIN_ROLE, assertCanGrant, rolePermissionKeys } from '../auth/access-policy';
@@ -42,6 +43,8 @@ export class StaffInvitationsService {
     private auth: AuthService,
     private config: ConfigService,
     private moduleRef: ModuleRef,
+    // Injectable because SubscriptionModule is @Global.
+    private subscriptions: SubscriptionService,
   ) {}
 
   private inviteUrl(rawToken: string) {
@@ -75,6 +78,10 @@ export class StaffInvitationsService {
 
   async create(data: InviteStaffDto, actor: Actor) {
     const organizationId = actor.organizationId;
+    // Plan enforcement: don't send an invite the clinic's plan can't seat.
+    // (Staff are created when the invite is accepted; gating at invite time
+    // fails fast and avoids dangling invitations above the plan limit.)
+    await this.subscriptions.assertCanAdd(organizationId, 'staff');
     const email = data.email.trim().toLowerCase();
     const existingUser = await this.prisma.user.findFirst({
       where: { email: { equals: email, mode: 'insensitive' } },

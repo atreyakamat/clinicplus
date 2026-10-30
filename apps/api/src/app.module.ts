@@ -40,6 +40,8 @@ import { TenantModule } from './common/tenant/tenant.module';
 import { MailModule } from './common/mail/mail.module';
 import { StaffInvitationsModule } from './staff-invitations/staff-invitations.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
+import { SubscriptionModule } from './subscription/subscription.module';
+import { PortalModule } from './portal/portal.module';
 import { DoctorsModule } from './doctors/doctors.module';
 import { ClinicSettingsModule } from './clinic-settings/clinic-settings.module';
 import { ClinicalModule } from './clinical/clinical.module';
@@ -98,6 +100,8 @@ import { ReportsModule } from './reports/reports.module';
     ReviewsModule,
     CampaignsModule,
     ReportsModule,
+    SubscriptionModule,
+    PortalModule,
   ],
   controllers: [AppController],
   providers: [

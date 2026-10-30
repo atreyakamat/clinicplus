@@ -83,10 +83,15 @@ describe('API contract (e2e)', () => {
     });
 
     it('strips unknown fields (whitelist)', async () => {
-      const res = await http().patch('/api/v1/organizations/current').set(auth(t.owner)).send({ footerText: 'ok', subscriptionPlan: 'ENTERPRISE' });
+      // The whitelist must strip subscriptionPlan: you cannot change your plan via
+      // the org profile endpoint (that is subscription.manage only). Assert against
+      // the pre-PATCH value so this holds regardless of the harness default plan.
+      const before = await prisma.organization.findUniqueOrThrow({ where: { id: t.org.id } });
+      const target = before.subscriptionPlan === 'STARTER' ? 'ENTERPRISE' : 'STARTER';
+      const res = await http().patch('/api/v1/organizations/current').set(auth(t.owner)).send({ footerText: 'ok', subscriptionPlan: target });
       expect(res.status).toBe(200);
       const org = await prisma.organization.findUniqueOrThrow({ where: { id: t.org.id } });
-      expect(org.subscriptionPlan).toBe('STARTER');
+      expect(org.subscriptionPlan).toBe(before.subscriptionPlan);
     });
   });
 

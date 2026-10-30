@@ -7,5 +7,6 @@
   "setupFiles": ["<rootDir>/helpers/env.ts"],
   "transform": {
     "^.+\\.(t|j)s$": ["ts-jest", { "isolatedModules": true }]
-  }
+  },
+  "transformIgnorePatterns": ["/node_modules/\\.pnpm/(?!(otplib|@otplib\\+|@scure\\+|@noble\\+))"]
 }

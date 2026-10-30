@@ -5,11 +5,24 @@ import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 import { UsersService } from '../../users/users.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { SubscriptionService } from '../../subscription/subscription.service';
 import { extractPermissionNames, extractRoleNames, normalizeRoleName } from '../access.utils';
 import { ORG_WIDE_ROLE_NAMES } from '../default-access';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ORG_WIDE = new Set(ORG_WIDE_ROLE_NAMES.map(normalizeRoleName));
+
+// Routes that must keep working while a clinic's subscription is suspended, so
+// staff can still sign in, see the billing screen and reactivate. Matched as a
+// prefix against the path after /api/v1.
+const SUBSCRIPTION_SAFELIST = [
+  '/auth/',
+  '/subscription',
+  '/organizations/current',
+  '/health',
+  '/feedback',
+  '/platform',
+];
 
 export interface AuthenticatedUser {
   id: string;
@@ -34,6 +47,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     configService: ConfigService,
     private usersService: UsersService,
     private prisma: PrismaService,
+    private subscriptions: SubscriptionService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -63,6 +77,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
     const roles = extractRoleNames(user.roles);
     const orgWide = roles.some((r) => ORG_WIDE.has(normalizeRoleName(r)));
+
+    // Subscription gate: a suspended clinic keeps only the safelisted routes
+    // (sign-in, billing, org settings, health) so it can reactivate.
+    const path = req.path?.replace(/^\/api\/v1/, '') ?? '';
+    if (!SUBSCRIPTION_SAFELIST.some((prefix) => path.startsWith(prefix))) {
+      const enforcement = await this.subscriptions.getEnforcement(user.organizationId);
+      if (!enforcement.active) {
+        throw new ForbiddenException({
+          message: enforcement.reason || 'This clinic subscription is inactive',
+          error: 'SUBSCRIPTION_INACTIVE',
+          statusCode: 403,
+        });
+      }
+    }
 
     let branchId = user.branchId;
     const requested = req.headers['x-branch-id'];

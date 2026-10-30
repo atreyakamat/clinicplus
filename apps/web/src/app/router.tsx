@@ -52,6 +52,8 @@ import { ResetPasswordPage } from '../pages/auth/ResetPasswordPage';
 import { AcceptInvitePage } from '../pages/auth/AcceptInvitePage';
 import { ReviewSubmitPage } from '../pages/public/ReviewSubmitPage';
 import { PaymentResultPage } from '../pages/public/PaymentResultPage';
+import { PatientPortal } from '../pages/portal';
+import { SubscriptionSettings } from '../pages/settings/SubscriptionSettings';
 
 export const router = createBrowserRouter([
   {
@@ -64,6 +66,7 @@ export const router = createBrowserRouter([
   { path: '/invite/:token', element: <AcceptInvitePage /> },
   { path: '/r/:token', element: <ReviewSubmitPage /> },
   { path: '/pay/result', element: <PaymentResultPage /> },
+  { path: '/portal/*', element: <PatientPortal /> },
   {
     path: '/onboarding',
     element: <ProtectedRoute><OnboardingWizard /></ProtectedRoute>,
@@ -102,6 +105,7 @@ export const router = createBrowserRouter([
       { path: 'doctors', element: <DoctorsPage /> },
       { path: 'doctors/:id', element: <DoctorProfilePage /> },
       { path: 'tasks/*', element: <TasksPage /> },
+      { path: 'settings/subscription', element: <SubscriptionSettings /> },
       { path: 'settings/branding', element: <BrandingSettings /> },
       { path: 'settings/staff', element: <StaffManagement /> },
       { path: 'settings/branches', element: <BranchesSettings /> },

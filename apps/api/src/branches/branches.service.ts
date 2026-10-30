@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/services/audit.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 import { assertUuid } from '../common/validation/uuid';
 import { isValidTimezone } from '../clinic-settings/timezone';
 import type { ReqUser } from '../clinic-settings/request-user';
@@ -25,6 +26,8 @@ export class BranchesService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly config: ConfigService,
+    // Injectable because SubscriptionModule is @Global.
+    private readonly subscriptions: SubscriptionService,
   ) {}
 
   private withCounts = {
@@ -59,6 +62,8 @@ export class BranchesService {
 
   async create(user: ReqUser, dto: CreateBranchDto) {
     if (!user.orgWide) throw new ForbiddenException('Only organization-wide administrators can create branches');
+    // Plan enforcement: block a new branch once the clinic's plan limit is hit.
+    await this.subscriptions.assertCanAdd(user.organizationId, 'branch');
     await this.assertUniqueName(user.organizationId, dto.name);
     const branch = await this.prisma.branch.create({
       data: {

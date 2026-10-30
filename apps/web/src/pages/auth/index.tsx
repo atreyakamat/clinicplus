@@ -39,12 +39,21 @@ const registerSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
+/** Shape of POST /auth/login when the account has 2FA: tokens are withheld until /auth/2fa/verify. */
+type LoginResponse = AuthSession & { twoFactorRequired?: boolean; challengeToken?: string };
+
 export const AuthPage = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const setSession = useAuthStore((state) => state.setSession);
   const [serverError, setServerError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(params.get('mode') === 'register' ? 'register' : 'login');
+
+  // Second-factor challenge step shown after a correct password on a 2FA account.
+  const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [useRecovery, setUseRecovery] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   const loginForm = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
   const registerForm = useForm<RegisterFormValues>({
@@ -58,13 +67,42 @@ export const AuthPage = () => {
     return session;
   };
 
+  const resetTwoFactor = () => {
+    setChallengeToken(null);
+    setTwoFactorCode('');
+    setUseRecovery(false);
+  };
+
   const onLoginSubmit = async (data: LoginFormValues) => {
     setServerError(null);
     try {
-      await signIn(data.email, data.password);
+      const res = unwrap<LoginResponse>(await api.post('/auth/login', { email: data.email, password: data.password }));
+      if (res.twoFactorRequired && res.challengeToken) {
+        setChallengeToken(res.challengeToken);
+        return;
+      }
+      setSession(res);
       navigate('/');
     } catch (error) {
       setServerError(apiErrorMessage(error, 'Login failed. Please check your credentials.'));
+    }
+  };
+
+  const onVerifyTwoFactor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!challengeToken) return;
+    setServerError(null);
+    setVerifying(true);
+    try {
+      const session = unwrap<AuthSession>(
+        await api.post('/auth/2fa/verify', { challengeToken, code: twoFactorCode.trim() }),
+      );
+      setSession(session);
+      navigate('/');
+    } catch (error) {
+      setServerError(apiErrorMessage(error, 'Verification failed. Check the code and try again.'));
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -85,6 +123,54 @@ export const AuthPage = () => {
     <AuthShell subtitle="Clinic management for modern practices">
       {serverError && <ErrorBanner message={serverError} />}
 
+      {challengeToken ? (
+        <form onSubmit={onVerifyTwoFactor} className="space-y-5" noValidate>
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Two-factor authentication</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              {useRecovery
+                ? 'Enter one of your one-time recovery codes.'
+                : 'Enter the 6-digit code from your authenticator app.'}
+            </p>
+          </div>
+          <Input
+            label={useRecovery ? 'Recovery code' : 'Authenticator code'}
+            autoComplete="one-time-code"
+            inputMode={useRecovery ? 'text' : 'numeric'}
+            autoFocus
+            placeholder={useRecovery ? 'xxxxx-xxxxx' : '123456'}
+            value={twoFactorCode}
+            onChange={(e) =>
+              setTwoFactorCode(
+                useRecovery ? e.target.value.slice(0, 20) : e.target.value.replace(/\D/g, '').slice(0, 6),
+              )
+            }
+          />
+          <Button
+            type="submit"
+            disabled={verifying || twoFactorCode.trim().length < 6}
+            className="w-full bg-[#1FA971] hover:bg-[#1A8D5E]"
+          >
+            {verifying ? 'Verifying…' : 'Verify'}
+          </Button>
+          <div className="flex items-center justify-between text-sm">
+            <button
+              type="button"
+              className="font-medium text-[#1FA971] hover:underline"
+              onClick={() => { setUseRecovery((v) => !v); setTwoFactorCode(''); setServerError(null); }}
+            >
+              {useRecovery ? 'Use authenticator code' : 'Use a recovery code'}
+            </button>
+            <button
+              type="button"
+              className="text-slate-500 hover:underline"
+              onClick={() => { resetTwoFactor(); setServerError(null); }}
+            >
+              Back to sign in
+            </button>
+          </div>
+        </form>
+      ) : (
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setServerError(null); }}>
         <TabsList className="grid w-full grid-cols-2 mb-6">
           <TabsTrigger value="login">Sign in</TabsTrigger>
@@ -171,6 +257,7 @@ export const AuthPage = () => {
           </form>
         </TabsContent>
       </Tabs>
+      )}
     </AuthShell>
   );
 };

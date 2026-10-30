@@ -21,8 +21,13 @@ export class StripeService {
     return this.config.get<string>('PAYMENTS_PROVIDER') === 'stripe' && !!this.config.get<string>('STRIPE_SECRET_KEY');
   }
 
-  currency(): string {
-    return (this.config.get<string>('CURRENCY') || 'INR').toLowerCase();
+  /**
+   * Billing currency as a lowercase ISO code. Pass the clinic's own
+   * `organization.currency` for per-clinic billing; the CURRENCY env is only the
+   * deployment-wide default for orgs that have none.
+   */
+  currency(override?: string | null): string {
+    return (override || this.config.get<string>('CURRENCY') || 'INR').toLowerCase();
   }
 
   appBaseUrl(): string {

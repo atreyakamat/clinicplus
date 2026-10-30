@@ -115,45 +115,50 @@ model Organization {
   footerText     String? @map("footer_text")
   watermarkUrl   String? @map("watermark_url")
 
-  subscriptionPlan   SubscriptionPlan?   @map("subscription_plan")
-  subscriptionStatus SubscriptionStatus  @default(TRIAL) @map("subscription_status")
-  status             RecordStatus        @default(ACTIVE)
-  createdAt          DateTime            @default(now()) @map("created_at")
-  updatedAt          DateTime            @updatedAt @map("updated_at")
-  createdBy          String?             @map("created_by") @db.Uuid
-  updatedBy          String?             @map("updated_by") @db.Uuid
-  deletedAt          DateTime?           @map("deleted_at")
-  deletedBy          String?             @map("deleted_by") @db.Uuid
-  deleteReason       String?             @map("delete_reason")
-  branches           Branch[]
-  departments        Department[]
-  users              User[]
-  roles              Role[]
-  permissions        Permission[]
-  templates          Template[]
-  campaigns          Campaign[]
-  workflowTemplates  WorkflowTemplate[]
-  auditLogs          AuditLog[]
-  analyticsEvents    AnalyticsEvent[]
-  dashboardSnapshots DashboardSnapshot[]
-  doctorMetrics      DoctorMetric[]
-  tasks              Task[]
-  invoices           Invoice[]
-  patients           Patient[]
-  appointments       Appointment[]
-  consultations      Consultation[]
-  prescriptions      Prescription[]
-  medicalDocuments   MedicalDocument[]
-  messages           Message[]
-  reviews            Review[]
-  referrals          Referral[]
-  feedbacks          Feedback[]
-  clinicServices     ClinicService[]
-  workingHours       WorkingHour[]
-  clinicHolidays     ClinicHoliday[]
-  staffInvitations   StaffInvitation[]
-  reviewRequests     ReviewRequest[]
-  webhookEvents      WebhookEvent[]
+  subscriptionPlan     SubscriptionPlan?   @map("subscription_plan")
+  subscriptionStatus   SubscriptionStatus  @default(TRIAL) @map("subscription_status")
+  currency             String              @default("INR")
+  trialEndsAt          DateTime?           @map("trial_ends_at")
+  currentPeriodEnd     DateTime?           @map("current_period_end")
+  stripeCustomerId     String?             @unique @map("stripe_customer_id")
+  stripeSubscriptionId String?             @unique @map("stripe_subscription_id")
+  status               RecordStatus        @default(ACTIVE)
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+  createdBy            String?             @map("created_by") @db.Uuid
+  updatedBy            String?             @map("updated_by") @db.Uuid
+  deletedAt            DateTime?           @map("deleted_at")
+  deletedBy            String?             @map("deleted_by") @db.Uuid
+  deleteReason         String?             @map("delete_reason")
+  branches             Branch[]
+  departments          Department[]
+  users                User[]
+  roles                Role[]
+  permissions          Permission[]
+  templates            Template[]
+  campaigns            Campaign[]
+  workflowTemplates    WorkflowTemplate[]
+  auditLogs            AuditLog[]
+  analyticsEvents      AnalyticsEvent[]
+  dashboardSnapshots   DashboardSnapshot[]
+  doctorMetrics        DoctorMetric[]
+  tasks                Task[]
+  invoices             Invoice[]
+  patients             Patient[]
+  appointments         Appointment[]
+  consultations        Consultation[]
+  prescriptions        Prescription[]
+  medicalDocuments     MedicalDocument[]
+  messages             Message[]
+  reviews              Review[]
+  referrals            Referral[]
+  feedbacks            Feedback[]
+  clinicServices       ClinicService[]
+  workingHours         WorkingHour[]
+  clinicHolidays       ClinicHoliday[]
+  staffInvitations     StaffInvitation[]
+  reviewRequests       ReviewRequest[]
+  webhookEvents        WebhookEvent[]
 
   @@map("organizations")
 }
@@ -215,25 +220,28 @@ model Department {
 }
 
 model User {
-  id                 String       @id @default(uuid()) @db.Uuid
-  organizationId     String       @map("organization_id") @db.Uuid
-  branchId           String       @map("branch_id") @db.Uuid
-  firstName          String       @map("first_name")
-  lastName           String       @map("last_name")
-  email              String
-  phone              String?
-  avatarUrl          String?      @map("avatar_url")
-  passwordHash       String?      @map("password_hash")
-  lastLoginAt        DateTime?    @map("last_login_at")
-  status             RecordStatus @default(ACTIVE)
+  id                     String       @id @default(uuid()) @db.Uuid
+  organizationId         String       @map("organization_id") @db.Uuid
+  branchId               String       @map("branch_id") @db.Uuid
+  firstName              String       @map("first_name")
+  lastName               String       @map("last_name")
+  email                  String
+  phone                  String?
+  avatarUrl              String?      @map("avatar_url")
+  passwordHash           String?      @map("password_hash")
+  twoFactorEnabled       Boolean      @default(false) @map("two_factor_enabled")
+  twoFactorSecret        String?      @map("two_factor_secret")
+  twoFactorRecoveryCodes Json?        @map("two_factor_recovery_codes")
+  lastLoginAt            DateTime?    @map("last_login_at")
+  status                 RecordStatus @default(ACTIVE)
   // Doctor Fields (F-006)
-  qualification      String?
-  specialization     String?
-  registrationNumber String?      @map("registration_number")
-  experienceYears    Int?         @map("experience_years")
-  bio                String?      @db.Text
-  consultationFee    Decimal?     @default(0) @map("consultation_fee") @db.Decimal(12, 2)
-  signatureUrl       String?      @map("signature_url")
+  qualification          String?
+  specialization         String?
+  registrationNumber     String?      @map("registration_number")
+  experienceYears        Int?         @map("experience_years")
+  bio                    String?      @db.Text
+  consultationFee        Decimal?     @default(0) @map("consultation_fee") @db.Decimal(12, 2)
+  signatureUrl           String?      @map("signature_url")
 
   createdAt           DateTime             @default(now()) @map("created_at")
   updatedAt           DateTime             @updatedAt @map("updated_at")
@@ -443,6 +451,9 @@ model Patient {
   abhaNumber           String?                   @map("abha_number")
   communicationOptIn   Boolean                   @default(true) @map("communication_opt_in")
   preferredChannel     String?                   @map("preferred_channel")
+  portalEnabled        Boolean                   @default(false) @map("portal_enabled")
+  portalPasswordHash   String?                   @map("portal_password_hash")
+  portalLastLoginAt    DateTime?                 @map("portal_last_login_at")
   status               RecordStatus              @default(ACTIVE)
   createdAt            DateTime                  @default(now()) @map("created_at")
   updatedAt            DateTime                  @updatedAt @map("updated_at")
@@ -475,6 +486,7 @@ model Patient {
   imagingReports       ImagingReport[]
   tasks                Task[]
   timelineEvents       TimelineEvent[]
+  portalSessions       PatientPortalSession[]
 
   @@unique([organizationId, patientCode])
   @@index([organizationId, branchId])
@@ -1406,4 +1418,38 @@ model WebhookEvent {
 
   @@unique([provider, eventId])
   @@map("webhook_events")
+}
+
+/// Refresh-token sessions for the patient self-service portal. Separate from
+/// staff UserSession so patient auth can never grant staff access.
+model PatientPortalSession {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  patientId      String    @map("patient_id") @db.Uuid
+  tokenHash      String    @unique @map("token_hash")
+  userAgent      String?   @map("user_agent")
+  ipAddress      String?   @map("ip_address")
+  expiresAt      DateTime  @map("expires_at")
+  revokedAt      DateTime? @map("revoked_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  patient        Patient   @relation(fields: [patientId], references: [id])
+
+  @@index([patientId])
+  @@map("patient_portal_sessions")
+}
+
+/// One-time codes for patient portal login / verification sent over SMS/WhatsApp/email.
+model PatientPortalOtp {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  patientId      String    @map("patient_id") @db.Uuid
+  codeHash       String    @map("code_hash")
+  purpose        String
+  expiresAt      DateTime  @map("expires_at")
+  consumedAt     DateTime? @map("consumed_at")
+  attempts       Int       @default(0)
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([patientId, purpose])
+  @@map("patient_portal_otps")
 }

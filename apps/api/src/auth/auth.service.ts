@@ -22,6 +22,7 @@ import { MailService } from '../common/mail/mail.service';
 import { isUuid } from '../common/validation/uuid';
 import { normalizeRoleName } from './access.utils';
 import { ORG_WIDE_ROLE_NAMES } from './default-access';
+import { TwoFactorService } from './two-factor.service';
 
 const ORG_WIDE = new Set(ORG_WIDE_ROLE_NAMES.map(normalizeRoleName));
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -44,6 +45,7 @@ export class AuthService {
     private config: ConfigService,
     private audit: AuditService,
     private mail: MailService,
+    private twoFactor: TwoFactorService,
   ) {}
 
   static async hashPassword(password: string) {
@@ -120,6 +122,53 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // The password is correct. If the account has 2FA, do NOT issue tokens yet:
+    // return a short-lived challenge that /auth/2fa/verify exchanges for a session.
+    if (user.twoFactorEnabled) {
+      return { twoFactorRequired: true as const, challengeToken: this.twoFactor.createChallengeToken(user.id) };
+    }
+
+    return this.issueSession(user, ctx);
+  }
+
+  /**
+   * Second factor exchange: validates the login challenge and a TOTP or recovery
+   * code, then issues the normal session (same path as a direct login, so
+   * refresh / sessions keep working). Failed codes count toward the lockout.
+   */
+  async verifyTwoFactor(challengeToken: string, code: string, ctx: AuthContext = {}) {
+    const userId = this.twoFactor.verifyChallengeToken(challengeToken);
+    const user = await this.usersService.findActiveById(userId);
+    if (!user || !user.twoFactorEnabled) {
+      throw new UnauthorizedException('Two-factor challenge is invalid or has expired');
+    }
+    await this.assertNotLockedOut(user.email);
+
+    const totpOk = this.twoFactor.verifyTotp(user.twoFactorSecret, code);
+    const recoveryOk = totpOk ? false : await this.twoFactor.consumeRecoveryCode(user, code);
+    if (!totpOk && !recoveryOk) {
+      await this.prisma.loginAttempt.create({
+        data: { email: user.email, ipAddress: ctx.ipAddress, status: 'FAILED', failureReason: 'Invalid 2FA code' },
+      });
+      await this.audit.log({
+        organizationId: user.organizationId,
+        userId: user.id,
+        action: 'LOGIN_FAILED',
+        resource: 'auth',
+        resourceId: user.id,
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+        afterData: { reason: 'two_factor' },
+      });
+      throw new UnauthorizedException('Invalid verification code');
+    }
+
+    return this.issueSession(user, ctx, { usedRecoveryCode: recoveryOk });
+  }
+
+  /** Creates a session and tokens for an already-authenticated user. */
+  private async issueSession(user: any, ctx: AuthContext, meta: { usedRecoveryCode?: boolean } = {}) {
+    const email = user.email.trim().toLowerCase();
     const sessionTtlDays = this.config.get<number>('SESSION_TTL_DAYS') ?? 7;
     const refreshToken = randomBytes(32).toString('hex');
     const refreshTokenHash = await hash(refreshToken, 10);
@@ -147,6 +196,7 @@ export class AuthService {
         resourceId: session.id,
         ipAddress: ctx.ipAddress,
         userAgent: ctx.userAgent,
+        afterData: meta.usedRecoveryCode ? { twoFactor: 'recovery_code' } : undefined,
       }),
     ]);
 

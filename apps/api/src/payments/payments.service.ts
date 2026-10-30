@@ -260,12 +260,18 @@ export class PaymentsService {
 
     let result = refund;
     if (viaStripe) {
+      // Refund in the clinic's own currency (matches the original charge).
+      const org = await this.prisma.organization.findUnique({
+        where: { id: actor.organizationId },
+        select: { currency: true },
+      });
+      const refundCurrency = this.stripe.currency(org?.currency);
       let stripeRefund: StripeRefund;
       try {
         stripeRefund = await this.stripe.createRefund(
           {
             payment_intent: payment.transactionReference!,
-            amount: toMinorUnits(amount, this.stripe.currency()),
+            amount: toMinorUnits(amount, refundCurrency),
             reason: 'requested_by_customer',
             metadata: { refundId: refund.id, invoiceId: payment.invoiceId, organizationId: actor.organizationId },
           },
@@ -323,7 +329,7 @@ export class PaymentsService {
     const invoice = await this.prisma.invoice.findFirst({
       where: { id: invoiceId, organizationId: actor.organizationId, branchId: actor.branchId, deletedAt: null },
       include: {
-        organization: { select: { name: true } },
+        organization: { select: { name: true, currency: true } },
         patient: { select: { id: true, firstName: true, phone: true } },
       },
     });
@@ -333,7 +339,7 @@ export class PaymentsService {
     const outstanding = invoice.total.minus(net);
     if (outstanding.lte(0)) throw new BadRequestException('Invoice has no outstanding balance');
 
-    const currency = this.stripe.currency();
+    const currency = this.stripe.currency(invoice.organization.currency);
     const minor = toMinorUnits(outstanding, currency);
     let session: CheckoutSession | null = null;
     let reused = false;

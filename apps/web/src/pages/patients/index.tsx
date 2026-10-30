@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Search, ChevronRight, Download } from 'lucide-react';
+import { Plus, Search, ChevronRight, Download, Upload } from 'lucide-react';
 import { Button, PageHeader } from '@clinicplus/ui';
 import { api } from '../../app/lib/api';
 import { HasPermission } from '../../app/components/HasPermission';
+import { ImportPatients } from './ImportPatients';
 import { Empty, ErrorBox, fmtDate, getData, getPage, inputCls, Loading, Pager, qs, StatusPill, useDebounced } from './shared';
 
 interface PatientRow {
@@ -45,6 +46,19 @@ export const PatientsPage = () => {
     setParams(next, { replace: true });
   };
 
+  // The import workflow renders in place (no dedicated route) via ?import=1.
+  const importing = params.get('import') === '1';
+  const openImport = () => {
+    const next = new URLSearchParams(params);
+    next.set('import', '1');
+    setParams(next);
+  };
+  const closeImport = () => {
+    const next = new URLSearchParams(params);
+    next.delete('import');
+    setParams(next, { replace: true });
+  };
+
   useEffect(() => {
     if ((params.get('q') ?? '') !== q) set({ q });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -70,10 +84,19 @@ export const PatientsPage = () => {
     }
   };
 
+  if (importing) {
+    return <ImportPatients onBack={closeImport} />;
+  }
+
   return (
     <div className="space-y-4">
       <PageHeader title="Patients" description="Search, filter and manage patient records." />
       <div className="flex flex-wrap items-center justify-end gap-2">
+        <HasPermission permission="patients.import">
+          <Button variant="outline" size="sm" className="gap-2" onClick={openImport}>
+            <Upload size={16} /> Import CSV
+          </Button>
+        </HasPermission>
         <HasPermission permission="patients.export">
           <Button variant="outline" size="sm" className="gap-2" onClick={exportCsv}>
             <Download size={16} /> Export CSV

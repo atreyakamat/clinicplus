@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -10,18 +11,24 @@ import {
   Query,
   Request,
   Res,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { stringify } from 'csv-stringify/sync';
 import { PatientsService } from './patients.service';
+import { PatientImportService } from './patient-import.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
+import { maxUploadBytes } from '../common/pipes/file-validation.pipe';
 import { CreatePatientDto, EmergencyContactDto, PatientAddressDto, PatientTagDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
 import { DuplicateCheckQueryDto, ListPatientsQueryDto, SearchPatientsQueryDto } from './dto/patient-query.dto';
 import { ArchivePatientDto, FamilyMemberDto, PatientNoteDto } from './dto/patient-subresources.dto';
+import { ImportPatientsQueryDto, isDryRun } from './dto/import-patients.dto';
 
 /** Neutralises spreadsheet formula injection in exported cells. */
 const csvSafe = (v: unknown) => {
@@ -33,7 +40,10 @@ const csvSafe = (v: unknown) => {
 @Controller('api/v1/patients')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class PatientsController {
-  constructor(private readonly patientsService: PatientsService) {}
+  constructor(
+    private readonly patientsService: PatientsService,
+    private readonly importService: PatientImportService,
+  ) {}
 
   /** Enriched quick search used by the global search bar. */
   @Get('search')
@@ -90,6 +100,29 @@ export class PatientsController {
       'Content-Disposition': `attachment; filename="patients-${new Date().toISOString().split('T')[0]}.csv"`,
     });
     return res.send(csv);
+  }
+
+  /** Downloadable sample CSV showing the supported columns. */
+  @Get('import/template')
+  @Permissions('patients.import')
+  importTemplate(@Res() res) {
+    res.set({
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="patient-import-template.csv"',
+    });
+    return res.send(this.importService.template());
+  }
+
+  /**
+   * Bulk import patients from a CSV (multipart field "file"). `?dryRun=true`
+   * validates and previews without inserting. Returns a per-row result.
+   */
+  @Post('import')
+  @HttpCode(200)
+  @Permissions('patients.import')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: maxUploadBytes() + 1, files: 1 } }))
+  import(@UploadedFile() file: Express.Multer.File, @Query() q: ImportPatientsQueryDto, @Request() req) {
+    return this.importService.import(file, req.user, isDryRun(q));
   }
 
   @Post()

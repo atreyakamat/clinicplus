@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { TwoFactorController } from './two-factor.controller';
+import { TwoFactorService } from './two-factor.service';
 import { UsersModule } from '../users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -24,8 +26,8 @@ import { AccessSyncService } from './access-sync.service';
       }),
     }),
   ],
-  providers: [AuthService, JwtStrategy, LocalStrategy, AccessSyncService],
-  controllers: [AuthController],
-  exports: [AuthService, JwtModule],
+  providers: [AuthService, TwoFactorService, JwtStrategy, LocalStrategy, AccessSyncService],
+  controllers: [AuthController, TwoFactorController],
+  exports: [AuthService, TwoFactorService, JwtModule],
 })
 export class AuthModule {}

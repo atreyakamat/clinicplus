@@ -8,6 +8,7 @@ import { UsersService } from '../users/users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/services/audit.service';
 import { MailService } from '../common/mail/mail.service';
+import { TwoFactorService } from './two-factor.service';
 
 jest.mock('bcryptjs', () => ({
   compare: jest.fn(),
@@ -57,6 +58,15 @@ describe('AuthService', () => {
         { provide: ConfigService, useValue: { get: jest.fn((k: string) => (k === 'APP_BASE_URL' ? 'https://app.example.com' : undefined)) } },
         { provide: AuditService, useValue: audit },
         { provide: MailService, useValue: mail },
+        {
+          provide: TwoFactorService,
+          useValue: {
+            createChallengeToken: jest.fn().mockReturnValue('challenge-token'),
+            verifyChallengeToken: jest.fn(),
+            verifyTotp: jest.fn().mockReturnValue(false),
+            consumeRecoveryCode: jest.fn().mockResolvedValue(false),
+          },
+        },
       ],
     }).compile();
 

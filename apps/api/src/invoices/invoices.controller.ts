@@ -52,8 +52,12 @@ export class InvoicesController {
   /** Billing configuration the UI needs (currency, whether online payments are on). */
   @Get('config')
   @Permissions('invoices.view')
-  config() {
-    return { currency: this.stripe.currency().toUpperCase(), onlinePayments: this.stripe.isEnabled() };
+  async config(@Request() req) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: req.user.organizationId },
+      select: { currency: true },
+    });
+    return { currency: (org?.currency || 'INR').toUpperCase(), onlinePayments: this.stripe.isEnabled() };
   }
 
   @Get(':id/download')
@@ -62,7 +66,7 @@ export class InvoicesController {
     const invoice = await this.invoicesService.findOne(id, req.user.organizationId, req.user.branchId);
     const org = await this.prisma.organization.findUnique({ where: { id: req.user.organizationId } });
     const buffer = await this.pdfService.generateInvoicePdf(invoice, org, {
-      currency: this.stripe.currency().toUpperCase(),
+      currency: (org?.currency || 'INR').toUpperCase(),
     });
     res.set({
       'Content-Type': 'application/pdf',

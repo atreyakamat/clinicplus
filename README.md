@@ -21,7 +21,9 @@ member of a clinic team.
 - **Billing** — invoices from the service catalog, payments, refunds, Stripe payment links with signed webhooks, outstanding/ageing/daily-close/revenue reports with CSV export.
 - **Engagement** — Twilio SMS/WhatsApp with delivery tracking and inbox, templates, campaigns with audience filters and opt-out, automatic confirmations/reminders, follow-up compliance, review requests with public NPS page, referrals.
 - **Operations** — tasks with comments, workflow templates, automatic tasks (missed follow-ups, overdue invoices), role-specific dashboards and analytics.
-- **Administration** — staff invitations, custom roles with anti-escalation rules, sessions, audit log viewer, encrypted backups (local + S3), platform operator panel.
+- **Patient portal** — patients log in (password or OTP) to see only their own appointments, prescriptions, invoices and documents, self-book, and pay online; fully isolated from staff auth.
+- **Administration** — staff invitations, staff 2FA (TOTP + recovery codes), custom roles with anti-escalation rules, sessions, audit log viewer, bulk patient CSV import, encrypted backups (local + S3), platform operator panel.
+- **Billing plans** — Starter/Growth/Enterprise with per-plan branch/staff/patient limits, trial handling, and automatic suspension of non-paying clinics.
 
 ## Access control
 
@@ -90,5 +92,8 @@ docs/           product specs (feature1-30, RBAC, architecture) and deployment g
 ## Not yet built
 
 Roadmap items from the specs that are intentionally out of this release: AI copilot and AI
-receptionist (features 21-22), patient mobile app / portal (23), telemedicine (24), partner
-marketplace (25), ABHA/ABDM integration (26) and the data warehouse (28).
+receptionist (features 21-22), a native patient mobile app (23 — the web patient portal ships;
+native iOS/Android does not), telemedicine (24), partner marketplace (25), ABHA/ABDM
+integration (26) and the data warehouse (28). Selling the platform itself still needs live
+provider credentials (Stripe, Twilio with approved WhatsApp templates, S3, mail) and the
+legal/compliance documents (privacy policy, terms, BAA/DPA) for your market.

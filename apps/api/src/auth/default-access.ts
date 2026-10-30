@@ -66,6 +66,10 @@ export const DEFAULT_PERMISSIONS = [
   { module: 'tasks', action: 'update', description: 'Update tasks' },
   { module: 'tasks', action: 'delete', description: 'Cancel tasks' },
 
+  { module: 'subscription', action: 'view', description: 'View the clinic subscription plan and usage' },
+  { module: 'subscription', action: 'manage', description: 'Change the clinic subscription plan' },
+  { module: 'patients', action: 'portal', description: 'Enable / disable a patient self-service portal login' },
+
   { module: 'settings', action: 'view', description: 'View settings' },
   { module: 'settings', action: 'branding', description: 'Manage clinic branding settings' },
   { module: 'organizations', action: 'view', description: 'View organization profile' },
@@ -145,11 +149,11 @@ const CLINICAL_WRITE = [
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
   'Super Admin': [...ALL_PERMISSION_KEYS],
   'Organization Owner': without('admin.view', ...CLINICAL_WRITE),
-  'Clinic Admin': without('admin.view', 'backup.manage', 'roles.delete', ...CLINICAL_WRITE),
+  'Clinic Admin': without('admin.view', 'backup.manage', 'roles.delete', 'subscription.manage', ...CLINICAL_WRITE),
   'Branch Manager': [
     'dashboard.view', 'analytics.view', 'analytics.financial',
     'branches.view', 'departments.view', 'services.view', 'doctors.view', 'doctors.manage',
-    'patients.view', 'patients.create', 'patients.update', 'patients.export',
+    'patients.view', 'patients.create', 'patients.update', 'patients.export', 'patients.portal',
     'appointments.view', 'appointments.create', 'appointments.update', 'appointments.delete', 'appointments.export',
     'queues.view', 'queues.update',
     'consultations.view', 'prescriptions.view',
@@ -185,7 +189,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
   Receptionist: [
     'dashboard.view',
     'services.view', 'doctors.view',
-    'patients.view', 'patients.create', 'patients.update',
+    'patients.view', 'patients.create', 'patients.update', 'patients.portal',
     'appointments.view', 'appointments.create', 'appointments.update', 'appointments.delete',
     'queues.view', 'queues.update',
     'prescriptions.view',
@@ -213,7 +217,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'timeline.view', 'settings.view',
   ],
   Accountant: [
-    'dashboard.view', 'analytics.financial',
+    'dashboard.view', 'analytics.financial', 'subscription.view',
     'services.view', 'doctors.view',
     'patients.view',
     'billing.view', 'invoices.view', 'invoices.create', 'invoices.update',
