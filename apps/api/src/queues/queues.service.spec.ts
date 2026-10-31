@@ -1,415 +1,107 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { QueuesService } from './queues.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { ConflictException, NotFoundException } from '@nestjs/common';
+import { PRIORITY_BAND, QueuesService, priorityLevel, priorityValue } from './queues.service';
+
+const user = { id: 'u1', organizationId: 'o1', branchId: 'b1', permissions: [], roles: [] } as any;
+const ID = '11111111-1111-4111-8111-111111111111';
+
+function setup() {
+  const prisma: any = {
+    $executeRaw: jest.fn(),
+    queue: { findFirst: jest.fn(), create: jest.fn() },
+    queueEntry: {
+      findFirst: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
+      create: jest.fn(),
+      update: jest.fn(async ({ where, data }) => ({ id: where.id, priority: 0, ...data })),
+    },
+    appointment: { update: jest.fn() },
+    branch: { findFirst: jest.fn() },
+  };
+  prisma.$transaction = jest.fn(async (arg: any) => (typeof arg === 'function' ? arg(prisma) : Promise.all(arg)));
+  const audit = { log: jest.fn() };
+  const tenant = { appointment: jest.fn(), patient: jest.fn(), user: jest.fn() };
+  const schedule = { branchTimezone: jest.fn().mockResolvedValue('Asia/Kolkata') };
+  return { service: new QueuesService(prisma, audit as any, tenant as any, schedule as any), prisma, tenant };
+}
 
 describe('QueuesService', () => {
-  let service: QueuesService;
-  let prisma: PrismaService;
-
-  const mockOrgId = 'org-1';
-  const mockBranchId = 'branch-1';
-  const mockOrgId2 = 'org-2';
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        QueuesService,
-        {
-          provide: PrismaService,
-          useValue: {
-            queue: {
-              findFirst: jest.fn(),
-              create: jest.fn(),
-              findMany: jest.fn(),
-            },
-            queueEntry: {
-              findFirst: jest.fn(),
-              create: jest.fn(),
-              update: jest.fn(),
-              findMany: jest.fn(),
-            },
-          },
-        },
-      ],
-    }).compile();
-
-    service = module.get<QueuesService>(QueuesService);
-    prisma = module.get<PrismaService>(PrismaService);
+  it('maps priority levels to sort bands', () => {
+    expect(priorityValue('NORMAL')).toBe(0);
+    expect(priorityValue('HIGH')).toBe(PRIORITY_BAND);
+    expect(priorityValue('EMERGENCY')).toBe(2 * PRIORITY_BAND);
+    expect(priorityLevel(2 * PRIORITY_BAND + 7)).toBe('EMERGENCY');
+    expect(priorityLevel(PRIORITY_BAND - 1)).toBe('NORMAL');
   });
 
-  describe('HAPPY PATH: Queue Management', () => {
-    it('should return existing queue if found', async () => {
-      const queue = {
-        id: 'q-1',
-        organizationId: mockOrgId,
-        branchId: mockBranchId,
-        name: 'Main Queue',
-      };
-      jest.spyOn(prisma.queue, 'findFirst').mockResolvedValue(queue as any);
-
-      const result = await service.getLiveQueue(mockOrgId, mockBranchId);
-
-      expect(result.id).toBe('q-1');
-      expect(result.name).toBe('Main Queue');
-    });
-
-    it('should create default queue if not found', async () => {
-      jest.spyOn(prisma.queue, 'findFirst').mockResolvedValue(null);
-      jest.spyOn(prisma.queue, 'create').mockResolvedValue({
-        id: 'new-q',
-        organizationId: mockOrgId,
-        branchId: mockBranchId,
-      } as any);
-
-      const result = await service.getLiveQueue(mockOrgId, mockBranchId);
-
-      expect(result.id).toBe('new-q');
-      expect(prisma.queue.create).toHaveBeenCalled();
-    });
-
-    it('should check in patient with sequential token', async () => {
-      jest
-        .spyOn(service, 'getLiveQueue')
-        .mockResolvedValue({ id: 'q-1' } as any);
-      jest
-        .spyOn(prisma.queueEntry, 'findFirst')
-        .mockResolvedValue({ tokenNumber: 5 } as any);
-      jest.spyOn(prisma.queueEntry, 'create').mockResolvedValue({
-        id: 'entry-1',
-        tokenNumber: 6,
-        status: 'WAITING',
-      } as any);
-
-      const result = await service.checkIn('appt-1', mockOrgId, mockBranchId);
-
-      expect(result.tokenNumber).toBe(6);
-      expect(result.status).toBe('WAITING');
-    });
-
-    it('should update queue entry status', async () => {
-      jest.spyOn(prisma.queueEntry, 'update').mockResolvedValue({
-        id: 'entry-1',
-        status: 'IN_PROGRESS',
-      } as any);
-
-      const result = await service.updateEntryStatus('entry-1', 'IN_PROGRESS');
-
-      expect(result.status).toBe('IN_PROGRESS');
-    });
+  it('getLiveQueue returns an empty queue (without creating one) when none exists today', async () => {
+    const { service, prisma } = setup();
+    prisma.queue.findFirst.mockResolvedValue(null);
+    const res = await service.getLiveQueue(user);
+    expect(res.entries).toEqual([]);
+    expect(prisma.queue.create).not.toHaveBeenCalled();
+    expect(prisma.queue.findFirst.mock.calls[0][0].where).toMatchObject({ organizationId: 'o1', branchId: 'b1' });
   });
 
-  describe('VALIDATION: Queue Business Rules', () => {
-    it('should start with token 1 if queue is empty', async () => {
-      jest
-        .spyOn(service, 'getLiveQueue')
-        .mockResolvedValue({ id: 'q-1' } as any);
-      jest.spyOn(prisma.queueEntry, 'findFirst').mockResolvedValue(null);
-      jest.spyOn(prisma.queueEntry, 'create').mockResolvedValue({
-        id: 'entry-1',
-        tokenNumber: 1,
-        status: 'WAITING',
-      } as any);
-
-      const result = await service.checkIn('appt-1', mockOrgId, mockBranchId);
-
-      expect(result.tokenNumber).toBe(1);
-      expect(prisma.queueEntry.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ tokenNumber: 1, status: 'WAITING' }),
-        }),
-      );
-    });
-
-    it('should increment token number sequentially', async () => {
-      jest
-        .spyOn(service, 'getLiveQueue')
-        .mockResolvedValue({ id: 'q-1' } as any);
-      jest
-        .spyOn(prisma.queueEntry, 'findFirst')
-        .mockResolvedValueOnce({ tokenNumber: 1 } as any)
-        .mockResolvedValueOnce({ tokenNumber: 2 } as any)
-        .mockResolvedValueOnce({ tokenNumber: 3 } as any);
-
-      jest
-        .spyOn(prisma.queueEntry, 'create')
-        .mockResolvedValueOnce({ tokenNumber: 2 } as any)
-        .mockResolvedValueOnce({ tokenNumber: 3 } as any)
-        .mockResolvedValueOnce({ tokenNumber: 4 } as any);
-
-      const result1 = await service.checkIn('appt-1', mockOrgId, mockBranchId);
-      const result2 = await service.checkIn('appt-2', mockOrgId, mockBranchId);
-      const result3 = await service.checkIn('appt-3', mockOrgId, mockBranchId);
-
-      expect(result1.tokenNumber).toBe(2);
-      expect(result2.tokenNumber).toBe(3);
-      expect(result3.tokenNumber).toBe(4);
-    });
-
-    it('should associate queue entry with appointment', async () => {
-      jest
-        .spyOn(service, 'getLiveQueue')
-        .mockResolvedValue({ id: 'q-1' } as any);
-      jest.spyOn(prisma.queueEntry, 'findFirst').mockResolvedValue(null);
-      jest
-        .spyOn(prisma.queueEntry, 'create')
-        .mockResolvedValue({ id: 'entry-1', appointmentId: 'appt-1' } as any);
-
-      await service.checkIn('appt-1', mockOrgId, mockBranchId);
-
-      expect(prisma.queueEntry.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            appointmentId: 'appt-1',
-          }),
-        }),
-      );
-    });
+  it('check-in refuses finished appointments', async () => {
+    const { service, tenant } = setup();
+    tenant.appointment.mockResolvedValue({ id: ID, status: 'COMPLETED' });
+    await expect(service.checkIn(user, { appointmentId: ID })).rejects.toBeInstanceOf(ConflictException);
+    expect(tenant.appointment).toHaveBeenCalledWith(ID, 'o1', 'b1');
   });
 
-  describe('EDGE CASES: Complex Queue Scenarios', () => {
-    it('should handle multiple entries with status transitions', async () => {
-      const entries = [
-        { id: 'entry-1', tokenNumber: 1, status: 'COMPLETED' },
-        { id: 'entry-2', tokenNumber: 2, status: 'IN_PROGRESS' },
-        { id: 'entry-3', tokenNumber: 3, status: 'WAITING' },
-      ];
-
-      jest
-        .spyOn(prisma.queueEntry, 'findMany')
-        .mockResolvedValue(entries as any);
-
-      const result = await service.getQueueStatus(mockOrgId, mockBranchId);
-
-      expect(result).toBeDefined();
-    });
-
-    it('should record calledTime when status is CALLED', async () => {
-      jest
-        .spyOn(prisma.queueEntry, 'update')
-        .mockImplementation(async (args) => args.data as any);
-
-      const result = await service.updateEntryStatus('entry-1', 'CALLED');
-
-      expect(result.calledTime).toBeDefined();
-    });
-
-    it('should record completedTime when status is COMPLETED', async () => {
-      jest
-        .spyOn(prisma.queueEntry, 'update')
-        .mockImplementation(async (args) => args.data as any);
-
-      const result = await service.updateEntryStatus('entry-1', 'COMPLETED');
-
-      expect(result.completedTime).toBeDefined();
-    });
-
-    it('should support CANCELLED status', async () => {
-      jest.spyOn(prisma.queueEntry, 'update').mockResolvedValue({
-        id: 'entry-1',
-        status: 'CANCELLED',
-      } as any);
-
-      const result = await service.updateEntryStatus('entry-1', 'CANCELLED');
-
-      expect(result.status).toBe('CANCELLED');
-    });
+  it('check-in issues the next token and marks the appointment checked in', async () => {
+    const { service, prisma, tenant } = setup();
+    tenant.appointment.mockResolvedValue({ id: ID, status: 'SCHEDULED' });
+    prisma.queueEntry.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ tokenNumber: 4 });
+    prisma.queue.findFirst.mockResolvedValue({ id: 'q1' });
+    prisma.queueEntry.create.mockImplementation(async ({ data }) => ({ id: 'e1', ...data }));
+    const entry = await service.checkIn(user, { appointmentId: ID, priority: 'EMERGENCY' });
+    expect(entry.tokenNumber).toBe(5);
+    expect(entry.priorityLevel).toBe('EMERGENCY');
+    expect(prisma.$executeRaw).toHaveBeenCalled();
+    expect(prisma.appointment.update.mock.calls[0][0].data.status).toBe('CHECKED_IN');
   });
 
-  describe('MULTI-TENANT: Queue Isolation', () => {
-    it('should only retrieve queues for specified organization', async () => {
-      jest.spyOn(prisma.queue, 'findFirst').mockResolvedValue({
-        id: 'q-1',
-        organizationId: mockOrgId,
-        branchId: mockBranchId,
-      } as any);
+  it('updateStatus is tenant scoped and follows the transition table', async () => {
+    const { service, prisma } = setup();
+    prisma.queueEntry.findFirst.mockResolvedValue(null);
+    await expect(service.updateStatus(user, ID, 'CALLED')).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.queueEntry.findFirst.mock.calls[0][0].where).toMatchObject({ organizationId: 'o1', branchId: 'b1' });
 
-      await service.getLiveQueue(mockOrgId, mockBranchId);
-
-      expect(prisma.queue.findFirst).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            organizationId: mockOrgId,
-            branchId: mockBranchId,
-          }),
-        }),
-      );
-    });
-
-    it('should create queue with correct organization context', async () => {
-      jest.spyOn(prisma.queue, 'findFirst').mockResolvedValue(null);
-      jest.spyOn(prisma.queue, 'create').mockResolvedValue({
-        id: 'q-1',
-        organizationId: mockOrgId2,
-        branchId: 'branch-2',
-      } as any);
-
-      const result = await service.getLiveQueue(mockOrgId2, 'branch-2');
-
-      expect(result.organizationId).toBe(mockOrgId2);
-      expect(result.branchId).toBe('branch-2');
-    });
-
-    it('should enforce branch isolation within organization', async () => {
-      jest.spyOn(prisma.queue, 'findFirst').mockResolvedValue({
-        id: 'q-1',
-        branchId: mockBranchId,
-      } as any);
-
-      await service.getLiveQueue(mockOrgId, mockBranchId);
-
-      const callArgs = (prisma.queue.findFirst as jest.Mock).mock.calls[0][0];
-      expect(callArgs.where.branchId).toBe(mockBranchId);
-    });
-
-    it('should create queue entries with organization context', async () => {
-      jest
-        .spyOn(service, 'getLiveQueue')
-        .mockResolvedValue({ id: 'q-1' } as any);
-      jest.spyOn(prisma.queueEntry, 'findFirst').mockResolvedValue(null);
-      jest.spyOn(prisma.queueEntry, 'create').mockResolvedValue({
-        id: 'entry-1',
-        organizationId: mockOrgId,
-      } as any);
-
-      await service.checkIn('appt-1', mockOrgId, mockBranchId);
-
-      expect(prisma.queueEntry.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            organizationId: mockOrgId,
-            branchId: mockBranchId,
-          }),
-        }),
-      );
-    });
+    prisma.queueEntry.findFirst.mockResolvedValue({ id: ID, status: 'WAITING', priority: 0, appointment: { id: 'a', status: 'CHECKED_IN' } });
+    await expect(service.updateStatus(user, ID, 'COMPLETED')).rejects.toBeInstanceOf(ConflictException);
+    const called = await service.updateStatus(user, ID, 'CALLED');
+    expect(called.calledTime).toBeInstanceOf(Date);
   });
 
-  describe('STATUS TRANSITION: Queue Entry States', () => {
-    it('should transition from WAITING to CALLED', async () => {
-      jest.spyOn(prisma.queueEntry, 'update').mockResolvedValue({
-        id: 'entry-1',
-        status: 'CALLED',
-      } as any);
-
-      const result = await service.updateEntryStatus('entry-1', 'CALLED');
-
-      expect(result.status).toBe('CALLED');
-    });
-
-    it('should transition from CALLED to IN_PROGRESS', async () => {
-      jest.spyOn(prisma.queueEntry, 'update').mockResolvedValue({
-        id: 'entry-1',
-        status: 'IN_PROGRESS',
-      } as any);
-
-      const result = await service.updateEntryStatus('entry-1', 'IN_PROGRESS');
-
-      expect(result.status).toBe('IN_PROGRESS');
-    });
-
-    it('should transition from IN_PROGRESS to COMPLETED', async () => {
-      jest.spyOn(prisma.queueEntry, 'update').mockResolvedValue({
-        id: 'entry-1',
-        status: 'COMPLETED',
-      } as any);
-
-      const result = await service.updateEntryStatus('entry-1', 'COMPLETED');
-
-      expect(result.status).toBe('COMPLETED');
-    });
-
-    it('should allow CANCELLED from any state', async () => {
-      jest.spyOn(prisma.queueEntry, 'update').mockResolvedValue({
-        id: 'entry-1',
-        status: 'CANCELLED',
-      } as any);
-
-      const result = await service.updateEntryStatus('entry-1', 'CANCELLED');
-
-      expect(result.status).toBe('CANCELLED');
-    });
+  it('completing an entry completes the appointment', async () => {
+    const { service, prisma } = setup();
+    prisma.queueEntry.findFirst.mockResolvedValue({ id: ID, status: 'IN_PROGRESS', priority: 0, appointment: { id: 'a', status: 'IN_PROGRESS' } });
+    await service.updateStatus(user, ID, 'COMPLETED');
+    expect(prisma.appointment.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'COMPLETED' }) }));
   });
 
-  describe('TRANSACTION ROLLBACK: Error Handling', () => {
-    it('should handle database error during queue check-in', async () => {
-      jest
-        .spyOn(service, 'getLiveQueue')
-        .mockRejectedValue(new Error('Database error'));
-
-      await expect(
-        service.checkIn('appt-1', mockOrgId, mockBranchId),
-      ).rejects.toThrow('Database error');
-    });
-
-    it('should handle error during status update', async () => {
-      jest
-        .spyOn(prisma.queueEntry, 'update')
-        .mockRejectedValue(new Error('Update failed'));
-
-      await expect(
-        service.updateEntryStatus('entry-1', 'IN_PROGRESS'),
-      ).rejects.toThrow('Update failed');
-    });
-
-    it('should handle token number calculation error', async () => {
-      jest
-        .spyOn(service, 'getLiveQueue')
-        .mockResolvedValue({ id: 'q-1' } as any);
-      jest
-        .spyOn(prisma.queueEntry, 'findFirst')
-        .mockRejectedValue(new Error('Query failed'));
-
-      await expect(
-        service.checkIn('appt-1', mockOrgId, mockBranchId),
-      ).rejects.toThrow('Query failed');
-    });
+  it('call-next 404s when nobody is waiting', async () => {
+    const { service, prisma } = setup();
+    prisma.queueEntry.findFirst.mockResolvedValue(null);
+    await expect(service.callNext(user, {})).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  describe('RBAC: Queue Entry Audit', () => {
-    it('should track appointment reference in queue entry', async () => {
-      jest
-        .spyOn(service, 'getLiveQueue')
-        .mockResolvedValue({ id: 'q-1' } as any);
-      jest.spyOn(prisma.queueEntry, 'findFirst').mockResolvedValue(null);
-      jest.spyOn(prisma.queueEntry, 'create').mockResolvedValue({
-        id: 'entry-1',
-        appointmentId: 'appt-1',
-      } as any);
-
-      await service.checkIn('appt-1', mockOrgId, mockBranchId);
-
-      expect(prisma.queueEntry.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            appointmentId: 'appt-1',
-          }),
-        }),
-      );
-    });
-
-    it('should include timestamps in status updates', async () => {
-      jest
-        .spyOn(prisma.queueEntry, 'update')
-        .mockImplementation(async (args) => args.data as any);
-
-      const result = await service.updateEntryStatus('entry-1', 'CALLED');
-
-      expect(result.calledTime).toBeDefined();
-    });
-
-    it('should enforce organization context in queue retrieval', async () => {
-      jest.spyOn(prisma.queueEntry, 'findMany').mockResolvedValue([]);
-
-      await service.getQueueStatus(mockOrgId, mockBranchId);
-
-      expect(prisma.queueEntry.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            organizationId: mockOrgId,
-            branchId: mockBranchId,
-          }),
-        }),
-      );
-    });
+  it('reorder keeps priority bands and orders within each band', async () => {
+    const { service, prisma } = setup();
+    const ids = ['a', 'b', 'c'].map((c) => c.repeat(8) + '-1111-4111-8111-111111111111');
+    prisma.queueEntry.findMany
+      .mockResolvedValueOnce([
+        { id: ids[0], priority: 0 },
+        { id: ids[1], priority: 2 * PRIORITY_BAND },
+        { id: ids[2], priority: 5 },
+      ])
+      .mockResolvedValue([]);
+    prisma.queue.findFirst.mockResolvedValue(null);
+    await service.reorder(user, { entryIds: ids });
+    const priorities = Object.fromEntries(prisma.queueEntry.update.mock.calls.map((c: any) => [c[0].where.id, c[0].data.priority]));
+    expect(priorities[ids[1]]).toBeGreaterThanOrEqual(2 * PRIORITY_BAND);
+    expect(priorities[ids[0]]).toBeGreaterThan(priorities[ids[2]]);
+    expect(priorities[ids[0]]).toBeLessThan(PRIORITY_BAND);
   });
 });

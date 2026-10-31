@@ -1,700 +1,205 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AppointmentsService } from './appointments.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { AuditService } from '../common/services/audit.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { AppointmentsService, TRANSITIONS } from './appointments.service';
+
+const ORG = 'org-1';
+const BRANCH = 'branch-1';
+
+const frontDesk = {
+  id: 'rec-1',
+  organizationId: ORG,
+  branchId: BRANCH,
+  homeBranchId: BRANCH,
+  orgWide: false,
+  roles: ['Receptionist'],
+  permissions: ['appointments.view', 'appointments.create', 'appointments.update', 'appointments.delete'],
+} as any;
+
+const doctorUser = {
+  ...frontDesk,
+  id: 'doc-1',
+  roles: ['Doctor'],
+  permissions: ['appointments.view', 'appointments.update'],
+} as any;
+
+const hourFromNow = (h: number) => new Date(Date.now() + h * 3600_000);
+
+function setup() {
+  const prisma: any = {
+    $executeRaw: jest.fn().mockResolvedValue(1),
+    appointment: {
+      findFirst: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
+      count: jest.fn().mockResolvedValue(0),
+      create: jest.fn(async ({ data }) => ({ id: 'appt-1', ...data })),
+      update: jest.fn(async ({ where, data }) => ({ id: where.id, doctorId: 'doc-1', ...data })),
+    },
+    queueEntry: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+    waitingList: { findFirst: jest.fn(), create: jest.fn(), findMany: jest.fn(), update: jest.fn(), delete: jest.fn() },
+  };
+  prisma.$transaction = jest.fn(async (arg: any) => (typeof arg === 'function' ? arg(prisma) : Promise.all(arg)));
+  const audit = { log: jest.fn().mockResolvedValue(undefined) };
+  const tenant = {
+    patient: jest.fn().mockResolvedValue({ id: 'pat-1' }),
+    user: jest.fn().mockResolvedValue({ id: 'doc-1' }),
+  };
+  const schedule = {
+    scheduleIssues: jest.fn().mockResolvedValue([]),
+    branchTimezone: jest.fn().mockResolvedValue('Asia/Kolkata'),
+  };
+  const queues = { checkIn: jest.fn().mockResolvedValue({ id: 'entry-1' }) };
+  const service = new AppointmentsService(prisma, audit as any, tenant as any, schedule as any, queues as any);
+  return { service, prisma, audit, tenant, schedule, queues };
+}
+
+const dto = (startH = 24, minutes = 30) => {
+  const start = hourFromNow(startH);
+  return {
+    patientId: 'pat-1',
+    doctorId: 'doc-1',
+    scheduledStart: start.toISOString(),
+    scheduledEnd: new Date(start.getTime() + minutes * 60000).toISOString(),
+  };
+};
 
 describe('AppointmentsService', () => {
-  let service: AppointmentsService;
-  let prisma: PrismaService;
-  let audit: AuditService;
-
-  const mockOrgId = 'org-1';
-  const mockBranchId = 'branch-1';
-  const mockUserId = 'user-1';
-  const mockOrgId2 = 'org-2';
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AppointmentsService,
-        {
-          provide: PrismaService,
-          useValue: {
-            appointment: {
-              findFirst: jest.fn(),
-              create: jest.fn(),
-              findMany: jest.fn(),
-              findUnique: jest.fn(),
-              update: jest.fn(),
-            },
-          },
-        },
-        {
-          provide: AuditService,
-          useValue: {
-            log: jest.fn(),
-          },
-        },
-      ],
-    }).compile();
-
-    service = module.get<AppointmentsService>(AppointmentsService);
-    prisma = module.get<PrismaService>(PrismaService);
-    audit = module.get<AuditService>(AuditService);
-  });
-
-  describe('HAPPY PATH: Create Appointment', () => {
-    it('should successfully create a new appointment with valid data', async () => {
-      const createData = {
-        doctorId: 'doc-1',
-        patientId: 'pat-1',
-        scheduledStart: new Date('2026-06-15T10:00:00Z'),
-        scheduledEnd: new Date('2026-06-15T10:30:00Z'),
+  describe('create', () => {
+    it('creates in the caller tenant/branch, validates foreign ids and audits', async () => {
+      const { service, prisma, tenant, audit } = setup();
+      prisma.appointment.findFirst.mockResolvedValue(null);
+      const res = await service.create(frontDesk, { ...dto(), organizationId: 'evil' } as any);
+      expect(tenant.patient).toHaveBeenCalledWith('pat-1', ORG);
+      expect(tenant.user).toHaveBeenCalledWith('doc-1', ORG, expect.objectContaining({ role: 'Doctor' }));
+      expect(prisma.appointment.create.mock.calls[0][0].data).toMatchObject({
+        organizationId: ORG,
+        branchId: BRANCH,
+        createdBy: 'rec-1',
         status: 'SCHEDULED',
-      } as any;
-
-      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(null);
-      const createdAppt = {
-        id: 'apt-new-1',
-        ...createData,
-        organizationId: mockOrgId,
-        branchId: mockBranchId,
-        createdBy: mockUserId,
-        status: 'SCHEDULED',
-      };
-      jest.spyOn(prisma.appointment, 'create').mockResolvedValue(createdAppt);
-
-      const result = await service.create(
-        createData,
-        mockOrgId,
-        mockBranchId,
-        mockUserId,
-      );
-
-      expect(result.id).toBe('apt-new-1');
-      expect(result.organizationId).toBe(mockOrgId);
-      expect(result.branchId).toBe(mockBranchId);
-      expect(prisma.appointment.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          doctorId: 'doc-1',
-          organizationId: mockOrgId,
-          branchId: mockBranchId,
-          createdBy: mockUserId,
-        }),
       });
-      expect(audit.log).toHaveBeenCalledWith(
-        expect.objectContaining({
-          action: 'CREATE',
-          resource: 'appointment',
-        }),
-      );
+      expect(res.organizationId).toBe(ORG);
+      expect(audit.log).toHaveBeenCalledWith(expect.objectContaining({ action: 'CREATE', resource: 'appointment' }));
+      expect(prisma.$executeRaw).toHaveBeenCalled(); // per-doctor advisory lock
     });
 
-    it('should include patient and doctor details when retrieving appointment', async () => {
-      const appointmentWithRelations = {
-        id: 'apt-1',
-        doctorId: 'doc-1',
-        patientId: 'pat-1',
-        patient: {
-          id: 'pat-1',
-          firstName: 'John',
-          lastName: 'Doe',
-          phone: '1234567890',
-        },
-        doctor: { id: 'doc-1', firstName: 'Dr', lastName: 'Smith' },
-      };
-      jest
-        .spyOn(prisma.appointment, 'findFirst')
-        .mockResolvedValue(appointmentWithRelations as any);
-
-      const result = await service.findOne('apt-1', mockOrgId, mockBranchId);
-
-      expect(result.patient.firstName).toBe('John');
-      expect(result.doctor.lastName).toBe('Smith');
+    it('rejects the past, inverted ranges and >8h appointments', async () => {
+      const { service } = setup();
+      await expect(service.create(frontDesk, dto(-2))).rejects.toBeInstanceOf(BadRequestException);
+      const d = dto();
+      await expect(service.create(frontDesk, { ...d, scheduledEnd: d.scheduledStart })).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.create(frontDesk, dto(24, 9 * 60))).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('should return empty list when no appointments exist for date', async () => {
-      jest.spyOn(prisma.appointment, 'findMany').mockResolvedValue([]);
+    it('rejects double booking with 409 (even when forced)', async () => {
+      const { service, prisma } = setup();
+      prisma.appointment.findFirst.mockResolvedValue({ id: 'other' });
+      await expect(service.create(frontDesk, dto())).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.create(frontDesk, { ...dto(), force: true })).rejects.toBeInstanceOf(ConflictException);
+      const where = prisma.appointment.findFirst.mock.calls[0][0].where;
+      expect(where).toMatchObject({ organizationId: ORG, doctorId: 'doc-1', status: { notIn: ['CANCELLED', 'NO_SHOW'] } });
+    });
 
-      const result = await service.findAll(
-        mockOrgId,
-        mockBranchId,
-        '2026-06-15',
-      );
-
-      expect(result).toEqual([]);
-      expect(prisma.appointment.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            organizationId: mockOrgId,
-            branchId: mockBranchId,
-          }),
-        }),
-      );
+    it('rejects schedule issues unless forced by a user with appointments.update', async () => {
+      const { service, prisma, schedule } = setup();
+      prisma.appointment.findFirst.mockResolvedValue(null);
+      schedule.scheduleIssues.mockResolvedValue(['Doctor is on leave']);
+      await expect(service.create(frontDesk, dto())).rejects.toThrow(/Doctor is on leave/);
+      const forced = await service.create(frontDesk, { ...dto(), force: true });
+      expect(forced.scheduleOverride).toEqual(['Doctor is on leave']);
+      const noUpdate = { ...frontDesk, permissions: ['appointments.create'] };
+      await expect(service.create(noUpdate, { ...dto(), force: true })).rejects.toBeInstanceOf(ForbiddenException);
     });
   });
 
-  describe('VALIDATION: Input Validation & Business Rules', () => {
-    it('should reject appointment with past scheduled date', async () => {
-      const pastDate = new Date();
-      pastDate.setDate(pastDate.getDate() - 1);
-
-      const createData = {
-        doctorId: 'doc-1',
-        patientId: 'pat-1',
-        scheduledStart: pastDate,
-        scheduledEnd: new Date(pastDate.getTime() + 30 * 60000),
-      } as any;
-
-      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(null);
-      const createdAppt = {
-        id: 'apt-1',
-        ...createData,
-        organizationId: mockOrgId,
-        branchId: mockBranchId,
-      };
-      jest.spyOn(prisma.appointment, 'create').mockResolvedValue(createdAppt);
-
-      await expect(
-        service.create(
-          createData,
-          mockOrgId,
-          mockBranchId,
-          mockUserId,
-        ),
-      ).rejects.toThrow(BadRequestException);
+  describe('state machine', () => {
+    it('has final states with no exits', () => {
+      expect(TRANSITIONS.COMPLETED).toEqual([]);
+      expect(TRANSITIONS.CANCELLED).toEqual([]);
+      expect(TRANSITIONS.NO_SHOW).toEqual([]);
     });
 
-    it('should enforce overlap detection for same doctor', async () => {
-      const existingAppt = {
-        id: 'apt-existing',
-        doctorId: 'doc-1',
-        scheduledStart: new Date('2026-06-15T10:00:00Z'),
-        scheduledEnd: new Date('2026-06-15T10:30:00Z'),
-        status: 'CONFIRMED',
-      };
-
-      jest
-        .spyOn(prisma.appointment, 'findFirst')
-        .mockResolvedValue(existingAppt as any);
-
-      const createData = {
-        doctorId: 'doc-1',
-        patientId: 'pat-2',
-        scheduledStart: new Date('2026-06-15T10:15:00Z'),
-        scheduledEnd: new Date('2026-06-15T10:45:00Z'),
-      } as any;
-
-      await expect(
-        service.create(createData, mockOrgId, mockBranchId, mockUserId),
-      ).rejects.toThrow(BadRequestException);
+    it('confirms a scheduled appointment and audits the change', async () => {
+      const { service, prisma, audit } = setup();
+      prisma.appointment.findFirst.mockResolvedValue({ id: 'a', status: 'SCHEDULED', doctorId: 'doc-1', scheduledStart: hourFromNow(5) });
+      const res = await service.transition(frontDesk, '11111111-1111-4111-8111-111111111111', 'CONFIRMED');
+      expect(res.status).toBe('CONFIRMED');
+      expect(audit.log).toHaveBeenCalledWith(expect.objectContaining({ action: 'STATUS_CONFIRMED' }));
     });
 
-    it('should not detect overlap for CANCELLED appointments', async () => {
-      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(null);
-      const createdAppt = {
-        id: 'apt-new',
-        doctorId: 'doc-1',
-        patientId: 'pat-1',
-        scheduledStart: new Date('2026-06-15T10:00:00Z'),
-        scheduledEnd: new Date('2026-06-15T10:30:00Z'),
-        organizationId: mockOrgId,
-        branchId: mockBranchId,
-      };
-      jest
-        .spyOn(prisma.appointment, 'create')
-        .mockResolvedValue(createdAppt as any);
+    it('cancels with a reason and cancels active queue entries', async () => {
+      const { service, prisma } = setup();
+      prisma.appointment.findFirst.mockResolvedValue({ id: 'a', status: 'CHECKED_IN', doctorId: 'doc-1', scheduledStart: hourFromNow(1) });
+      await service.transition(frontDesk, '11111111-1111-4111-8111-111111111111', 'CANCELLED', { reason: 'unwell' });
+      expect(prisma.appointment.update.mock.calls[0][0].data).toMatchObject({ status: 'CANCELLED', cancellationReason: 'unwell' });
+      expect(prisma.queueEntry.updateMany.mock.calls[0][0].data.status).toBe('CANCELLED');
+    });
 
-      const createData = {
-        doctorId: 'doc-1',
-        patientId: 'pat-1',
-        scheduledStart: new Date('2026-06-15T10:00:00Z'),
-        scheduledEnd: new Date('2026-06-15T10:30:00Z'),
-      } as any;
+    it('rejects invalid transitions and premature no-shows', async () => {
+      const { service, prisma } = setup();
+      prisma.appointment.findFirst.mockResolvedValue({ id: 'a', status: 'COMPLETED', doctorId: 'doc-1', scheduledStart: hourFromNow(-1) });
+      await expect(service.transition(frontDesk, '11111111-1111-4111-8111-111111111111', 'CANCELLED')).rejects.toBeInstanceOf(ConflictException);
+      prisma.appointment.findFirst.mockResolvedValue({ id: 'a', status: 'SCHEDULED', doctorId: 'doc-1', scheduledStart: hourFromNow(3) });
+      await expect(service.transition(frontDesk, '11111111-1111-4111-8111-111111111111', 'NO_SHOW')).rejects.toThrow(/after its start time/);
+    });
 
-      const result = await service.create(
-        createData,
-        mockOrgId,
-        mockBranchId,
-        mockUserId,
-      );
-      expect(result.id).toBe('apt-new');
+    it('delegates check-in to the queue service', async () => {
+      const { service, prisma, queues } = setup();
+      prisma.appointment.findFirst.mockResolvedValue({ id: 'a', status: 'SCHEDULED', doctorId: 'doc-1', scheduledStart: hourFromNow(1) });
+      await service.transition(frontDesk, '11111111-1111-4111-8111-111111111111', 'CHECKED_IN');
+      expect(queues.checkIn).toHaveBeenCalledWith(frontDesk, { appointmentId: '11111111-1111-4111-8111-111111111111' });
+    });
+
+    it('lets doctors change only their own appointments', async () => {
+      const { service, prisma } = setup();
+      prisma.appointment.findFirst.mockResolvedValue({ id: 'a', status: 'SCHEDULED', doctorId: 'someone-else', scheduledStart: hourFromNow(1) });
+      await expect(service.transition(doctorUser, '11111111-1111-4111-8111-111111111111', 'CONFIRMED')).rejects.toBeInstanceOf(ForbiddenException);
+      prisma.appointment.findFirst.mockResolvedValue({ id: 'a', status: 'SCHEDULED', doctorId: 'doc-1', scheduledStart: hourFromNow(1) });
+      await expect(service.transition(doctorUser, '11111111-1111-4111-8111-111111111111', 'CONFIRMED')).resolves.toBeDefined();
     });
   });
 
-  describe('EDGE CASES: Boundary & Complex Scenarios', () => {
-    it('should detect overlap when new appointment starts at end of existing', async () => {
-      const existingAppt = {
-        id: 'apt-existing',
-        doctorId: 'doc-1',
-        scheduledStart: new Date('2026-06-15T10:00:00Z'),
-        scheduledEnd: new Date('2026-06-15T10:30:00Z'),
-        status: 'CONFIRMED',
-      };
-
-      jest
-        .spyOn(prisma.appointment, 'findFirst')
-        .mockResolvedValue(existingAppt as any);
-
-      const createData = {
-        doctorId: 'doc-1',
-        patientId: 'pat-2',
-        scheduledStart: new Date('2026-06-15T10:30:00Z'),
-        scheduledEnd: new Date('2026-06-15T11:00:00Z'),
-      } as any;
-
-      await expect(
-        service.create(createData, mockOrgId, mockBranchId, mockUserId),
-      ).rejects.toThrow(BadRequestException);
+  describe('reads', () => {
+    it('findOne is scoped to org + branch and 404s otherwise', async () => {
+      const { service, prisma } = setup();
+      prisma.appointment.findFirst.mockResolvedValue(null);
+      await expect(service.findOne(frontDesk, '11111111-1111-4111-8111-111111111111')).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.appointment.findFirst.mock.calls[0][0].where).toMatchObject({ organizationId: ORG, branchId: BRANCH });
+      await expect(service.findOne(frontDesk, 'bad-id')).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('should handle appointments for different doctors without overlap', async () => {
-      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(null);
-      const createdAppt = {
-        id: 'apt-doc2',
-        doctorId: 'doc-2',
-        patientId: 'pat-1',
-        scheduledStart: new Date('2026-06-15T10:00:00Z'),
-        scheduledEnd: new Date('2026-06-15T10:30:00Z'),
-        organizationId: mockOrgId,
-        branchId: mockBranchId,
-      };
-      jest
-        .spyOn(prisma.appointment, 'create')
-        .mockResolvedValue(createdAppt as any);
-
-      const createData = {
-        doctorId: 'doc-2',
-        patientId: 'pat-1',
-        scheduledStart: new Date('2026-06-15T10:00:00Z'),
-        scheduledEnd: new Date('2026-06-15T10:30:00Z'),
-      } as any;
-
-      const result = await service.create(
-        createData,
-        mockOrgId,
-        mockBranchId,
-        mockUserId,
-      );
-      expect(result.doctorId).toBe('doc-2');
+    it('findAll applies a branch-timezone day window, filters and pagination', async () => {
+      const { service, prisma } = setup();
+      const res = await service.findAll(frontDesk, { date: '2030-01-10', doctorId: 'doc-1', status: 'SCHEDULED,CONFIRMED', page: 2, limit: 10 } as any);
+      const args = prisma.appointment.findMany.mock.calls[0][0];
+      expect(args.where).toMatchObject({ organizationId: ORG, branchId: BRANCH, doctorId: 'doc-1', status: { in: ['SCHEDULED', 'CONFIRMED'] } });
+      // 2030-01-10 00:00 Asia/Kolkata = 2030-01-09T18:30Z
+      expect(args.where.scheduledStart.gte.toISOString()).toBe('2030-01-09T18:30:00.000Z');
+      expect(args.where.scheduledStart.lt.toISOString()).toBe('2030-01-10T18:30:00.000Z');
+      expect(args.skip).toBe(10);
+      expect(res).toMatchObject({ page: 2, limit: 10, total: 0 });
     });
 
-    it('should handle full day query when date is provided', async () => {
-      const appointments = [
-        { id: 'apt-1', scheduledStart: new Date('2026-06-15T09:00:00Z') },
-        { id: 'apt-2', scheduledStart: new Date('2026-06-15T14:00:00Z') },
-        { id: 'apt-3', scheduledStart: new Date('2026-06-15T16:30:00Z') },
-      ];
-      jest
-        .spyOn(prisma.appointment, 'findMany')
-        .mockResolvedValue(appointments as any);
-
-      const result = await service.findAll(
-        mockOrgId,
-        mockBranchId,
-        '2026-06-15',
-      );
-
-      expect(result.length).toBe(3);
-      expect(prisma.appointment.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            scheduledStart: {
-              gte: expect.any(Date),
-              lte: expect.any(Date),
-            },
-          }),
-        }),
-      );
-    });
-
-    it('should fetch appointments without date filter returning all', async () => {
-      const appointments = [{ id: 'apt-1' }, { id: 'apt-2' }];
-      jest
-        .spyOn(prisma.appointment, 'findMany')
-        .mockResolvedValue(appointments as any);
-
-      const result = await service.findAll(mockOrgId, mockBranchId);
-
-      expect(result.length).toBe(2);
-      expect(prisma.appointment.findMany).toHaveBeenCalledWith(
-        expect.not.objectContaining({
-          where: expect.objectContaining({
-            scheduledStart: expect.any(Object),
-          }),
-        }),
-      );
+    it('excludes cancelled appointments by default and rejects unknown statuses', async () => {
+      const { service, prisma } = setup();
+      await service.findAll(frontDesk, {} as any);
+      expect(prisma.appointment.findMany.mock.calls[0][0].where.status).toEqual({ not: 'CANCELLED' });
+      await expect(service.findAll(frontDesk, { status: 'NOPE' } as any)).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 
-  describe('MULTI-TENANT: Organization & Branch Isolation', () => {
-    it('should only retrieve appointments for specified organization', async () => {
-      jest
-        .spyOn(prisma.appointment, 'findMany')
-        .mockResolvedValue([
-          { id: 'apt-org1', organizationId: mockOrgId },
-        ] as any);
-
-      await service.findAll(mockOrgId, mockBranchId);
-
-      expect(prisma.appointment.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            organizationId: mockOrgId,
-            branchId: mockBranchId,
-          }),
-        }),
-      );
+  describe('reschedule', () => {
+    it('only reschedules SCHEDULED/CONFIRMED appointments', async () => {
+      const { service, prisma } = setup();
+      prisma.appointment.findFirst.mockResolvedValueOnce({ id: 'a', status: 'CHECKED_IN', doctorId: 'doc-1' });
+      await expect(service.reschedule(frontDesk, '11111111-1111-4111-8111-111111111111', dto())).rejects.toBeInstanceOf(ConflictException);
     });
 
-    it('should create appointments with correct organization context', async () => {
-      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(null);
-      const createdAppt = {
-        id: 'apt-1',
-        organizationId: mockOrgId2,
-        branchId: 'branch-2',
-        doctorId: 'doc-1',
-        patientId: 'pat-1',
-      };
-      jest
-        .spyOn(prisma.appointment, 'create')
-        .mockResolvedValue(createdAppt as any);
-
-      const createData = {
-        doctorId: 'doc-1',
-        patientId: 'pat-1',
-        scheduledStart: new Date('2026-06-15T10:00:00Z'),
-        scheduledEnd: new Date('2026-06-15T10:30:00Z'),
-      } as any;
-
-      const result = await service.create(
-        createData,
-        mockOrgId2,
-        'branch-2',
-        mockUserId,
-      );
-
-      expect(result.organizationId).toBe(mockOrgId2);
-      expect(result.branchId).toBe('branch-2');
-    });
-
-    it('should isolate appointments between different organizations', async () => {
-      const org1Appts = [{ id: 'apt-org1', organizationId: mockOrgId }];
-      jest
-        .spyOn(prisma.appointment, 'findMany')
-        .mockResolvedValue(org1Appts as any);
-
-      await service.findAll(mockOrgId, mockBranchId);
-
-      expect(prisma.appointment.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            organizationId: mockOrgId,
-          }),
-        }),
-      );
-
-      const query = (prisma.appointment.findMany as jest.Mock).mock.calls[0][0];
-      expect(query.where.organizationId).toBe(mockOrgId);
-    });
-  });
-
-  describe('STATUS TRANSITION: Appointment State Management', () => {
-    it('should allow transition from SCHEDULED to CONFIRMED', async () => {
-      const existing = {
-        id: 'apt-1',
-        status: 'SCHEDULED',
-        doctorId: 'doc-1',
-        patientId: 'pat-1',
-      };
-      const updated = {
-        id: 'apt-1',
-        status: 'CONFIRMED',
-        doctorId: 'doc-1',
-        patientId: 'pat-1',
-      };
-      jest
-        .spyOn(prisma.appointment, 'findFirst')
-        .mockResolvedValue(existing as any);
-      jest
-        .spyOn(prisma.appointment, 'update')
-        .mockResolvedValue(updated as any);
-
-      const result = await service.update(
-        'apt-1',
-        { status: 'CONFIRMED' },
-        mockOrgId,
-        mockBranchId,
-        mockUserId,
-      );
-
-      expect(result.status).toBe('CONFIRMED');
-      expect(audit.log).toHaveBeenCalledWith(
-        expect.objectContaining({
-          action: 'UPDATE',
-          beforeData: expect.objectContaining({ status: 'SCHEDULED' }),
-        }),
-      );
-    });
-
-    it('should allow transition from CONFIRMED to CHECKED_IN', async () => {
-      const existing = { id: 'apt-1', status: 'CONFIRMED' };
-      const updated = { id: 'apt-1', status: 'CHECKED_IN' };
-      jest
-        .spyOn(prisma.appointment, 'findFirst')
-        .mockResolvedValue(existing as any);
-      jest
-        .spyOn(prisma.appointment, 'update')
-        .mockResolvedValue(updated as any);
-
-      const result = await service.update(
-        'apt-1',
-        { status: 'CHECKED_IN' },
-        mockOrgId,
-        mockBranchId,
-        mockUserId,
-      );
-
-      expect(result.status).toBe('CHECKED_IN');
-    });
-
-    it('should allow transition to COMPLETED', async () => {
-      const existing = { id: 'apt-1', status: 'IN_PROGRESS' };
-      const updated = { id: 'apt-1', status: 'COMPLETED' };
-      jest
-        .spyOn(prisma.appointment, 'findFirst')
-        .mockResolvedValue(existing as any);
-      jest
-        .spyOn(prisma.appointment, 'update')
-        .mockResolvedValue(updated as any);
-
-      const result = await service.update(
-        'apt-1',
-        { status: 'COMPLETED' },
-        mockOrgId,
-        mockBranchId,
-        mockUserId,
-      );
-
-      expect(result.status).toBe('COMPLETED');
-    });
-
-    it('should allow transition to CANCELLED', async () => {
-      const existing = { id: 'apt-1', status: 'SCHEDULED' };
-      const updated = { id: 'apt-1', status: 'CANCELLED' };
-      jest
-        .spyOn(prisma.appointment, 'findFirst')
-        .mockResolvedValue(existing as any);
-      jest
-        .spyOn(prisma.appointment, 'update')
-        .mockResolvedValue(updated as any);
-
-      const result = await service.update(
-        'apt-1',
-        { status: 'CANCELLED' },
-        mockOrgId,
-        mockBranchId,
-        mockUserId,
-      );
-
-      expect(result.status).toBe('CANCELLED');
-    });
-
-    it('should remove appointment by setting status to CANCELLED', async () => {
-      const existing = {
-        id: 'apt-1',
-        status: 'CONFIRMED',
-        doctorId: 'doc-1',
-        patientId: 'pat-1',
-        firstName: 'John',
-        lastName: 'Doe',
-      };
-      const cancelled = {
-        id: 'apt-1',
-        status: 'CANCELLED',
-        doctorId: 'doc-1',
-        patientId: 'pat-1',
-      };
-      jest
-        .spyOn(prisma.appointment, 'findFirst')
-        .mockResolvedValue(existing as any);
-      jest
-        .spyOn(prisma.appointment, 'update')
-        .mockResolvedValue(cancelled as any);
-
-      const result = await service.remove(
-        'apt-1',
-        mockOrgId,
-        mockBranchId,
-        mockUserId,
-      );
-
-      expect(result.status).toBe('CANCELLED');
-      expect(audit.log).toHaveBeenCalledWith(
-        expect.objectContaining({
-          action: 'DELETE',
-          beforeData: expect.objectContaining({ status: 'CONFIRMED' }),
-        }),
-      );
-    });
-  });
-
-  describe('TRANSACTION ROLLBACK: Error Handling & Data Consistency', () => {
-    it('should not create appointment if overlap check fails midway', async () => {
-      jest
-        .spyOn(prisma.appointment, 'findFirst')
-        .mockRejectedValue(new Error('Database error'));
-
-      const createData = {
-        doctorId: 'doc-1',
-        patientId: 'pat-1',
-        scheduledStart: new Date('2026-06-15T10:00:00Z'),
-        scheduledEnd: new Date('2026-06-15T10:30:00Z'),
-      } as any;
-
-      await expect(
-        service.create(createData, mockOrgId, mockBranchId, mockUserId),
-      ).rejects.toThrow('Database error');
-
-      expect(prisma.appointment.create).not.toHaveBeenCalled();
-    });
-
-    it('should handle update failure and not log audit on error', async () => {
-      jest
-        .spyOn(prisma.appointment, 'findFirst')
-        .mockResolvedValue({ id: 'apt-1' } as any);
-      jest
-        .spyOn(prisma.appointment, 'update')
-        .mockRejectedValue(new Error('Update failed'));
-
-      const updateData = { status: 'CONFIRMED' } as any;
-
-      await expect(
-        service.update(
-          'apt-1',
-          updateData,
-          mockOrgId,
-          mockBranchId,
-          mockUserId,
-        ),
-      ).rejects.toThrow('Update failed');
-
-      expect(audit.log).not.toHaveBeenCalled();
-    });
-
-    it('should throw NotFoundException when trying to update non-existent appointment', async () => {
-      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(null);
-
-      await expect(
-        service.update(
-          'apt-nonexistent',
-          { status: 'CONFIRMED' },
-          mockOrgId,
-          mockBranchId,
-          mockUserId,
-        ),
-      ).rejects.toThrow(NotFoundException);
-
-      expect(prisma.appointment.update).not.toHaveBeenCalled();
-      expect(audit.log).not.toHaveBeenCalled();
-    });
-
-    it('should throw NotFoundException when trying to delete non-existent appointment', async () => {
-      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(null);
-
-      await expect(
-        service.remove('apt-nonexistent', mockOrgId, mockBranchId, mockUserId),
-      ).rejects.toThrow(NotFoundException);
-
-      expect(prisma.appointment.update).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('RBAC: Audit & User Context', () => {
-    it('should log audit with correct user context on create', async () => {
-      jest.spyOn(prisma.appointment, 'findFirst').mockResolvedValue(null);
-      const createdAppt = {
-        id: 'apt-1',
-        doctorId: 'doc-1',
-        organizationId: mockOrgId,
-        branchId: mockBranchId,
-      };
-      jest
-        .spyOn(prisma.appointment, 'create')
-        .mockResolvedValue(createdAppt as any);
-
-      const createData = {
-        doctorId: 'doc-1',
-        patientId: 'pat-1',
-        scheduledStart: new Date('2026-06-15T10:00:00Z'),
-        scheduledEnd: new Date('2026-06-15T10:30:00Z'),
-      } as any;
-
-      const testUserId = 'user-admin-123';
-      await service.create(createData, mockOrgId, mockBranchId, testUserId);
-
-      expect(audit.log).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: testUserId,
-          action: 'CREATE',
-        }),
-      );
-    });
-
-    it('should log audit with correct user context on update', async () => {
-      jest
-        .spyOn(prisma.appointment, 'findFirst')
-        .mockResolvedValue({ id: 'apt-1' } as any);
-      jest
-        .spyOn(prisma.appointment, 'update')
-        .mockResolvedValue({ id: 'apt-1', status: 'CONFIRMED' } as any);
-
-      const testUserId = 'user-doctor-456';
-      await service.update(
-        'apt-1',
-        { status: 'CONFIRMED' },
-        mockOrgId,
-        mockBranchId,
-        testUserId,
-      );
-
-      expect(audit.log).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: testUserId,
-          action: 'UPDATE',
-        }),
-      );
-    });
-
-    it('should include before and after data in audit trail', async () => {
-      const beforeData = {
-        id: 'apt-1',
-        status: 'SCHEDULED',
-        doctorId: 'doc-1',
-      };
-      const afterData = { id: 'apt-1', status: 'CONFIRMED', doctorId: 'doc-1' };
-      jest
-        .spyOn(prisma.appointment, 'findFirst')
-        .mockResolvedValue(beforeData as any);
-      jest
-        .spyOn(prisma.appointment, 'update')
-        .mockResolvedValue(afterData as any);
-
-      await service.update(
-        'apt-1',
-        { status: 'CONFIRMED' },
-        mockOrgId,
-        mockBranchId,
-        mockUserId,
-      );
-
-      expect(audit.log).toHaveBeenCalledWith(
-        expect.objectContaining({
-          beforeData: expect.objectContaining({ status: 'SCHEDULED' }),
-          afterData: expect.objectContaining({ status: 'CONFIRMED' }),
-        }),
-      );
+    it('moves the appointment, excluding itself from the overlap check', async () => {
+      const { service, prisma } = setup();
+      prisma.appointment.findFirst
+        .mockResolvedValueOnce({ id: '11111111-1111-4111-8111-111111111111', status: 'CONFIRMED', doctorId: 'doc-1' })
+        .mockResolvedValueOnce(null);
+      const res = await service.reschedule(frontDesk, '11111111-1111-4111-8111-111111111111', dto(48));
+      expect(prisma.appointment.findFirst.mock.calls[1][0].where.id).toEqual({ not: '11111111-1111-4111-8111-111111111111' });
+      expect(res.status).toBe('SCHEDULED');
     });
   });
 });

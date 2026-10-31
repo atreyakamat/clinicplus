@@ -1,155 +1,65 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+/**
+ * Latency smoke benchmarks for hot read paths. Budgets are generous (shared CI
+ * databases) but catch N+1 regressions and missing indexes.
+ */
+import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from './../src/app.module';
-import { AllExceptionsFilter } from './../src/common/filters/all-exceptions.filter';
-import { PrismaService } from './../src/prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
-import { performance } from 'perf_hooks';
+import { PrismaService } from '../src/prisma/prisma.service';
+import { auth, createPatient, createTenant, createTestApp, Tenant } from './helpers/app';
 
-describe('Evidence-Based Verification: Performance & Security (E2E)', () => {
+const BUDGET_MS = 1000;
+
+async function timed<T>(fn: () => Promise<T>) {
+  const start = process.hrtime.bigint();
+  const result = await fn();
+  return { result, ms: Number(process.hrtime.bigint() - start) / 1e6 };
+}
+
+describe('Benchmarks (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let jwtService: JwtService;
-
-  let org: any;
-  let doctor: any;
-  let token: string;
-  let patient: any;
+  let t: Tenant;
+  const http = () => request(app.getHttpServer());
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
-    app.useGlobalFilters(new AllExceptionsFilter());
-    jwtService = app.get<JwtService>(JwtService);
-    prisma = app.get<PrismaService>(PrismaService);
-    await app.init();
-
-    org = await prisma.organization.create({
-      data: {
-        name: 'Performance Test Clinic',
-        slug: `perf-${Math.random().toString(36).substring(7)}`,
-      },
-    });
-    const branch = await prisma.branch.create({
-      data: { name: 'Perf Branch', organizationId: org.id },
-    });
-    doctor = await prisma.user.create({
-      data: {
-        email: `perf-doc-${Math.random().toString(36).substring(7)}@test.com`,
-        firstName: 'Perf',
-        lastName: 'Doctor',
-        organizationId: org.id,
-        branchId: branch.id,
-      },
-    });
-    token = jwtService.sign({
-      sub: doctor.id,
-      email: doctor.email,
-      organizationId: org.id,
-      branchId: branch.id,
-      roles: ['Organization Owner'],
-      permissions: ['*'],
-    });
-
-    // Create one patient for individual tests
-    patient = await prisma.patient.create({
-      data: {
-        firstName: 'Individual',
-        lastName: 'Patient',
-        organizationId: org.id,
-        branchId: branch.id,
-      },
-    });
-
-    // Seed 100 patients for search benchmark
-    const patients = Array.from({ length: 100 }).map((_, i) => ({
-      firstName: `BenchPatient${i}`,
-      lastName: `Last${i}`,
-      organizationId: org.id,
-      branchId: branch.id,
-    }));
-    await prisma.patient.createMany({ data: patients });
+    ({ app, prisma } = await createTestApp());
+    t = await createTenant(app, prisma, 'Bench', { roles: ['Organization Owner', 'Receptionist', 'Doctor'] });
+    for (let i = 0; i < 15; i++) await createPatient(app, t.receptionist);
   });
 
   afterAll(async () => {
-    try {
-      const tablenames =
-        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames
-        .map(({ tablename }) => tablename)
-        .filter((name) => name !== '_prisma_migrations')
-        .map((name) => `"public"."${name}"`)
-        .join(', ');
-      if (tables.length > 0) {
-        await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
-      }
-    } catch (e) {
-      console.error(e);
-    }
     await app.close();
   });
 
-  describe('API Performance Benchmarking', () => {
-    it('BENCHMARK: Patient Search < 500ms', async () => {
-      const start = performance.now();
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/patients/search?q=BenchPatient')
-        .set('Authorization', `Bearer ${token}`);
-      const end = performance.now();
-
-      const duration = end - start;
-      console.log(
-        `[EVIDENCE] Patient Search Latency: ${duration.toFixed(2)}ms`,
-      );
-
-      expect(response.status).toBe(200);
-      expect(duration).toBeLessThan(500);
-    });
-
-    it('BENCHMARK: Patient List < 500ms', async () => {
-      const start = performance.now();
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/patients')
-        .set('Authorization', `Bearer ${token}`);
-      const end = performance.now();
-
-      const duration = end - start;
-      console.log(`[EVIDENCE] Patient List Latency: ${duration.toFixed(2)}ms`);
-
-      expect(response.status).toBe(200);
-      expect(duration).toBeLessThan(500);
-    });
+  it.each([
+    ['patient list', '/api/v1/patients'],
+    ['patient search', '/api/v1/patients/search?q=Asha'],
+    ['staff list', '/api/v1/users?allBranches=true'],
+    ['roles with permissions', '/api/v1/roles'],
+    ['audit log page', '/api/v1/audit-logs?limit=50'],
+    ['auth profile (per-request RBAC lookup)', '/api/v1/auth/profile'],
+  ])(`%s responds within ${BUDGET_MS}ms`, async (_name, url) => {
+    // Warm-up then measure.
+    await http().get(url).set(auth(t.owner));
+    const { result, ms } = await timed(() => http().get(url).set(auth(t.owner)));
+    expect(result.status).toBe(200);
+    expect(ms).toBeLessThan(BUDGET_MS);
   });
 
-  describe('RBAC Role Enforcement Proof', () => {
-    it('PROVE: Doctor role can view patients', async () => {
-      const docToken = jwtService.sign({
-        sub: doctor.id,
-        email: doctor.email,
-        organizationId: org.id,
-        branchId: doctor.branchId,
-        roles: ['Doctor'],
-        permissions: ['*'],
-      });
+  it('login (bcrypt + session) completes within 2s', async () => {
+    const { result, ms } = await timed(() => http().post('/api/v1/auth/login').send({ email: t.doctor.email, password: 'Test-Password-123' }));
+    expect(result.status).toBe(200);
+    expect(ms).toBeLessThan(2000);
+  });
 
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/patients/${patient.id}`)
-        .set('Authorization', `Bearer ${docToken}`);
+  it('RBAC is enforced on benchmarked paths (doctor cannot list staff)', async () => {
+    expect((await http().get('/api/v1/users').set(auth(t.doctor))).status).toBe(403);
+    expect((await http().get('/api/v1/patients').set(auth(t.doctor))).status).toBe(200);
+  });
 
-      expect(response.status).toBe(200);
-    });
-
-    it('PROVE: Invalid token returns 401', async () => {
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/patients/${patient.id}`)
-        .set('Authorization', `Bearer invalid-token`);
-
-      expect(response.status).toBe(401);
-    });
+  it('health probes respond within 200ms', async () => {
+    await http().get('/health/live');
+    const { ms } = await timed(() => http().get('/health/live'));
+    expect(ms).toBeLessThan(200);
   });
 });

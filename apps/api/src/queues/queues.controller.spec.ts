@@ -1,72 +1,32 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { QueuesController } from './queues.controller';
-import { QueuesService } from './queues.service';
 
 describe('QueuesController', () => {
-  let controller: QueuesController;
-  let service: QueuesService;
-
-  const mockRequest = {
-    user: {
-      id: 'user-1',
-      organizationId: 'org-1',
-      branchId: 'branch-1',
-    },
+  const user = { id: 'u1', organizationId: 'o1', branchId: 'b1' };
+  const req = { user };
+  const service = {
+    getLiveQueue: jest.fn().mockResolvedValue({ entries: [] }),
+    getDisplay: jest.fn().mockResolvedValue({ nowServing: [], waiting: [] }),
+    checkIn: jest.fn().mockResolvedValue({ id: 'e1' }),
+    walkIn: jest.fn().mockResolvedValue({ id: 'e1' }),
+    callNext: jest.fn().mockResolvedValue({ id: 'e1' }),
+    reorder: jest.fn().mockResolvedValue({ entries: [] }),
+    updateEntry: jest.fn().mockResolvedValue({ id: 'e1' }),
+    updateStatus: jest.fn().mockResolvedValue({ id: 'e1' }),
   };
+  const controller = new QueuesController(service as any);
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [QueuesController],
-      providers: [
-        {
-          provide: QueuesService,
-          useValue: {
-            getLiveQueue: jest.fn(),
-            checkIn: jest.fn(),
-            updateEntryStatus: jest.fn(),
-          },
-        },
-      ],
-    }).compile();
-
-    controller = module.get<QueuesController>(QueuesController);
-    service = module.get<QueuesService>(QueuesService);
-  });
-
-  describe('getLiveQueue', () => {
-    it('should call service getLiveQueue with context', async () => {
-      jest
-        .spyOn(service, 'getLiveQueue')
-        .mockResolvedValue({ id: 'q-1' } as any);
-      await controller.getLiveQueue(mockRequest);
-      expect(service.getLiveQueue).toHaveBeenCalledWith('org-1', 'branch-1');
-    });
-  });
-
-  describe('checkIn', () => {
-    it('should call service checkIn with context', async () => {
-      jest
-        .spyOn(service, 'checkIn')
-        .mockResolvedValue({ id: 'entry-1' } as any);
-      await controller.checkIn({ appointmentId: 'appt-1' }, mockRequest);
-      expect(service.checkIn).toHaveBeenCalledWith(
-        'appt-1',
-        'org-1',
-        'branch-1',
-      );
-    });
-  });
-
-  describe('updateEntryStatus', () => {
-    it('should call service updateEntryStatus', async () => {
-      jest
-        .spyOn(service, 'updateEntryStatus')
-        .mockResolvedValue({ id: 'entry-1' } as any);
-      await controller.updateStatus('entry-1', { status: 'IN_PROGRESS' });
-      expect(service.updateEntryStatus).toHaveBeenCalledWith(
-        'entry-1',
-        'IN_PROGRESS',
-      );
-    });
+  it('scopes every call to the authenticated user', async () => {
+    await controller.getLiveQueue(req);
+    await controller.getDisplay(req);
+    await controller.checkIn({ appointmentId: 'a' } as any, req);
+    await controller.callNext({ room: 'R1' } as any, req);
+    await controller.updateStatus('e1', { status: 'CALLED' } as any, req);
+    await controller.updateEntry('e1', { room: 'R2' } as any, req);
+    expect(service.getLiveQueue).toHaveBeenCalledWith(user);
+    expect(service.getDisplay).toHaveBeenCalledWith(user);
+    expect(service.checkIn).toHaveBeenCalledWith(user, { appointmentId: 'a' });
+    expect(service.callNext).toHaveBeenCalledWith(user, { room: 'R1' });
+    expect(service.updateStatus).toHaveBeenCalledWith(user, 'e1', 'CALLED');
+    expect(service.updateEntry).toHaveBeenCalledWith(user, 'e1', { room: 'R2' });
   });
 });

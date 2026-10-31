@@ -1,129 +1,160 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { MessagesService } from '../messages/messages.service';
+import { MessagingService } from '../messages/messaging.service';
+import { MessageContextService } from '../messages/message-context.service';
+import { TemplatePurpose, contentVariablesFor, renderTemplate } from '../messages/template-render';
+import { ACCEPTED_STATUSES } from '../messages/messaging.types';
 
+export interface FollowUpAutomationCounts {
+  candidates: number;
+  sent: number;
+  failed: number;
+  skipped: number;
+}
+
+const DAY = 86_400_000;
+/** Follow-up statuses that no longer need reminders. */
+const CLOSED_STATUSES = ['COMPLETED', 'CANCELLED', 'CLOSED', 'SKIPPED', 'BOOKED'];
+export const MAX_OVERDUE_REMINDERS = 3;
+export const OVERDUE_REMINDER_GAP_DAYS = 3;
+
+/**
+ * Follow-up reminders (idempotent via Message.reminderKey):
+ *   fu-due:<id>          follow-up due within the next 36 hours ("due tomorrow")
+ *   fu-overdue:<id>:<n>  overdue follow-up, at most MAX_OVERDUE_REMINDERS, every OVERDUE_REMINDER_GAP_DAYS days
+ * Follow-ups already linked to an appointment are skipped (appointment reminders cover them).
+ * Updates FollowUp.reminderCount / lastRemindedAt.
+ */
 @Injectable()
 export class FollowUpReminderService {
   private readonly logger = new Logger(FollowUpReminderService.name);
 
   constructor(
-    private prisma: PrismaService,
-    private messagesService: MessagesService,
+    private readonly prisma: PrismaService,
+    private readonly messaging: MessagingService,
+    private readonly context: MessageContextService,
   ) {}
 
-  /**
-   * Send follow-up reminders for follow-ups scheduled for the specified date
-   * @param daysBefore How many days before the follow-up to send the reminder
-   */
-  async sendFollowUpReminders(daysBefore: number) {
-    const now = new Date();
-    const targetDate = new Date(
-      now.getTime() + daysBefore * 24 * 60 * 60 * 1000,
-    );
-    targetDate.setHours(0, 0, 0, 0); // Set to start of day
+  private openWhere(organizationId?: string): Prisma.FollowUpWhereInput {
+    return {
+      ...(organizationId ? { organizationId } : {}),
+      appointmentId: null,
+      OR: [{ status: null }, { status: { notIn: CLOSED_STATUSES } }],
+    };
+  }
 
-    const startOfDay = targetDate;
-    const endOfDay = new Date(targetDate.getTime() + 24 * 60 * 60 * 1000 - 1); // End of day
-
-    // Find follow-ups scheduled for the target date
-    const followUps = await this.prisma.followUp.findMany({
-      where: {
-        scheduledDate: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-        // Assuming we only want to send reminders for scheduled follow-ups
-        // status could be checked here if there's a status field
-      },
-      include: {
-        patient: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            phone: true,
-          },
-        },
-        doctor: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        consultation: {
-          select: {
-            id: true,
-          },
-        },
-      },
-    });
-
-    for (const followUp of followUps) {
-      try {
-        const patientName =
-          `${followUp.patient.firstName} ${followUp.patient.lastName || ''}`.trim();
-        const doctorName =
-          `Dr. ${followUp.doctor.firstName} ${followUp.doctor.lastName || ''}`.trim();
-        const followUpDate = followUp.scheduledDate.toLocaleDateString();
-
-        const messageContent = `Reminder: You have a follow-up appointment with ${doctorName} on ${followUpDate}. Patient: ${patientName}`;
-
-        // Try to send via WhatsApp first, then SMS if WhatsApp fails
-        try {
-          await this.messagesService.sendWhatsApp(
-            followUp.patient.id,
-            messageContent,
-            followUp.organizationId,
-            followUp.branchId,
-          );
-          this.logger.log(
-            `Follow-up reminder sent via WhatsApp for follow-up ${followUp.id}`,
-          );
-        } catch (whatsappError) {
-          this.logger.warn(
-            `WhatsApp failed for follow-up ${followUp.id}, trying SMS: ${whatsappError.message}`,
-          );
-
-          try {
-            await this.messagesService.sendSms(
-              followUp.patient.id,
-              messageContent,
-              followUp.organizationId,
-              followUp.branchId,
-            );
-            this.logger.log(
-              `Follow-up reminder sent via SMS for follow-up ${followUp.id}`,
-            );
-          } catch (smsError) {
-            this.logger.error(
-              `Both WhatsApp and SMS failed for follow-up ${followUp.id}:`,
-              smsError,
-            );
-          }
-        }
-      } catch (error) {
-        this.logger.error(
-          `Failed to process follow-up reminder for follow-up ${followUp.id}:`,
-          error,
-        );
+  private async remind(
+    fu: { id: string; organizationId: string; branchId: string; patientId: string; scheduledDate: Date; reminderCount: number; doctor: { firstName: string; lastName: string } | null },
+    key: string,
+    counts: FollowUpAutomationCounts,
+  ) {
+    try {
+      const patient = await this.prisma.patient.findFirst({
+        where: { id: fu.patientId, organizationId: fu.organizationId },
+        select: { preferredChannel: true },
+      });
+      const channel = this.messaging.resolveChannel(patient?.preferredChannel ?? null);
+      const tpl = await this.context.resolveTemplate(fu.organizationId, TemplatePurpose.FOLLOW_UP_REMINDER, channel);
+      if (!tpl) return;
+      const vars = await this.context.varsForPatient(fu.organizationId, fu.patientId, { doctor: fu.doctor, date: fu.scheduledDate });
+      const out = await this.messaging.sendToPatient({
+        organizationId: fu.organizationId,
+        branchId: fu.branchId,
+        patientId: fu.patientId,
+        channel,
+        body: renderTemplate(tpl.content, vars),
+        reminderKey: key,
+        essential: true,
+        contentSid: channel === 'WHATSAPP' ? tpl.externalTemplateId : null,
+        contentVariables: channel === 'WHATSAPP' && tpl.externalTemplateId ? contentVariablesFor(tpl.content, vars) : undefined,
+      });
+      if (!out.message) {
+        counts.skipped++;
+        return;
       }
+      await this.prisma.followUp.update({
+        where: { id: fu.id },
+        data: { reminderCount: { increment: 1 }, lastRemindedAt: new Date() },
+      });
+      if (ACCEPTED_STATUSES.includes(out.message.deliveryStatus ?? '')) counts.sent++;
+      else counts.failed++;
+    } catch (err) {
+      counts.failed++;
+      this.logger.error(`Follow-up reminder failed for ${fu.id}: ${(err as Error).message}`);
     }
   }
 
-  /**
-   * Send follow-up reminders for follow-ups scheduled for tomorrow
-   */
-  async sendTomorrowFollowUpReminders() {
-    this.logger.log('Sending tomorrow follow-up reminders');
-    return this.sendFollowUpReminders(1);
+  private readonly select = {
+    id: true,
+    organizationId: true,
+    branchId: true,
+    patientId: true,
+    scheduledDate: true,
+    reminderCount: true,
+    lastRemindedAt: true,
+    doctor: { select: { firstName: true, lastName: true } },
+  } as const;
+
+  /** Follow-ups due within the next 36 hours. */
+  async sendDueReminders(organizationId?: string): Promise<FollowUpAutomationCounts> {
+    const now = Date.now();
+    const rows = await this.prisma.followUp.findMany({
+      where: { ...this.openWhere(organizationId), scheduledDate: { gte: new Date(now), lte: new Date(now + 1.5 * DAY) } },
+      select: this.select,
+      take: 1000,
+    });
+    const counts = { candidates: rows.length, sent: 0, failed: 0, skipped: 0 };
+    const done = new Set(
+      (await this.prisma.message.findMany({ where: { reminderKey: { in: rows.map((r) => `fu-due:${r.id}`) } }, select: { reminderKey: true } })).map((m) => m.reminderKey),
+    );
+    for (const fu of rows) {
+      if (done.has(`fu-due:${fu.id}`)) {
+        counts.skipped++;
+        continue;
+      }
+      await this.remind(fu, `fu-due:${fu.id}`, counts);
+    }
+    return counts;
   }
 
-  /**
-   * Send follow-up reminders for follow-ups scheduled for today
-   */
-  async sendTodayFollowUpReminders() {
-    this.logger.log('Sending today follow-up reminders');
-    return this.sendFollowUpReminders(0);
+  /** Overdue (scheduled date passed, still open): up to MAX_OVERDUE_REMINDERS, spaced by OVERDUE_REMINDER_GAP_DAYS. */
+  async sendOverdueReminders(organizationId?: string): Promise<FollowUpAutomationCounts> {
+    const now = Date.now();
+    const rows = await this.prisma.followUp.findMany({
+      where: {
+        ...this.openWhere(organizationId),
+        scheduledDate: { lt: new Date(now - 0.5 * DAY), gte: new Date(now - 60 * DAY) },
+        reminderCount: { lt: MAX_OVERDUE_REMINDERS + 1 },
+        AND: [{ OR: [{ lastRemindedAt: null }, { lastRemindedAt: { lte: new Date(now - OVERDUE_REMINDER_GAP_DAYS * DAY) } }] }],
+      },
+      select: this.select,
+      take: 1000,
+    });
+    const counts = { candidates: rows.length, sent: 0, failed: 0, skipped: 0 };
+    for (const fu of rows) {
+      const n = (await this.prisma.message.count({ where: { reminderKey: { startsWith: `fu-overdue:${fu.id}:` } } })) + 1;
+      if (n > MAX_OVERDUE_REMINDERS) {
+        counts.skipped++;
+        continue;
+      }
+      await this.remind(fu, `fu-overdue:${fu.id}:${n}`, counts);
+    }
+    return counts;
+  }
+
+  /** Back-compat: follow-ups due tomorrow. */
+  async sendTomorrowFollowUpReminders(organizationId?: string) {
+    return this.sendDueReminders(organizationId);
+  }
+
+  /** Back-compat: overdue follow-ups. */
+  async sendTodayFollowUpReminders(organizationId?: string) {
+    return this.sendOverdueReminders(organizationId);
+  }
+
+  /** Back-compat entry point. */
+  async sendFollowUpReminders(daysBefore: number, organizationId?: string) {
+    return daysBefore > 0 ? this.sendDueReminders(organizationId) : this.sendOverdueReminders(organizationId);
   }
 }

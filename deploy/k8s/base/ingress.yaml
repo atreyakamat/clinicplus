@@ -1,0 +1,33 @@
+# Single public entry point. Everything (SPA, /api, provider webhooks) is routed to the web
+# nginx, which proxies /api/* to the API Service. One origin means no browser CORS and
+#   APP_BASE_URL == API_PUBLIC_URL == CORS_ORIGINS == https://<host>
+# Webhooks: https://<host>/api/v1/webhooks/stripe, https://<host>/api/v1/webhooks/twilio/...
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: clinicplus
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # Keep >= MAX_UPLOAD_MB (+ multipart overhead) and the web CLIENT_MAX_BODY_SIZE.
+    nginx.ingress.kubernetes.io/proxy-body-size: 25m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - clinic.example.com
+      secretName: clinicplus-tls
+  rules:
+    - host: clinic.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: clinicplus-web
+                port:
+                  name: http

@@ -1,317 +1,503 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, ArrowLeft, CheckCircle2, Lock, Plus, Save, Trash2 } from 'lucide-react';
+import { Button, PageHeader } from '@clinicplus/ui';
 import { api } from '../../app/lib/api';
-import { Button, Card, Input, PageHeader } from '@clinicplus/ui';
-import { Save, CheckCircle, Clock, FileText, Activity, AlertCircle, ArrowLeft, Plus, Trash2, Pill } from 'lucide-react';
+import { useAuthStore } from '../../app/store/auth.store';
+import { HasPermission, useCan } from '../../app/components/HasPermission';
+import {
+  ageFrom,
+  drName,
+  ErrorBox,
+  Field,
+  fmtDate,
+  fmtDateTime,
+  fullName,
+  getData,
+  inputCls,
+  Loading,
+  Section,
+  StatusPill,
+  textareaCls,
+} from '../patients/shared';
+import { PrescriptionEditor } from '../prescriptions/PrescriptionEditor';
+import { DocumentsList, DocumentUploader } from '../documents/DocumentsPanel';
+
+const NOTE_FIELDS = [
+  { key: 'chiefComplaint', label: 'Chief complaint', rows: 2 },
+  { key: 'historyOfPresentIllness', label: 'History of present illness', rows: 3 },
+  { key: 'clinicalAssessment', label: 'Clinical assessment / examination', rows: 3 },
+  { key: 'treatmentPlan', label: 'Treatment plan', rows: 3 },
+] as const;
+
+const VITAL_FIELDS = [
+  { key: 'height', label: 'Height (cm)', step: '0.1' },
+  { key: 'weight', label: 'Weight (kg)', step: '0.1' },
+  { key: 'temperature', label: 'Temp (°C)', step: '0.1' },
+  { key: 'pulse', label: 'Pulse (bpm)', step: '1' },
+  { key: 'respiratoryRate', label: 'Resp. rate', step: '1' },
+  { key: 'bloodPressureSystolic', label: 'BP systolic', step: '1' },
+  { key: 'bloodPressureDiastolic', label: 'BP diastolic', step: '1' },
+  { key: 'spo2', label: 'SpO₂ (%)', step: '1' },
+] as const;
+const INT_VITALS = new Set(['pulse', 'respiratoryRate', 'bloodPressureSystolic', 'bloodPressureDiastolic', 'spo2']);
 
 export const ConsultationWorkspace = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
-  const { data: consultation, isLoading } = useQuery({
-    queryKey: ['consultation', id],
-    queryFn: () => api.get(`/consultations/${id}`),
+  const qc = useQueryClient();
+  const can = useCan();
+  const me = useAuthStore((s) => s.user);
+  const { data: ws, isLoading, error } = useQuery({
+    queryKey: ['consultation-workspace', id],
+    queryFn: () => getData(`/consultations/${id}/workspace`),
   });
+  const refresh = () => qc.invalidateQueries({ queryKey: ['consultation-workspace', id] });
 
-  const { data: lastConsultation } = useQuery({
-    queryKey: ['last-consultation', consultation?.patientId],
-    queryFn: () => api.get(`/consultations?patientId=${consultation?.patientId}&limit=1&excludeId=${id}`),
-    enabled: !!consultation?.patientId,
-  });
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [notesState, setNotesState] = useState<{ saving?: boolean; saved?: string; error?: unknown }>({});
+  const [vitals, setVitals] = useState<Record<string, string>>({});
+  const [vitalsError, setVitalsError] = useState<unknown>(null);
+  const [dx, setDx] = useState({ icdCode: '', diagnosisName: '', severity: '' });
+  const [dxError, setDxError] = useState<unknown>(null);
+  const [allergy, setAllergy] = useState({ allergyName: '', severity: '' });
+  const [allergyError, setAllergyError] = useState<unknown>(null);
+  const [showRx, setShowRx] = useState(false);
+  const [addendum, setAddendum] = useState('');
+  const [actionError, setActionError] = useState<unknown>(null);
 
-  const lastVisit = lastConsultation?.[0];
-
-  const [formData, setFormData] = useState<any>(null);
-
-  React.useEffect(() => {
-    if (consultation && !formData) {
-      setFormData({
-        chiefComplaint: consultation.chiefComplaint || '',
-        clinicalAssessment: consultation.clinicalAssessment || '',
-        treatmentPlan: consultation.treatmentPlan || '',
-        vitals: consultation.vitals?.[0] || {
-          height: '', weight: '', temperature: '', pulse: '', 
-          bloodPressureSystolic: '', bloodPressureDiastolic: '', spo2: ''
-        },
-        diagnoses: consultation.diagnoses || []
-      });
+  useEffect(() => {
+    if (ws?.consultation) {
+      const c = ws.consultation;
+      setNotes(Object.fromEntries(NOTE_FIELDS.map((f) => [f.key, c[f.key] ?? ''])));
     }
-  }, [consultation, formData]);
+  }, [ws?.consultation?.id, ws?.consultation?.updatedAt]);
 
-  const updateMutation = useMutation({
-    mutationFn: (data: any) => api.patch(`/consultations/${id}`, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['consultation', id] });
-    },
-  });
+  if (isLoading) return <Loading label="Loading workspace…" />;
+  if (error || !ws) return <ErrorBox error={error ?? 'Consultation not found'} />;
 
-  const completeMutation = useMutation({
-    mutationFn: () => api.post(`/consultations/${id}/complete`),
-    onSuccess: () => {
-      navigate('/queue');
-    },
-  });
+  const c = ws.consultation;
+  const p = ws.patient;
+  const isDraft = c.status === 'DRAFT';
+  const isOwner = c.doctorId === me?.id;
+  const canEdit = !!ws.canEdit;
+  const age = ageFrom(p?.dateOfBirth);
 
-  if (isLoading || !formData) return <div className="p-6 text-center">Loading workspace...</div>;
-
-  const handleInputChange = (field: string, value: any) => {
-    setFormData((prev: any) => ({ ...prev, [field]: value }));
+  const saveNotes = async () => {
+    setNotesState({ saving: true });
+    try {
+      await api.patch(`/consultations/${c.id}`, notes);
+      setNotesState({ saved: new Date().toLocaleTimeString() });
+      refresh();
+    } catch (e) {
+      setNotesState({ error: e });
+    }
   };
 
-  const handleVitalChange = (field: string, value: any) => {
-    setFormData((prev: any) => ({
-      ...prev,
-      vitals: { ...prev.vitals, [field]: value === '' ? null : parseFloat(value) || value }
-    }));
+  const complete = async () => {
+    if (!window.confirm('Complete this consultation? It will be locked; later changes need an addendum.')) return;
+    setActionError(null);
+    try {
+      await api.patch(`/consultations/${c.id}`, notes);
+      await api.post(`/consultations/${c.id}/complete`);
+      refresh();
+      qc.invalidateQueries({ queryKey: ['consultations'] });
+    } catch (e) {
+      setActionError(e);
+    }
   };
 
-  const addDiagnosis = () => {
-    setFormData((prev: any) => ({
-      ...prev,
-      diagnoses: [...prev.diagnoses, { diagnosisName: '', icdCode: '', severity: 'NORMAL' }]
-    }));
+  const recordVitals = async () => {
+    setVitalsError(null);
+    const body: Record<string, number | string> = { consultationId: c.id };
+    for (const f of VITAL_FIELDS) {
+      const v = vitals[f.key];
+      if (v !== undefined && v !== '') body[f.key] = INT_VITALS.has(f.key) ? parseInt(v, 10) : parseFloat(v);
+    }
+    try {
+      await api.post('/vitals', body);
+      setVitals({});
+      refresh();
+    } catch (e) {
+      setVitalsError(e);
+    }
   };
 
-  const removeDiagnosis = (index: number) => {
-    setFormData((prev: any) => ({
-      ...prev,
-      diagnoses: prev.diagnoses.filter((_: any, i: number) => i !== index)
-    }));
+  const addDiagnosis = async () => {
+    setDxError(null);
+    try {
+      await api.post('/diagnoses', {
+        consultationId: c.id,
+        diagnosisName: dx.diagnosisName.trim(),
+        ...(dx.icdCode.trim() ? { icdCode: dx.icdCode.trim() } : {}),
+        ...(dx.severity ? { severity: dx.severity } : {}),
+      });
+      setDx({ icdCode: '', diagnosisName: '', severity: '' });
+      refresh();
+    } catch (e) {
+      setDxError(e);
+    }
   };
 
-  const handleDiagnosisChange = (index: number, field: string, value: string) => {
-    const newDiagnoses = [...formData.diagnoses];
-    newDiagnoses[index] = { ...newDiagnoses[index], [field]: value };
-    setFormData((prev: any) => ({ ...prev, diagnoses: newDiagnoses }));
+  const removeDiagnosis = async (dxId: string) => {
+    setDxError(null);
+    try {
+      await api.delete(`/diagnoses/${dxId}`);
+      refresh();
+    } catch (e) {
+      setDxError(e);
+    }
+  };
+
+  const addAllergy = async () => {
+    setAllergyError(null);
+    try {
+      await api.post(`/clinical/patients/${p.id}/allergies`, {
+        allergyName: allergy.allergyName.trim(),
+        ...(allergy.severity ? { severity: allergy.severity } : {}),
+      });
+      setAllergy({ allergyName: '', severity: '' });
+      refresh();
+    } catch (e) {
+      setAllergyError(e);
+    }
+  };
+
+  const addAddendum = async () => {
+    setActionError(null);
+    try {
+      await api.post(`/consultations/${c.id}/addendum`, { note: addendum.trim() });
+      setAddendum('');
+      refresh();
+    } catch (e) {
+      setActionError(e);
+    }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft size={16} />
-          </Button>
-          <PageHeader 
-            title={`Consultation: ${consultation.patient.firstName} ${consultation.patient.lastName}`} 
-            description={`Visit Date: ${new Date(consultation.consultationDate).toLocaleDateString()}`}
-          />
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => updateMutation.mutate(formData)} disabled={updateMutation.isPending}>
-            <Save size={16} /> {updateMutation.isPending ? 'Saving...' : 'Save Draft'}
-          </Button>
-          <Button className="gap-2 bg-[#1FA971]" onClick={() => completeMutation.mutate()} disabled={completeMutation.isPending}>
-            <CheckCircle size={16} /> {completeMutation.isPending ? 'Completing...' : 'Complete & Close'}
-          </Button>
+    <div className="space-y-4">
+      <Link to="/consultations" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
+        <ArrowLeft size={16} /> Consultations
+      </Link>
+      <PageHeader
+        title={fullName(p)}
+        description={`${p.patientCode ?? ''} · ${p.gender ?? '—'}${age !== null ? ` · ${age} yrs` : ''}${p.bloodGroup ? ` · ${p.bloodGroup}` : ''} · ${drName(c.doctor)} · ${fmtDateTime(c.consultationDate)}`}
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusPill status={c.status} />
+        {!isDraft && (
+          <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+            <Lock size={12} /> Locked — edits are recorded as addenda
+          </span>
+        )}
+        {isDraft && !isOwner && <span className="text-xs text-slate-500">Read-only: only the consulting doctor can edit</span>}
+        <div className="ml-auto flex gap-2">
+          <Link to={`/patients/${p.id}`}>
+            <Button variant="outline" size="sm">
+              Patient profile
+            </Button>
+          </Link>
+          {canEdit && can('consultations.update') && (
+            <Button size="sm" className="gap-1" onClick={complete}>
+              <CheckCircle2 size={14} /> Complete consultation
+            </Button>
+          )}
         </div>
       </div>
+      <ErrorBox error={actionError} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Sidebar: Patient Vitals & History */}
-        <div className="lg:col-span-1 space-y-6">
-          <Card className="p-5">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <Activity size={16} className="text-[#1FA971]" />
-              Vitals
-            </h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-500">Weight (kg)</label>
-                  <input type="text" className="w-full border rounded p-1.5 text-sm" value={formData.vitals.weight || ''} onChange={(e) => handleVitalChange('weight', e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-500">Height (cm)</label>
-                  <input type="text" className="w-full border rounded p-1.5 text-sm" value={formData.vitals.height || ''} onChange={(e) => handleVitalChange('height', e.target.value)} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-500">Temp (°C)</label>
-                  <input type="text" className="w-full border rounded p-1.5 text-sm" value={formData.vitals.temperature || ''} onChange={(e) => handleVitalChange('temperature', e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-500">SpO2 (%)</label>
-                  <input type="text" className="w-full border rounded p-1.5 text-sm" value={formData.vitals.spo2 || ''} onChange={(e) => handleVitalChange('spo2', e.target.value)} />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-500">BP (Systolic/Diastolic)</label>
-                <div className="flex items-center gap-2">
-                  <input type="text" className="w-full border rounded p-1.5 text-sm" placeholder="120" value={formData.vitals.bloodPressureSystolic || ''} onChange={(e) => handleVitalChange('bloodPressureSystolic', e.target.value)} />
-                  <span>/</span>
-                  <input type="text" className="w-full border rounded p-1.5 text-sm" placeholder="80" value={formData.vitals.bloodPressureDiastolic || ''} onChange={(e) => handleVitalChange('bloodPressureDiastolic', e.target.value)} />
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-5">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <Clock size={16} className="text-slate-400" />
-              Last Visit Summary
-            </h3>
-            <div className="space-y-3">
-              {lastVisit ? (
-                <div className="space-y-3">
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Chief Complaint</p>
-                    <p className="text-xs text-slate-700 line-clamp-3">{lastVisit.chiefComplaint}</p>
-                  </div>
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Diagnoses</p>
-                    <div className="flex flex-wrap gap-1">
-                      {lastVisit.diagnoses?.map((d: any) => (
-                        <span key={d.id} className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-md font-medium">{d.diagnosisName}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <Link to={`/consultations/${lastVisit.id}`} target="_blank" className="block text-center text-xs text-[#1FA971] font-medium hover:underline">
-                    View Full History
-                  </Link>
-                </div>
-              ) : (
-                <p className="text-xs text-slate-500 text-center py-4">No previous history available.</p>
-              )}
-            </div>
-          </Card>
+      {ws.allergies?.length > 0 && (
+        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          <span>
+            <strong>Allergies:</strong> {ws.allergies.map((a: any) => `${a.allergyName}${a.severity ? ` (${a.severity})` : ''}`).join(', ')}
+          </span>
         </div>
+      )}
 
-        {/* Main: Clinical Notes */}
-        <div className="lg:col-span-3 space-y-6">
-          <Card className="p-6">
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                  <AlertCircle size={16} className="text-orange-500" />
-                  Chief Complaint
-                </h3>
-                <textarea 
-                  className="w-full min-h-[80px] p-3 rounded-xl border border-slate-200 text-sm focus:ring-1 focus:ring-[#1FA971] outline-none"
-                  placeholder="Why is the patient visiting today?"
-                  value={formData.chiefComplaint}
-                  onChange={(e) => handleInputChange('chiefComplaint', e.target.value)}
-                />
-              </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          <Section
+            title="Clinical notes"
+            actions={
+              canEdit && (
+                <Button size="sm" variant="outline" className="gap-1" onClick={saveNotes} disabled={notesState.saving}>
+                  <Save size={14} /> {notesState.saving ? 'Saving…' : 'Save'}
+                </Button>
+              )
+            }
+          >
+            <div className="space-y-3">
+              {NOTE_FIELDS.map((f) => (
+                <Field key={f.key} label={f.label}>
+                  <textarea
+                    className={textareaCls}
+                    rows={f.rows}
+                    disabled={!canEdit}
+                    value={notes[f.key] ?? ''}
+                    onChange={(e) => setNotes({ ...notes, [f.key]: e.target.value })}
+                  />
+                </Field>
+              ))}
+              {notesState.saved && <p className="text-xs text-emerald-700">Saved at {notesState.saved}</p>}
+              <ErrorBox error={notesState.error} />
+            </div>
+          </Section>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                    <Activity size={16} className="text-red-500" />
-                    Diagnoses
-                  </h3>
-                  <Button variant="outline" size="sm" onClick={addDiagnosis} className="gap-1 h-8">
-                    <Plus size={14} /> Add Diagnosis
+          {ws.vitals !== undefined && (
+            <Section title="Vitals">
+              {ws.vitals.length > 0 && (
+                <div className="mb-3 overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="text-xs uppercase text-slate-500">
+                      <tr>
+                        <th className="py-1 pr-2">Time</th>
+                        <th className="py-1 pr-2">BP</th>
+                        <th className="py-1 pr-2">Pulse</th>
+                        <th className="py-1 pr-2">Temp</th>
+                        <th className="py-1 pr-2">SpO₂</th>
+                        <th className="py-1 pr-2">Wt / Ht</th>
+                        <th className="py-1">BMI</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {ws.vitals.map((v: any) => (
+                        <tr key={v.id}>
+                          <td className="py-1 pr-2">{fmtDateTime(v.createdAt)}</td>
+                          <td className="py-1 pr-2">{v.bloodPressureSystolic ? `${v.bloodPressureSystolic}/${v.bloodPressureDiastolic ?? '—'}` : '—'}</td>
+                          <td className="py-1 pr-2">{v.pulse ?? '—'}</td>
+                          <td className="py-1 pr-2">{v.temperature ?? '—'}</td>
+                          <td className="py-1 pr-2">{v.spo2 ?? '—'}</td>
+                          <td className="py-1 pr-2">
+                            {v.weight ?? '—'} / {v.height ?? '—'}
+                          </td>
+                          <td className="py-1">{v.bmi ? `${v.bmi} (${v.bmiCategory})` : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {isDraft && can('vitals.create') ? (
+                <>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {VITAL_FIELDS.map((f) => (
+                      <Field key={f.key} label={f.label}>
+                        <input
+                          type="number"
+                          step={f.step}
+                          className={inputCls}
+                          value={vitals[f.key] ?? ''}
+                          onChange={(e) => setVitals({ ...vitals, [f.key]: e.target.value })}
+                        />
+                      </Field>
+                    ))}
+                  </div>
+                  <ErrorBox error={vitalsError} className="mt-2" />
+                  <div className="mt-2 flex justify-end">
+                    <Button size="sm" variant="outline" onClick={recordVitals} disabled={!Object.values(vitals).some(Boolean)}>
+                      Record vitals
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                !ws.vitals.length && <p className="text-sm text-slate-500">No vitals recorded.</p>
+              )}
+            </Section>
+          )}
+
+          {ws.diagnoses !== undefined && (
+            <Section title="Diagnoses">
+              <ul className="space-y-2">
+                {ws.diagnoses.map((d: any) => (
+                  <li key={d.id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 p-2 text-sm">
+                    <span>
+                      {d.icdCode && <span className="mr-2 rounded bg-slate-200 px-1.5 py-0.5 font-mono text-xs">{d.icdCode}</span>}
+                      <span className="font-medium">{d.diagnosisName}</span>
+                      {d.severity && <span className="ml-2 text-xs text-slate-500">{d.severity}</span>}
+                    </span>
+                    {canEdit && can('diagnoses.create') && (
+                      <button className="text-slate-400 hover:text-red-600" aria-label="Remove diagnosis" onClick={() => removeDiagnosis(d.id)}>
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </li>
+                ))}
+                {!ws.diagnoses.length && <li className="text-sm text-slate-500">No diagnoses yet.</li>}
+              </ul>
+              {canEdit && can('diagnoses.create') && (
+                <div className="mt-3 grid gap-2 sm:grid-cols-6">
+                  <input className={`${inputCls} sm:col-span-1`} placeholder="ICD (J06.9)" value={dx.icdCode} onChange={(e) => setDx({ ...dx, icdCode: e.target.value })} />
+                  <input className={`${inputCls} sm:col-span-3`} placeholder="Diagnosis" value={dx.diagnosisName} onChange={(e) => setDx({ ...dx, diagnosisName: e.target.value })} />
+                  <select className={inputCls} value={dx.severity} onChange={(e) => setDx({ ...dx, severity: e.target.value })} aria-label="Severity">
+                    <option value="">Severity</option>
+                    <option>MILD</option>
+                    <option>MODERATE</option>
+                    <option>SEVERE</option>
+                  </select>
+                  <Button size="sm" variant="outline" className="gap-1" disabled={dx.diagnosisName.trim().length < 2} onClick={addDiagnosis}>
+                    <Plus size={14} /> Add
                   </Button>
                 </div>
-                
-                <div className="space-y-3">
-                  {formData.diagnoses.map((diag: any, index: number) => (
-                    <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100 relative group">
-                      <div className="md:col-span-3">
-                        <Input 
-                          placeholder="ICD Code" 
-                          value={diag.icdCode} 
-                          onChange={(e) => handleDiagnosisChange(index, 'icdCode', e.target.value)} 
-                          className="h-9 text-sm"
-                        />
-                      </div>
-                      <div className="md:col-span-6">
-                        <Input 
-                          placeholder="Diagnosis Name" 
-                          value={diag.diagnosisName} 
-                          onChange={(e) => handleDiagnosisChange(index, 'diagnosisName', e.target.value)} 
-                          className="h-9 text-sm"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <select 
-                          className="w-full h-9 rounded-lg border border-slate-200 text-sm outline-none px-2"
-                          value={diag.severity}
-                          onChange={(e) => handleDiagnosisChange(index, 'severity', e.target.value)}
-                        >
-                          <option value="NORMAL">Normal</option>
-                          <option value="MILD">Mild</option>
-                          <option value="MODERATE">Moderate</option>
-                          <option value="SEVERE">Severe</option>
-                          <option value="CHRONIC">Chronic</option>
-                        </select>
-                      </div>
-                      <div className="md:col-span-1 flex items-center justify-center">
-                        <button onClick={() => removeDiagnosis(index)} className="text-slate-400 hover:text-red-500">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+              )}
+              <ErrorBox error={dxError} className="mt-2" />
+            </Section>
+          )}
+
+          {ws.prescriptions !== undefined && (
+            <Section
+              title="Prescriptions"
+              actions={
+                canEdit &&
+                can('prescriptions.create') &&
+                !showRx && (
+                  <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowRx(true)}>
+                    <Plus size={14} /> Prescribe
+                  </Button>
+                )
+              }
+            >
+              {showRx && (
+                <div className="mb-4 rounded-lg border border-slate-200 p-3">
+                  <PrescriptionEditor
+                    patient={p}
+                    consultationId={c.id}
+                    onSaved={() => {
+                      setShowRx(false);
+                      refresh();
+                    }}
+                    onCancel={() => setShowRx(false)}
+                  />
+                </div>
+              )}
+              <ul className="space-y-2">
+                {ws.prescriptions.map((rx: any) => (
+                  <li key={rx.id} className="rounded-lg bg-slate-50 p-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <Link to={`/prescriptions/${rx.id}`} className="font-medium text-[#1FA971] hover:underline">
+                        {fmtDateTime(rx.issuedAt)}
+                      </Link>
+                      <StatusPill status={rx.status} />
                     </div>
-                  ))}
-                  {formData.diagnoses.length === 0 && (
-                    <p className="text-xs text-slate-400 italic text-center py-2">No diagnoses added yet.</p>
-                  )}
+                    <p className="text-slate-600">
+                      {rx.items.map((i: any) => [i.medicineName, i.dosage, i.frequency, i.duration].filter(Boolean).join(' · ')).join(' | ')}
+                    </p>
+                  </li>
+                ))}
+                {!ws.prescriptions.length && !showRx && <li className="text-sm text-slate-500">No prescriptions for this consultation.</li>}
+              </ul>
+            </Section>
+          )}
+
+          <HasPermission permission={['documents.view', 'documents.upload']}>
+            <Section title="Reports & documents">
+              <HasPermission permission="documents.upload">
+                <div className="mb-4">
+                  <DocumentUploader patient={p} consultationId={c.id} onUploaded={() => qc.invalidateQueries({ queryKey: ['documents'] })} />
                 </div>
-              </div>
+              </HasPermission>
+              <HasPermission permission="documents.view">
+                <DocumentsList patientId={p.id} consultationId={c.id} compact />
+              </HasPermission>
+            </Section>
+          </HasPermission>
 
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                  <FileText size={16} className="text-[#1FA971]" />
-                  Clinical Assessment / Findings
-                </h3>
-                <textarea 
-                  className="w-full min-h-[150px] p-3 rounded-xl border border-slate-200 text-sm focus:ring-1 focus:ring-[#1FA971] outline-none"
-                  placeholder="Record your clinical findings, observations..."
-                  value={formData.clinicalAssessment}
-                  onChange={(e) => handleInputChange('clinicalAssessment', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                    <Pill size={16} className="text-purple-500" />
-                    Prescriptions
-                  </h3>
-                  <Link to={`/prescriptions/new?patientId=${consultation.patientId}&consultationId=${consultation.id}`}>
-                    <Button variant="outline" size="sm" className="gap-1 h-8">
-                      <Plus size={14} /> Add Prescription
+          {!isDraft && (
+            <Section title="Addenda">
+              <ul className="space-y-2">
+                {ws.addenda.map((a: any) => (
+                  <li key={a.id} className="rounded-lg bg-slate-50 p-2 text-sm">
+                    <p className="whitespace-pre-wrap">{a.note}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {drName(a.author)} · {fmtDateTime(a.createdAt)}
+                    </p>
+                  </li>
+                ))}
+                {!ws.addenda.length && <li className="text-sm text-slate-500">No addenda.</li>}
+              </ul>
+              {isOwner && can('consultations.update') && (
+                <div className="mt-3 space-y-2">
+                  <textarea className={textareaCls} rows={2} placeholder="Add an addendum (e.g. lab results reviewed)…" value={addendum} onChange={(e) => setAddendum(e.target.value)} />
+                  <div className="flex justify-end">
+                    <Button size="sm" variant="outline" disabled={addendum.trim().length < 3} onClick={addAddendum}>
+                      Add addendum
                     </Button>
-                  </Link>
+                  </div>
                 </div>
-                
-                <div className="space-y-2">
-                  {consultation.prescriptions?.length > 0 ? (
-                    consultation.prescriptions.map((p: any) => (
-                      <Card key={p.id} className="p-3 bg-slate-50 border-slate-100 flex justify-between items-center">
-                        <div>
-                          <p className="text-sm font-medium text-slate-900">Prescription #{p.id.slice(0,8)}</p>
-                          <p className="text-xs text-slate-500">{p.items.length} items • {new Date(p.issuedAt).toLocaleDateString()}</p>
-                        </div>
-                        <Link to={`/prescriptions/${p.id}`}>
-                          <Button variant="outline" size="sm">View</Button>
-                        </Link>
-                      </Card>
-                    ))
-                  ) : (
-                    <p className="text-xs text-slate-400 italic text-center py-2">No prescriptions generated for this consultation.</p>
-                  )}
-                </div>
-              </div>
+              )}
+            </Section>
+          )}
+        </div>
 
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                  <CheckCircle size={16} className="text-blue-500" />
-                  Treatment Plan
-                </h3>
-                <textarea 
-                  className="w-full min-h-[120px] p-3 rounded-xl border border-slate-200 text-sm focus:ring-1 focus:ring-[#1FA971] outline-none"
-                  placeholder="Outline the treatment plan, follow-up instructions, etc."
-                  value={formData.treatmentPlan}
-                  onChange={(e) => handleInputChange('treatmentPlan', e.target.value)}
-                />
-              </div>
-            </div>
-          </Card>
+        <div className="space-y-4">
+          {ws.allergies !== undefined && (
+            <Section title="Allergies">
+              <ul className="space-y-1 text-sm">
+                {ws.allergies.map((a: any) => (
+                  <li key={a.id} className="text-red-700">
+                    {a.allergyName} {a.severity && <span className="text-xs">({a.severity})</span>}
+                  </li>
+                ))}
+                {!ws.allergies.length && <li className="text-slate-500">No known allergies recorded</li>}
+              </ul>
+              {can('clinical.update') && (
+                <div className="mt-3 flex gap-2">
+                  <input className={inputCls} placeholder="Add allergy" value={allergy.allergyName} onChange={(e) => setAllergy({ ...allergy, allergyName: e.target.value })} />
+                  <select className={`${inputCls} w-28`} value={allergy.severity} onChange={(e) => setAllergy({ ...allergy, severity: e.target.value })} aria-label="Allergy severity">
+                    <option value="">Sev.</option>
+                    <option>MILD</option>
+                    <option>MODERATE</option>
+                    <option>SEVERE</option>
+                    <option>LIFE_THREATENING</option>
+                  </select>
+                  <Button size="sm" variant="outline" disabled={allergy.allergyName.trim().length < 2} onClick={addAllergy}>
+                    Add
+                  </Button>
+                </div>
+              )}
+              <ErrorBox error={allergyError} className="mt-2" />
+            </Section>
+          )}
+          {ws.conditions !== undefined && (
+            <Section title="Medical conditions">
+              <ul className="space-y-1 text-sm">
+                {ws.conditions.map((m: any) => (
+                  <li key={m.id}>
+                    {m.conditionName} <span className="text-xs text-slate-500">{m.status}</span>
+                  </li>
+                ))}
+                {!ws.conditions.length && <li className="text-slate-500">None recorded</li>}
+              </ul>
+            </Section>
+          )}
+          {ws.activeMedications !== undefined && (
+            <Section title="Active medications">
+              <ul className="space-y-1 text-sm">
+                {ws.activeMedications.map((m: any) => (
+                  <li key={m.id}>
+                    <span className="font-medium">{m.medicineName}</span>{' '}
+                    <span className="text-xs text-slate-500">{[m.dosage, m.frequency].filter(Boolean).join(' · ')}</span>
+                  </li>
+                ))}
+                {!ws.activeMedications.length && <li className="text-slate-500">None</li>}
+              </ul>
+            </Section>
+          )}
+          <Section title="Previous visits">
+            <ul className="space-y-2 text-sm">
+              {ws.previousConsultations.map((pc: any) => (
+                <li key={pc.id}>
+                  <Link to={`/consultations/${pc.id}`} className="font-medium text-[#1FA971] hover:underline">
+                    {fmtDate(pc.consultationDate)}
+                  </Link>{' '}
+                  <span className="text-xs text-slate-500">{drName(pc.doctor)}</span>
+                  <p className="text-slate-600">{pc.chiefComplaint || '—'}</p>
+                  {pc.diagnoses?.length > 0 && <p className="text-xs text-slate-500">{pc.diagnoses.map((d: any) => d.diagnosisName).join(', ')}</p>}
+                </li>
+              ))}
+              {!ws.previousConsultations.length && <li className="text-slate-500">First visit</li>}
+            </ul>
+          </Section>
         </div>
       </div>
     </div>

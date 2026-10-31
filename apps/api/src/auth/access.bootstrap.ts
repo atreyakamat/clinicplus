@@ -49,11 +49,11 @@ export async function ensureOrganizationAccess(
       if (existing) {
         return db.role.update({
           where: { id: existing.id },
-          data: { branchId: branchId },
+          data: { branchId: branchId, isSystem: true },
         });
       }
       return db.role.create({
-        data: { organizationId, branchId: branchId, name: roleName },
+        data: { organizationId, branchId: branchId, name: roleName, isSystem: true },
       });
     }),
   );
@@ -68,6 +68,15 @@ export async function ensureOrganizationAccess(
     if (!role) {
       continue;
     }
+
+    const wantedIds = permissionKeys
+      .map((key) => permissionByKey.get(normalizePermission(key))?.id)
+      .filter(Boolean);
+    // Built-in roles mirror DEFAULT_ROLE_PERMISSIONS exactly: drop grants that
+    // were removed from the matrix so a downgrade actually takes effect.
+    await db.rolePermission.deleteMany({
+      where: { roleId: role.id, permissionId: { notIn: wantedIds } },
+    });
 
     for (const permissionKey of permissionKeys) {
       const permission = permissionByKey.get(
@@ -102,4 +111,16 @@ export async function ensureOrganizationAccess(
     permissions,
     rolesByName,
   };
+}
+
+/**
+ * Re-applies the built-in role matrix to every organization. Run at boot so a
+ * deploy that changes default-access.ts updates existing tenants.
+ */
+export async function syncAllOrganizationsAccess(db: any) {
+  const orgs = await db.organization.findMany({ select: { id: true } });
+  for (const org of orgs) {
+    await ensureOrganizationAccess(db, org.id, null);
+  }
+  return orgs.length;
 }

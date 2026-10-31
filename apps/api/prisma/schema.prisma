@@ -115,43 +115,50 @@ model Organization {
   footerText     String? @map("footer_text")
   watermarkUrl   String? @map("watermark_url")
 
-  subscriptionPlan   SubscriptionPlan?   @map("subscription_plan")
-  subscriptionStatus SubscriptionStatus  @default(TRIAL) @map("subscription_status")
-  status             RecordStatus        @default(ACTIVE)
-  createdAt          DateTime            @default(now()) @map("created_at")
-  updatedAt          DateTime            @updatedAt @map("updated_at")
-  createdBy          String?             @map("created_by") @db.Uuid
-  updatedBy          String?             @map("updated_by") @db.Uuid
-  deletedAt          DateTime?           @map("deleted_at")
-  deletedBy          String?             @map("deleted_by") @db.Uuid
-  deleteReason       String?             @map("delete_reason")
-  branches           Branch[]
-  departments        Department[]
-  users              User[]
-  roles              Role[]
-  permissions        Permission[]
-  templates          Template[]
-  campaigns          Campaign[]
-  workflowTemplates  WorkflowTemplate[]
-  auditLogs          AuditLog[]
-  analyticsEvents    AnalyticsEvent[]
-  dashboardSnapshots DashboardSnapshot[]
-  doctorMetrics      DoctorMetric[]
-  tasks              Task[]
-  invoices           Invoice[]
-  patients           Patient[]
-  appointments       Appointment[]
-  consultations      Consultation[]
-  prescriptions      Prescription[]
-  medicalDocuments   MedicalDocument[]
-  messages           Message[]
-  reviews            Review[]
-  referrals          Referral[]
-  feedbacks          Feedback[]
-  clinicServices     ClinicService[]
-  workingHours       WorkingHour[]
-  clinicHolidays     ClinicHoliday[]
-  staffInvitations   StaffInvitation[]
+  subscriptionPlan     SubscriptionPlan?   @map("subscription_plan")
+  subscriptionStatus   SubscriptionStatus  @default(TRIAL) @map("subscription_status")
+  currency             String              @default("INR")
+  trialEndsAt          DateTime?           @map("trial_ends_at")
+  currentPeriodEnd     DateTime?           @map("current_period_end")
+  stripeCustomerId     String?             @unique @map("stripe_customer_id")
+  stripeSubscriptionId String?             @unique @map("stripe_subscription_id")
+  status               RecordStatus        @default(ACTIVE)
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+  createdBy            String?             @map("created_by") @db.Uuid
+  updatedBy            String?             @map("updated_by") @db.Uuid
+  deletedAt            DateTime?           @map("deleted_at")
+  deletedBy            String?             @map("deleted_by") @db.Uuid
+  deleteReason         String?             @map("delete_reason")
+  branches             Branch[]
+  departments          Department[]
+  users                User[]
+  roles                Role[]
+  permissions          Permission[]
+  templates            Template[]
+  campaigns            Campaign[]
+  workflowTemplates    WorkflowTemplate[]
+  auditLogs            AuditLog[]
+  analyticsEvents      AnalyticsEvent[]
+  dashboardSnapshots   DashboardSnapshot[]
+  doctorMetrics        DoctorMetric[]
+  tasks                Task[]
+  invoices             Invoice[]
+  patients             Patient[]
+  appointments         Appointment[]
+  consultations        Consultation[]
+  prescriptions        Prescription[]
+  medicalDocuments     MedicalDocument[]
+  messages             Message[]
+  reviews              Review[]
+  referrals            Referral[]
+  feedbacks            Feedback[]
+  clinicServices       ClinicService[]
+  workingHours         WorkingHour[]
+  clinicHolidays       ClinicHoliday[]
+  staffInvitations     StaffInvitation[]
+  reviewRequests       ReviewRequest[]
+  webhookEvents        WebhookEvent[]
 
   @@map("organizations")
 }
@@ -213,25 +220,28 @@ model Department {
 }
 
 model User {
-  id                 String       @id @default(uuid()) @db.Uuid
-  organizationId     String       @map("organization_id") @db.Uuid
-  branchId           String       @map("branch_id") @db.Uuid
-  firstName          String       @map("first_name")
-  lastName           String       @map("last_name")
-  email              String
-  phone              String?
-  avatarUrl          String?      @map("avatar_url")
-  passwordHash       String?      @map("password_hash")
-  lastLoginAt        DateTime?    @map("last_login_at")
-  status             RecordStatus @default(ACTIVE)
+  id                     String       @id @default(uuid()) @db.Uuid
+  organizationId         String       @map("organization_id") @db.Uuid
+  branchId               String       @map("branch_id") @db.Uuid
+  firstName              String       @map("first_name")
+  lastName               String       @map("last_name")
+  email                  String
+  phone                  String?
+  avatarUrl              String?      @map("avatar_url")
+  passwordHash           String?      @map("password_hash")
+  twoFactorEnabled       Boolean      @default(false) @map("two_factor_enabled")
+  twoFactorSecret        String?      @map("two_factor_secret")
+  twoFactorRecoveryCodes Json?        @map("two_factor_recovery_codes")
+  lastLoginAt            DateTime?    @map("last_login_at")
+  status                 RecordStatus @default(ACTIVE)
   // Doctor Fields (F-006)
-  qualification      String?
-  specialization     String?
-  registrationNumber String?      @map("registration_number")
-  experienceYears    Int?         @map("experience_years")
-  bio                String?      @db.Text
-  consultationFee    Decimal?     @default(0) @map("consultation_fee") @db.Decimal(12, 2)
-  signatureUrl       String?      @map("signature_url")
+  qualification          String?
+  specialization         String?
+  registrationNumber     String?      @map("registration_number")
+  experienceYears        Int?         @map("experience_years")
+  bio                    String?      @db.Text
+  consultationFee        Decimal?     @default(0) @map("consultation_fee") @db.Decimal(12, 2)
+  signatureUrl           String?      @map("signature_url")
 
   createdAt           DateTime             @default(now()) @map("created_at")
   updatedAt           DateTime             @updatedAt @map("updated_at")
@@ -258,6 +268,7 @@ model User {
   taskComments        TaskComment[]
   feedbacks           Feedback[]
   paymentsCreated     Payment[]            @relation("PaymentCreatedBy")
+  doctorLeaves        DoctorLeave[]        @relation("DoctorLeaveDoctor")
 
   @@unique([organizationId, email])
   @@index([organizationId, branchId])
@@ -335,6 +346,7 @@ model Role {
   branchId        String?          @map("branch_id") @db.Uuid
   name            String
   description     String?
+  isSystem        Boolean          @default(false) @map("is_system")
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
   createdBy       String?          @map("created_by") @db.Uuid
@@ -411,11 +423,13 @@ model UserSession {
   logoutAt         DateTime?    @map("logout_at")
   status           RecordStatus @default(ACTIVE)
   refreshTokenHash String?      @map("refresh_token_hash")
+  expiresAt        DateTime?    @map("expires_at")
   createdAt        DateTime     @default(now()) @map("created_at")
   updatedAt        DateTime     @updatedAt @map("updated_at")
   user             User         @relation(fields: [userId], references: [id])
 
   @@index([organizationId, branchId])
+  @@index([userId])
   @@map("user_sessions")
 }
 
@@ -435,6 +449,11 @@ model Patient {
   maritalStatus        String?                   @map("marital_status")
   occupation           String?
   abhaNumber           String?                   @map("abha_number")
+  communicationOptIn   Boolean                   @default(true) @map("communication_opt_in")
+  preferredChannel     String?                   @map("preferred_channel")
+  portalEnabled        Boolean                   @default(false) @map("portal_enabled")
+  portalPasswordHash   String?                   @map("portal_password_hash")
+  portalLastLoginAt    DateTime?                 @map("portal_last_login_at")
   status               RecordStatus              @default(ACTIVE)
   createdAt            DateTime                  @default(now()) @map("created_at")
   updatedAt            DateTime                  @updatedAt @map("updated_at")
@@ -467,8 +486,12 @@ model Patient {
   imagingReports       ImagingReport[]
   tasks                Task[]
   timelineEvents       TimelineEvent[]
+  portalSessions       PatientPortalSession[]
 
+  @@unique([organizationId, patientCode])
   @@index([organizationId, branchId])
+  @@index([organizationId, phone])
+  @@index([organizationId, lastName, firstName])
   @@map("patients")
 }
 
@@ -557,33 +580,36 @@ model PatientNote {
 }
 
 model Appointment {
-  id                String            @id @default(uuid()) @db.Uuid
-  organizationId    String            @map("organization_id") @db.Uuid
-  branchId          String            @map("branch_id") @db.Uuid
-  patientId         String            @map("patient_id") @db.Uuid
-  doctorId          String            @map("doctor_id") @db.Uuid
-  appointmentType   String?           @map("appointment_type")
-  appointmentSource String?           @map("appointment_source")
-  scheduledStart    DateTime          @map("scheduled_start")
-  scheduledEnd      DateTime          @map("scheduled_end")
-  status            AppointmentStatus @default(SCHEDULED)
-  notes             String?
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
-  createdBy         String?           @map("created_by") @db.Uuid
-  updatedBy         String?           @map("updated_by") @db.Uuid
-  deletedAt         DateTime?         @map("deleted_at")
-  deletedBy         String?           @map("deleted_by") @db.Uuid
-  deleteReason      String?           @map("delete_reason")
-  organization      Organization      @relation(fields: [organizationId], references: [id])
-  branch            Branch            @relation(fields: [branchId], references: [id])
-  patient           Patient           @relation(fields: [patientId], references: [id])
-  doctor            User              @relation("AppointmentDoctor", fields: [doctorId], references: [id])
-  queueEntries      QueueEntry[]
-  consultations     Consultation[]
+  id                 String            @id @default(uuid()) @db.Uuid
+  organizationId     String            @map("organization_id") @db.Uuid
+  branchId           String            @map("branch_id") @db.Uuid
+  patientId          String            @map("patient_id") @db.Uuid
+  doctorId           String            @map("doctor_id") @db.Uuid
+  appointmentType    String?           @map("appointment_type")
+  appointmentSource  String?           @map("appointment_source")
+  scheduledStart     DateTime          @map("scheduled_start")
+  scheduledEnd       DateTime          @map("scheduled_end")
+  status             AppointmentStatus @default(SCHEDULED)
+  notes              String?
+  cancellationReason String?           @map("cancellation_reason")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  createdBy          String?           @map("created_by") @db.Uuid
+  updatedBy          String?           @map("updated_by") @db.Uuid
+  deletedAt          DateTime?         @map("deleted_at")
+  deletedBy          String?           @map("deleted_by") @db.Uuid
+  deleteReason       String?           @map("delete_reason")
+  organization       Organization      @relation(fields: [organizationId], references: [id])
+  branch             Branch            @relation(fields: [branchId], references: [id])
+  patient            Patient           @relation(fields: [patientId], references: [id])
+  doctor             User              @relation("AppointmentDoctor", fields: [doctorId], references: [id])
+  queueEntries       QueueEntry[]
+  consultations      Consultation[]
 
   @@index([organizationId, branchId])
   @@index([patientId])
+  @@index([doctorId, scheduledStart])
+  @@index([organizationId, branchId, scheduledStart])
   @@map("appointments")
 }
 
@@ -663,12 +689,16 @@ model QueueEntry {
   calledTime     DateTime?        @map("called_time")
   completedTime  DateTime?        @map("completed_time")
   status         QueueEntryStatus @default(WAITING)
+  priority       Int              @default(0)
+  room           String?
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
   queue          Queue            @relation(fields: [queueId], references: [id])
   appointment    Appointment      @relation(fields: [appointmentId], references: [id])
 
+  @@unique([queueId, tokenNumber])
   @@index([organizationId, branchId])
+  @@index([appointmentId])
   @@map("queue_entries")
 }
 
@@ -786,6 +816,10 @@ model Prescription {
   doctorId       String             @map("doctor_id") @db.Uuid
   consultationId String?            @map("consultation_id") @db.Uuid
   issuedAt       DateTime           @default(now()) @map("issued_at")
+  status         String             @default("ACTIVE")
+  notes          String?
+  cancelledAt    DateTime?          @map("cancelled_at")
+  cancelReason   String?            @map("cancel_reason")
   createdAt      DateTime           @default(now()) @map("created_at")
   updatedAt      DateTime           @updatedAt @map("updated_at")
   patient        Patient            @relation(fields: [patientId], references: [id])
@@ -826,6 +860,8 @@ model MedicalDocument {
   documentType   String          @map("document_type")
   title          String
   fileUrl        String          @map("file_url")
+  storageKey     String?         @map("storage_key")
+  checksum       String?
   mimeType       String?         @map("mime_type")
   fileSize       Int?            @map("file_size")
   uploadedAt     DateTime        @default(now()) @map("uploaded_at")
@@ -838,6 +874,7 @@ model MedicalDocument {
   organization   Organization    @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId, branchId])
+  @@index([patientId])
   @@map("medical_documents")
 }
 
@@ -888,6 +925,10 @@ model FollowUp {
   scheduledDate  DateTime          @map("scheduled_date")
   status         String?
   notes          String?
+  reason         String?
+  appointmentId  String?           @map("appointment_id") @db.Uuid
+  reminderCount  Int               @default(0) @map("reminder_count")
+  lastRemindedAt DateTime?         @map("last_reminded_at")
   createdAt      DateTime          @default(now()) @map("created_at")
   updatedAt      DateTime          @updatedAt @map("updated_at")
   patient        Patient           @relation(fields: [patientId], references: [id])
@@ -896,6 +937,8 @@ model FollowUp {
   outcomes       FollowUpOutcome[]
 
   @@index([organizationId, branchId])
+  @@index([scheduledDate])
+  @@index([patientId])
   @@map("follow_ups")
 }
 
@@ -916,29 +959,35 @@ model FollowUpOutcome {
 }
 
 model Invoice {
-  id             String        @id @default(uuid()) @db.Uuid
-  organizationId String        @map("organization_id") @db.Uuid
-  branchId       String        @map("branch_id") @db.Uuid
-  patientId      String        @map("patient_id") @db.Uuid
-  invoiceNumber  String        @map("invoice_number")
-  subtotal       Decimal       @default(0) @db.Decimal(12, 2)
-  discount       Decimal       @default(0) @db.Decimal(12, 2)
-  tax            Decimal       @default(0) @db.Decimal(12, 2)
-  total          Decimal       @default(0) @db.Decimal(12, 2)
-  status         InvoiceStatus @default(DRAFT)
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-  createdBy      String?       @map("created_by") @db.Uuid
-  updatedBy      String?       @map("updated_by") @db.Uuid
-  deletedAt      DateTime?     @map("deleted_at")
-  deletedBy      String?       @map("deleted_by") @db.Uuid
-  deleteReason   String?       @map("delete_reason")
-  patient        Patient       @relation(fields: [patientId], references: [id])
-  items          InvoiceItem[]
-  payments       Payment[]
-  refunds        Refund[]
-  organization   Organization  @relation(fields: [organizationId], references: [id])
-  branch         Branch        @relation(fields: [branchId], references: [id])
+  id                      String        @id @default(uuid()) @db.Uuid
+  organizationId          String        @map("organization_id") @db.Uuid
+  branchId                String        @map("branch_id") @db.Uuid
+  patientId               String        @map("patient_id") @db.Uuid
+  invoiceNumber           String        @map("invoice_number")
+  subtotal                Decimal       @default(0) @db.Decimal(12, 2)
+  discount                Decimal       @default(0) @db.Decimal(12, 2)
+  tax                     Decimal       @default(0) @db.Decimal(12, 2)
+  total                   Decimal       @default(0) @db.Decimal(12, 2)
+  status                  InvoiceStatus @default(DRAFT)
+  notes                   String?
+  dueDate                 DateTime?     @map("due_date")
+  paymentLinkUrl          String?       @map("payment_link_url")
+  stripeCheckoutSessionId String?       @unique @map("stripe_checkout_session_id")
+  voidReason              String?       @map("void_reason")
+  appointmentId           String?       @map("appointment_id") @db.Uuid
+  createdAt               DateTime      @default(now()) @map("created_at")
+  updatedAt               DateTime      @updatedAt @map("updated_at")
+  createdBy               String?       @map("created_by") @db.Uuid
+  updatedBy               String?       @map("updated_by") @db.Uuid
+  deletedAt               DateTime?     @map("deleted_at")
+  deletedBy               String?       @map("deleted_by") @db.Uuid
+  deleteReason            String?       @map("delete_reason")
+  patient                 Patient       @relation(fields: [patientId], references: [id])
+  items                   InvoiceItem[]
+  payments                Payment[]
+  refunds                 Refund[]
+  organization            Organization  @relation(fields: [organizationId], references: [id])
+  branch                  Branch        @relation(fields: [branchId], references: [id])
 
   @@unique([organizationId, invoiceNumber])
   @@index([organizationId, branchId])
@@ -952,6 +1001,7 @@ model InvoiceItem {
   branchId       String   @map("branch_id") @db.Uuid
   invoiceId      String   @map("invoice_id") @db.Uuid
   itemName       String   @map("item_name")
+  serviceId      String?  @map("service_id") @db.Uuid
   quantity       Int      @default(1)
   unitPrice      Decimal  @default(0) @map("unit_price") @db.Decimal(12, 2)
   amount         Decimal  @default(0) @db.Decimal(12, 2)
@@ -971,6 +1021,7 @@ model Payment {
   amount               Decimal       @default(0) @db.Decimal(12, 2)
   paymentMethod        String        @map("payment_method")
   transactionReference String?       @map("transaction_reference")
+  idempotencyKey       String?       @map("idempotency_key")
   paymentStatus        PaymentStatus @default(PENDING) @map("payment_status")
   paidAt               DateTime?     @map("paid_at")
   isRefund             Boolean       @default(false) @map("is_refund")
@@ -982,7 +1033,9 @@ model Payment {
   createdBy            User?         @relation("PaymentCreatedBy", fields: [createdById], references: [id])
   refunds              Refund[]
 
+  @@unique([organizationId, idempotencyKey])
   @@index([organizationId, branchId])
+  @@index([invoiceId])
   @@map("payments")
 }
 
@@ -1014,6 +1067,10 @@ model Message {
   direction      MessageDirection
   messageBody    String           @map("message_body")
   deliveryStatus String?          @map("delivery_status")
+  externalId     String?          @map("external_id")
+  providerStatus String?          @map("provider_status")
+  errorMessage   String?          @map("error_message")
+  reminderKey    String?          @unique @map("reminder_key")
   sentAt         DateTime         @default(now()) @map("sent_at")
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
@@ -1021,19 +1078,23 @@ model Message {
   organization   Organization     @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId, branchId])
+  @@index([patientId])
   @@map("messages")
 }
 
 model Template {
-  id              String          @id @default(uuid()) @db.Uuid
-  organizationId  String          @map("organization_id") @db.Uuid
-  branchId        String?         @map("branch_id") @db.Uuid
-  name            String
-  channel         TemplateChannel
-  templateContent String          @map("template_content")
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
-  organization    Organization    @relation(fields: [organizationId], references: [id])
+  id                 String          @id @default(uuid()) @db.Uuid
+  organizationId     String          @map("organization_id") @db.Uuid
+  branchId           String?         @map("branch_id") @db.Uuid
+  name               String
+  channel            TemplateChannel
+  templateContent    String          @map("template_content")
+  purpose            String?
+  isActive           Boolean         @default(true) @map("is_active")
+  externalTemplateId String?         @map("external_template_id")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  organization       Organization    @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
   @@map("templates")
@@ -1046,6 +1107,13 @@ model Campaign {
   name           String
   channel        TemplateChannel
   status         String?
+  templateId     String?         @map("template_id") @db.Uuid
+  messageBody    String?         @map("message_body")
+  audience       Json?
+  scheduledAt    DateTime?       @map("scheduled_at")
+  sentCount      Int             @default(0) @map("sent_count")
+  failedCount    Int             @default(0) @map("failed_count")
+  createdBy      String?         @map("created_by") @db.Uuid
   startedAt      DateTime?       @map("started_at")
   endedAt        DateTime?       @map("ended_at")
   createdAt      DateTime        @default(now()) @map("created_at")
@@ -1064,6 +1132,10 @@ model Review {
   doctorId       String       @map("doctor_id") @db.Uuid
   rating         Int
   reviewText     String?      @map("review_text")
+  npsScore       Int?         @map("nps_score")
+  source         String?
+  requestId      String?      @unique @map("request_id") @db.Uuid
+  isPublic       Boolean      @default(false) @map("is_public")
   createdAt      DateTime     @default(now()) @map("created_at")
   patient        Patient      @relation(fields: [patientId], references: [id])
   doctor         User         @relation("ReviewDoctor", fields: [doctorId], references: [id])
@@ -1074,16 +1146,21 @@ model Review {
 }
 
 model Referral {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
-  branchId       String       @map("branch_id") @db.Uuid
-  patientId      String       @map("patient_id") @db.Uuid
-  source         String?
-  campaignName   String?      @map("campaign_name")
-  status         String?
-  createdAt      DateTime     @default(now()) @map("created_at")
-  patient        Patient      @relation(fields: [patientId], references: [id])
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  id                 String       @id @default(uuid()) @db.Uuid
+  organizationId     String       @map("organization_id") @db.Uuid
+  branchId           String       @map("branch_id") @db.Uuid
+  patientId          String       @map("patient_id") @db.Uuid
+  source             String?
+  campaignName       String?      @map("campaign_name")
+  status             String?
+  referredName       String?      @map("referred_name")
+  referredPhone      String?      @map("referred_phone")
+  convertedPatientId String?      @map("converted_patient_id") @db.Uuid
+  notes              String?
+  updatedAt          DateTime     @default(now()) @updatedAt @map("updated_at")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  patient            Patient      @relation(fields: [patientId], references: [id])
+  organization       Organization @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId, branchId])
   @@map("referrals")
@@ -1144,6 +1221,9 @@ model Task {
   priority       TaskPriority  @default(MEDIUM)
   status         TaskStatus    @default(OPEN)
   dueDate        DateTime?     @map("due_date")
+  sourceType     String?       @map("source_type")
+  sourceId       String?       @map("source_id") @db.Uuid
+  completedAt    DateTime?     @map("completed_at")
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
   createdBy      String?       @map("created_by") @db.Uuid
@@ -1183,6 +1263,8 @@ model WorkflowTemplate {
   branchId       String?      @map("branch_id") @db.Uuid
   name           String
   description    String?
+  trigger        String?
+  steps          Json?
   status         RecordStatus @default(ACTIVE)
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
@@ -1213,6 +1295,7 @@ model AuditLog {
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
+  @@index([organizationId, createdAt])
   @@map("audit_logs")
 }
 
@@ -1242,6 +1325,7 @@ model StaffInvitation {
   email          String
   phone          String?
   roleId         String       @map("role_id") @db.Uuid
+  branchId       String?      @map("branch_id") @db.Uuid
   token          String       @unique
   status         String       @default("PENDING")
   expiresAt      DateTime     @map("expires_at")
@@ -1261,6 +1345,7 @@ model LoginAttempt {
   status        String
   failureReason String?  @map("failure_reason")
 
+  @@index([email, attemptTime])
   @@map("login_attempts")
 }
 
@@ -1272,5 +1357,99 @@ model PasswordReset {
   usedAt    DateTime? @map("used_at")
   createdAt DateTime  @default(now()) @map("created_at")
 
+  @@index([userId])
   @@map("password_resets")
+}
+
+model DoctorLeave {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  doctorId       String   @map("doctor_id") @db.Uuid
+  startDate      DateTime @map("start_date")
+  endDate        DateTime @map("end_date")
+  reason         String?
+  createdBy      String?  @map("created_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  doctor         User     @relation("DoctorLeaveDoctor", fields: [doctorId], references: [id])
+
+  @@index([organizationId, doctorId, startDate])
+  @@map("doctor_leaves")
+}
+
+/// A patient-facing review/NPS request. The token is sent in a link; the public
+/// page submits a Review without the patient needing an account.
+model ReviewRequest {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  branchId       String       @map("branch_id") @db.Uuid
+  patientId      String       @map("patient_id") @db.Uuid
+  doctorId       String?      @map("doctor_id") @db.Uuid
+  appointmentId  String?      @map("appointment_id") @db.Uuid
+  token          String       @unique
+  channel        String?
+  status         String       @default("PENDING")
+  sentAt         DateTime?    @map("sent_at")
+  completedAt    DateTime?    @map("completed_at")
+  expiresAt      DateTime     @map("expires_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, branchId])
+  @@index([patientId])
+  @@map("review_requests")
+}
+
+/// Inbound provider webhooks (Stripe, Twilio). The (provider, eventId) pair makes
+/// processing idempotent across retries.
+model WebhookEvent {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String?       @map("organization_id") @db.Uuid
+  provider       String
+  eventId        String        @map("event_id")
+  eventType      String        @map("event_type")
+  payload        Json?
+  processedAt    DateTime?     @map("processed_at")
+  error          String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  @@unique([provider, eventId])
+  @@map("webhook_events")
+}
+
+/// Refresh-token sessions for the patient self-service portal. Separate from
+/// staff UserSession so patient auth can never grant staff access.
+model PatientPortalSession {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  patientId      String    @map("patient_id") @db.Uuid
+  tokenHash      String    @unique @map("token_hash")
+  userAgent      String?   @map("user_agent")
+  ipAddress      String?   @map("ip_address")
+  expiresAt      DateTime  @map("expires_at")
+  revokedAt      DateTime? @map("revoked_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  patient        Patient   @relation(fields: [patientId], references: [id])
+
+  @@index([patientId])
+  @@map("patient_portal_sessions")
+}
+
+/// One-time codes for patient portal login / verification sent over SMS/WhatsApp/email.
+model PatientPortalOtp {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  patientId      String    @map("patient_id") @db.Uuid
+  codeHash       String    @map("code_hash")
+  purpose        String
+  expiresAt      DateTime  @map("expires_at")
+  consumedAt     DateTime? @map("consumed_at")
+  attempts       Int       @default(0)
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([patientId, purpose])
+  @@map("patient_portal_otps")
 }

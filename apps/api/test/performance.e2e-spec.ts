@@ -1,284 +1,160 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+/**
+ * Smoke-level latency budgets on a seeded tenant (1000 patients, 300 appointments,
+ * 150 invoices). Budgets are deliberately generous so the suite does not flake on a
+ * loaded CI box or when other suites run concurrently; they catch pathological
+ * regressions (N+1, missing pagination, full-table scans), not micro-performance.
+ */
+import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { AllExceptionsFilter } from './../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
-import { performance } from 'perf_hooks';
+import { auth, createTenant, createTestApp, Tenant, TenantUser } from './helpers/app';
 
-describe('Performance Testing (E2E) — Phase 16', () => {
+const BUDGET_MS = 2000;
+const PATIENTS = 1000;
+
+describe('Performance budgets (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let jwtService: JwtService;
-  let org: any;
-  let branch: any;
-  let doctor: any;
-  let token: string;
+  let A: Tenant;
+  let patientIds: string[];
+  const http = () => request(app.getHttpServer());
 
-  const LATENCY_THRESHOLD_MS = 500;
+  const timed = async (user: TenantUser, url: string) => {
+    const t0 = Date.now();
+    const res = await http().get(url).set(auth(user));
+    const ms = Date.now() - t0;
+    expect({ url, status: res.status }).toEqual({ url, status: 200 });
+    return { res, ms };
+  };
+  const p95 = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.ceil(xs.length * 0.95) - 1];
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = mod.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
-    app.useGlobalFilters(new AllExceptionsFilter());
-    jwtService = app.get(JwtService);
-    prisma = app.get(PrismaService);
-    await app.init();
+    ({ app, prisma } = await createTestApp());
+    A = await createTenant(app, prisma, 'Perf');
+    const base = Date.now();
+    await prisma.patient.createMany({
+      data: Array.from({ length: PATIENTS }, (_, i) => ({
+        organizationId: A.org.id,
+        branchId: A.branch.id,
+        firstName: `PerfPat${i}`,
+        lastName: `Last${i}`,
+        phone: `8${String(base % 1e5).padStart(5, '0')}${String(i).padStart(4, '0')}`,
+        patientCode: `PRF-${String(i).padStart(5, '0')}`,
+        createdBy: A.receptionist.id,
+      })),
+    });
+    patientIds = (await prisma.patient.findMany({ where: { organizationId: A.org.id }, select: { id: true } })).map((p) => p.id);
 
-    org = await prisma.organization.create({
-      data: { name: 'Perf Test', slug: `perf-${Date.now()}` },
-    });
-    branch = await prisma.branch.create({
-      data: { name: 'Perf Branch', organizationId: org.id },
-    });
-    doctor = await prisma.user.create({
-      data: {
-        email: `perf-${Date.now()}@t.com`,
-        passwordHash: 'h',
-        firstName: 'Perf',
-        lastName: 'Doc',
-        organizationId: org.id,
-        branchId: branch.id,
-      },
-    });
-    token = jwtService.sign({
-      sub: doctor.id,
-      email: doctor.email,
-      organizationId: org.id,
-      branchId: branch.id,
-      roles: ['Organization Owner'],
-      permissions: ['*'],
-    });
-
-    // Seed data
-    const startTime = Date.now();
-    console.log(`[PERF] Seeding data...`);
-
-    const patients = Array.from({ length: 1000 }, (_, i) => ({
-      firstName: `PerfPat${i}`,
-      lastName: `Last${i}`,
-      phone: `5552${String(i).padStart(6, '0')}`,
-      organizationId: org.id,
-      branchId: branch.id,
-      createdAt: new Date(startTime + i),
-    }));
-    await prisma.patient.createMany({ data: patients, skipDuplicates: true });
-    const createdPatients = await prisma.patient.findMany({
-      where: { organizationId: org.id },
-      take: 1000,
-    });
-
-    const appointments = createdPatients.slice(0, 500).map((p, i) => ({
-      patientId: p.id,
-      doctorId: doctor.id,
-      organizationId: org.id,
-      branchId: branch.id,
-      scheduledStart: new Date(startTime + i * 3600000),
-      scheduledEnd: new Date(startTime + i * 3600000 + 1800000),
-    }));
+    const day = new Date();
+    day.setHours(0, 0, 0, 0);
     await prisma.appointment.createMany({
-      data: appointments,
-      skipDuplicates: true,
+      data: patientIds.slice(0, 300).map((patientId, i) => {
+        const start = new Date(day.getTime() + Math.floor(i / 20) * 86_400_000 + (8 * 60 + (i % 20) * 30) * 60_000);
+        return {
+          organizationId: A.org.id,
+          branchId: A.branch.id,
+          patientId,
+          doctorId: A.doctor.id,
+          scheduledStart: start,
+          scheduledEnd: new Date(start.getTime() + 30 * 60_000),
+          status: 'SCHEDULED' as const,
+        };
+      }),
     });
-
-    const consultations = createdPatients.slice(0, 300).map((p, i) => ({
-      patientId: p.id,
-      doctorId: doctor.id,
-      organizationId: org.id,
-      branchId: branch.id,
-      chiefComplaint: `Checkup ${i}`,
-    }));
-    await prisma.consultation.createMany({
-      data: consultations,
-      skipDuplicates: true,
+    await prisma.invoice.createMany({
+      data: patientIds.slice(0, 150).map((patientId, i) => ({
+        organizationId: A.org.id,
+        branchId: A.branch.id,
+        patientId,
+        invoiceNumber: `PERF-${String(i).padStart(5, '0')}`,
+        subtotal: 500,
+        total: 500,
+        status: 'SENT' as const,
+      })),
     });
-
-    const invoices = createdPatients.slice(0, 400).map((p, i) => ({
-      patientId: p.id,
-      organizationId: org.id,
-      branchId: branch.id,
-      invoiceNumber: `PERF-${i}-${Date.now()}`,
-      total: Math.floor(Math.random() * 500) + 50,
-    }));
-    await prisma.invoice.createMany({ data: invoices, skipDuplicates: true });
-
-    console.log(
-      `[PERF] Seeded: ${createdPatients.length} patients, ${appointments.length} appointments, ${consultations.length} consultations, ${invoices.length} invoices`,
-    );
-  });
+  }, 120_000);
 
   afterAll(async () => {
-    try {
-      const tablenames =
-        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames
-        .map(({ tablename }) => tablename)
-        .filter((name) => name !== '_prisma_migrations')
-        .map((name) => `"public"."${name}"`)
-        .join(', ');
-      if (tables.length > 0) {
-        await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
-      }
-    } catch (e) {
-      console.error(e);
-    }
     await app.close();
   });
 
-  const benchmark = async (
-    name: string,
-    fn: () => Promise<any>,
-    threshold = LATENCY_THRESHOLD_MS,
-  ) => {
-    const start = performance.now();
-    const result = await fn();
-    const duration = performance.now() - start;
-    console.log(
-      `[PERF] ${name}: ${duration.toFixed(2)}ms (threshold: ${threshold}ms)`,
+  it('seeded data is visible through the API (sanity)', async () => {
+    const { res } = await timed(A.receptionist, '/api/v1/patients?limit=1');
+    expect(res.body.meta.total).toBe(PATIENTS);
+  });
+
+  describe('patients', () => {
+    it('quick search stays within budget (p95 over 10 queries)', async () => {
+      const times: number[] = [];
+      for (let i = 0; i < 10; i++) {
+        const { res, ms } = await timed(A.receptionist, `/api/v1/patients/search?q=PerfPat${i * 37}`);
+        expect(JSON.stringify(res.body.data)).toContain(`PerfPat${i * 37}`);
+        times.push(ms);
+      }
+      expect(p95(times)).toBeLessThan(BUDGET_MS);
+    });
+
+    it('paginated list (max page size) stays within budget and returns one page', async () => {
+      const { res, ms } = await timed(A.receptionist, '/api/v1/patients?limit=200&page=3');
+      expect(res.body.data).toHaveLength(200);
+      expect(res.body.meta.page).toBe(3);
+      expect(ms).toBeLessThan(BUDGET_MS);
+    });
+
+    it('profile and summary fetches stay within budget', async () => {
+      const times: number[] = [];
+      for (const id of patientIds.slice(0, 10)) {
+        times.push((await timed(A.receptionist, `/api/v1/patients/${id}`)).ms);
+        times.push((await timed(A.doctor, `/api/v1/patients/${id}/summary`)).ms);
+      }
+      expect(p95(times)).toBeLessThan(BUDGET_MS);
+    });
+  });
+
+  it('appointment list stays within budget', async () => {
+    const { res, ms } = await timed(A.receptionist, '/api/v1/appointments?limit=100');
+    expect(res.body.data.length).toBeGreaterThan(0);
+    expect(ms).toBeLessThan(BUDGET_MS);
+  });
+
+  it('invoice list stays within budget', async () => {
+    const { res, ms } = await timed(A.accountant, '/api/v1/invoices?limit=100');
+    expect(res.body.data.length).toBeGreaterThan(0);
+    expect(ms).toBeLessThan(BUDGET_MS);
+  });
+
+  it('live queue stays within budget', async () => {
+    expect((await timed(A.receptionist, '/api/v1/queues/live')).ms).toBeLessThan(BUDGET_MS);
+  });
+
+  it('dashboards stay within budget', async () => {
+    expect((await timed(A.doctor, '/api/v1/analytics/doctor/me')).ms).toBeLessThan(BUDGET_MS * 2);
+    expect((await timed(A.owner, '/api/v1/analytics/overview')).ms).toBeLessThan(BUDGET_MS * 2);
+    expect((await timed(A.receptionist, '/api/v1/analytics/today')).ms).toBeLessThan(BUDGET_MS * 2);
+  });
+
+  it('handles 30 concurrent list requests without errors', async () => {
+    const t0 = Date.now();
+    const results = await Promise.all(
+      Array.from({ length: 30 }, (_, i) => http().get(`/api/v1/patients?limit=20&page=${(i % 10) + 1}`).set(auth(A.receptionist))),
     );
-    return { result, duration };
-  };
-
-  describe('Patient Search Performance', () => {
-    it('P50: Patient search under threshold', async () => {
-      const { duration } = await benchmark('Patient Search (P50)', () =>
-        request(app.getHttpServer())
-          .get('/api/v1/patients/search?q=PerfPat')
-          .set('Authorization', `Bearer ${token}`),
-      );
-      expect(duration).toBeLessThan(LATENCY_THRESHOLD_MS);
-    });
-
-    it('P95: Multiple patient searches', async () => {
-      const times: number[] = [];
-      for (let i = 0; i < 20; i++) {
-        const start = performance.now();
-        await request(app.getHttpServer())
-          .get(`/api/v1/patients/search?q=PerfPat${i}`)
-          .set('Authorization', `Bearer ${token}`);
-        times.push(performance.now() - start);
-      }
-      times.sort((a, b) => a - b);
-      const p95 = times[Math.floor(times.length * 0.95)];
-      console.log(`[PERF] Patient Search P95: ${p95.toFixed(2)}ms`);
-      expect(p95).toBeLessThan(LATENCY_THRESHOLD_MS * 2);
-    });
-
-    it('P99: Individual patient fetch', async () => {
-      const patient = await prisma.patient.findFirst({
-        where: { organizationId: org.id },
-      });
-      const times: number[] = [];
-      for (let i = 0; i < 100; i++) {
-        const start = performance.now();
-        await request(app.getHttpServer())
-          .get(`/api/v1/patients/${patient?.id}`)
-          .set('Authorization', `Bearer ${token}`);
-        times.push(performance.now() - start);
-      }
-      times.sort((a, b) => a - b);
-      const p99 = times[Math.floor(times.length * 0.99)];
-      console.log(`[PERF] Patient Fetch P99: ${p99.toFixed(2)}ms`);
-      expect(p99).toBeLessThan(LATENCY_THRESHOLD_MS);
-    });
+    const ms = Date.now() - t0;
+    expect(results.filter((r) => r.status === 200)).toHaveLength(30);
+    expect(ms).toBeLessThan(BUDGET_MS * 5);
   });
 
-  describe('Appointment Performance', () => {
-    it('P50: Appointment list under threshold', async () => {
-      const { duration } = await benchmark('Appointment List', () =>
-        request(app.getHttpServer())
-          .get('/api/v1/appointments')
-          .set('Authorization', `Bearer ${token}`),
-      );
-      expect(duration).toBeLessThan(LATENCY_THRESHOLD_MS);
-    });
-  });
+  it('tenant-scoped count and include queries stay within budget', async () => {
+    let t0 = Date.now();
+    expect(await prisma.patient.count({ where: { organizationId: A.org.id } })).toBe(PATIENTS);
+    expect(Date.now() - t0).toBeLessThan(500);
 
-  describe('Dashboard Performance', () => {
-    it('Doctor dashboard loads within threshold', async () => {
-      const { duration } = await benchmark('Doctor Dashboard', () =>
-        request(app.getHttpServer())
-          .get('/api/v1/analytics/dashboard/doctor')
-          .set('Authorization', `Bearer ${token}`),
-      );
-      expect(duration).toBeLessThan(LATENCY_THRESHOLD_MS * 2);
+    t0 = Date.now();
+    const rows = await prisma.patient.findMany({
+      where: { organizationId: A.org.id },
+      include: { appointments: true, invoices: true },
+      take: 100,
     });
-  });
-
-  describe('Invoice Performance', () => {
-    it('Invoice list under threshold', async () => {
-      const { duration } = await benchmark('Invoice List', () =>
-        request(app.getHttpServer())
-          .get('/api/v1/invoices')
-          .set('Authorization', `Bearer ${token}`),
-      );
-      expect(duration).toBeLessThan(LATENCY_THRESHOLD_MS);
-    });
-  });
-
-  describe('Queue Performance', () => {
-    it('Live queue under threshold', async () => {
-      const { duration } = await benchmark('Live Queue', () =>
-        request(app.getHttpServer())
-          .get('/api/v1/queues/live')
-          .set('Authorization', `Bearer ${token}`),
-      );
-      expect(duration).toBeLessThan(LATENCY_THRESHOLD_MS);
-    });
-  });
-
-  describe('Concurrent Request Handling', () => {
-    it('handles 50 concurrent requests', async () => {
-      const start = performance.now();
-      const results = await Promise.all(
-        Array.from({ length: 50 }, () =>
-          request(app.getHttpServer())
-            .get('/api/v1/patients')
-            .set('Authorization', `Bearer ${token}`),
-        ),
-      );
-      const duration = performance.now() - start;
-      console.log(
-        `[PERF] 50 concurrent requests: ${duration.toFixed(2)}ms total`,
-      );
-
-      const successCount = results.filter((r) => r.status < 500).length;
-      expect(successCount).toBeGreaterThan(40);
-      expect(duration).toBeLessThan(LATENCY_THRESHOLD_MS * 10); // Relaxed for local test environment overhead
-    });
-  });
-
-  describe('Database Query Performance', () => {
-    it('patient count query under 100ms', async () => {
-      const start = performance.now();
-      await prisma.patient.count({ where: { organizationId: org.id } });
-      const duration = performance.now() - start;
-      console.log(`[PERF] DB Patient Count: ${duration.toFixed(2)}ms`);
-      expect(duration).toBeLessThan(100);
-    });
-
-    it('complex patient include query under 200ms', async () => {
-      const patient = await prisma.patient.findFirst({
-        where: { organizationId: org.id },
-      });
-      if (!patient) return;
-      const start = performance.now();
-      await prisma.patient.findUnique({
-        where: { id: patient.id },
-        include: {
-          appointments: true,
-          consultations: true,
-          invoices: { include: { payments: true } },
-          prescriptions: { include: { items: true } },
-        },
-      });
-      const duration = performance.now() - start;
-      console.log(`[PERF] Complex Patient Query: ${duration.toFixed(2)}ms`);
-      expect(duration).toBeLessThan(200);
-    });
+    expect(rows).toHaveLength(100);
+    expect(Date.now() - t0).toBeLessThan(1000);
   });
 });

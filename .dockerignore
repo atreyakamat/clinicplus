@@ -1,0 +1,51 @@
+# Keep the Docker build context small and free of secrets / patient data.
+# Both images build from the repo root (context: .) so the pnpm workspace + lockfile are available.
+
+# VCS / CI / editor
+.git
+.github
+.vscode
+.idea
+**/.DS_Store
+**/Thumbs.db
+
+# Dependencies and build output (rebuilt inside the image)
+**/node_modules
+**/dist
+**/build
+**/coverage
+**/*.tsbuildinfo
+apps/web/node_modules/.tmp
+
+# Secrets — NEVER bake into an image (runtime env / K8s Secrets only)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Runtime data (uploads, backups — may contain patient data)
+apps/api/backups
+apps/api/storage
+storage
+# (do NOT ignore *.sql globally — prisma/migrations/*/migration.sql must be in the image)
+**/*.dump
+
+# Test / scratch artefacts
+**/test-results*
+**/test-output.txt
+**/e2e_results_log.txt
+**/temp-counts.txt
+**/load_test_output.txt
+**/junit*.xml
+project_code_bundle.txt
+artillery.yml
+
+# Docs and reports are not needed to build
+docs
+*.md
+!README.md
+**/*_REPORT.md
+
+# Deployment manifests are not part of the app images
+# (deploy/docker is needed: it holds small runtime helpers copied into the images)
+deploy/k8s
+docker-compose*.yml

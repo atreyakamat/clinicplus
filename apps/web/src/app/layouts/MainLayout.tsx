@@ -4,12 +4,50 @@ import {
   LayoutDashboard, Users, Calendar, Clock, 
   Stethoscope, FileText, FileBadge, Activity, 
   CreditCard, MessageSquare, Star, BarChart3, 
-  CheckSquare, Settings, LogOut, Palette, ShieldAlert, ShieldCheck
+  CheckSquare, Settings, LogOut, Palette, ShieldCheck, FileSpreadsheet, UserRound
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
 
 import { HasPermission } from '../components/HasPermission';
 import { GlobalSearch } from '../components/GlobalSearch';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, ApiError } from '../lib/api';
+
+const ORG_WIDE_ROLES = ['Organization Owner', 'Clinic Admin', 'Super Admin'];
+
+/** Branch switcher for org-wide users; sets X-Branch-Id (via the auth store) and refetches everything. */
+const BranchSwitcher = () => {
+  const { user, activeBranchId, setActiveBranch } = useAuthStore();
+  const queryClient = useQueryClient();
+  const orgWide = !!(user as any)?.orgWide || (user?.roles ?? []).some((r) => ORG_WIDE_ROLES.includes(r));
+  const { data: branches, error } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ['branches', 'switcher', user?.id],
+    enabled: orgWide,
+    retry: false,
+    queryFn: async () => (await api.get('/branches'))?.data ?? [],
+  });
+  React.useEffect(() => {
+    // The selected branch was archived or is no longer valid: fall back to the home branch.
+    if (activeBranchId && ((error instanceof ApiError && error.status === 403) || (branches && !branches.some((b) => b.id === activeBranchId)))) {
+      setActiveBranch(null);
+      queryClient.invalidateQueries();
+    }
+  }, [error, branches, activeBranchId, setActiveBranch, queryClient]);
+  if (!orgWide || !branches || branches.length < 2) return null;
+  return (
+    <select
+      aria-label="Active branch"
+      className="h-9 max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 text-sm"
+      value={activeBranchId ?? user?.branchId ?? ''}
+      onChange={(e) => {
+        setActiveBranch(e.target.value === user?.branchId ? null : e.target.value);
+        queryClient.invalidateQueries();
+      }}
+    >
+      {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+    </select>
+  );
+};
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard, permission: 'dashboard.view' },
@@ -24,11 +62,12 @@ const navItems = [
   { name: 'Communication', path: '/communication', icon: MessageSquare, permission: 'communications.view' },
   { name: 'Feedback', path: '/reviews/feedback', icon: Star, permission: 'feedback.view' },
   { name: 'Reviews', path: '/reviews', icon: Star, permission: 'reviews.view' },
-  { name: 'Analytics', path: '/analytics', icon: BarChart3, permission: 'analytics.view' },
+  { name: 'Analytics', path: '/analytics', icon: BarChart3, permission: ['analytics.view', 'analytics.financial', 'analytics.doctor'] },
+  { name: 'Reports', path: '/reports', icon: FileSpreadsheet, permission: 'reports.view' },
+  { name: 'Doctors', path: '/doctors', icon: UserRound, permission: 'doctors.view' },
   { name: 'Tasks', path: '/tasks', icon: CheckSquare, permission: 'tasks.view' },
   { name: 'Branding', path: '/settings/branding', icon: Palette, permission: 'settings.branding' },
   { name: 'Founder Panel', path: '/admin', icon: ShieldCheck, permission: 'admin.view' },
-  { name: 'QA Dashboard', path: '/analytics/qa', icon: ShieldAlert, permission: 'admin.view' },
   { name: 'Settings', path: '/settings', icon: Settings, permission: 'settings.view' },
 ];
 
@@ -95,6 +134,7 @@ export const MainLayout = () => {
             <GlobalSearch />
           </div>
           <div className="flex items-center gap-4 ml-4 shrink-0">
+            <BranchSwitcher />
             <div className="text-sm font-medium hidden md:block">{user?.firstName} {user?.lastName}</div>
             <div className="w-8 h-8 bg-[#2563EB] rounded-full text-white flex items-center justify-center font-bold">
               {getInitials()}

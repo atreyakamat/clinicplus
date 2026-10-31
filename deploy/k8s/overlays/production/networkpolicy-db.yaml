@@ -1,0 +1,16 @@
+# Managed PostgreSQL (RDS / Cloud SQL / Azure DB) lives outside the cluster: allow the
+# db-client pods to reach ONLY its private address range on 5432.
+# CHANGE the CIDR to your database subnet (e.g. the RDS subnet group / private service range).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: db-clients-allow-postgres
+  namespace: clinicplus
+spec:
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 10.20.0.0/16
+      ports:
+        - protocol: TCP
+          port: 5432

@@ -3,24 +3,27 @@ import { useForm } from 'react-hook-form';
 import { MessageSquare, Send, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button, Card, Input, PageHeader } from '@clinicplus/ui';
 import { api } from '../../app/lib/api';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ErrorBox, getData } from '../tasks/ui';
 
 export const FeedbackPage = () => {
   const [submitted, setSubmitted] = useState(false);
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: (data: any) => api.post('/feedback', data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-feedback'] });
       setSubmitted(true);
       reset();
       setTimeout(() => setSubmitted(false), 5000);
     }
   });
 
-  const { data: feedbacks } = useQuery<any[]>({
+  const { data: feedbacks, error: listError } = useQuery<any[]>({
     queryKey: ['my-feedback'],
-    queryFn: () => api.get('/feedback'),
+    queryFn: () => getData<any[]>('/feedback'),
   });
 
   const onSubmit = (data: any) => mutation.mutate(data);
@@ -78,6 +81,7 @@ export const FeedbackPage = () => {
                     ))}
                   </div>
                 </div>
+                <ErrorBox error={mutation.error} />
                 <Button type="submit" className="w-full gap-2" disabled={mutation.isPending}>
                   <Send size={16} /> {mutation.isPending ? 'Sending...' : 'Send Feedback'}
                 </Button>
@@ -92,6 +96,7 @@ export const FeedbackPage = () => {
               <h3 className="font-bold text-slate-900">Recent Submissions</h3>
             </div>
             <div className="divide-y divide-slate-100 min-h-[400px]">
+              <ErrorBox error={listError} />
               {!feedbacks?.length ? (
                 <div className="p-12 text-center text-slate-400">
                   No feedback submitted yet.
@@ -112,7 +117,7 @@ export const FeedbackPage = () => {
                     </div>
                     <p className="text-sm text-slate-600 line-clamp-2 mb-2">{f.content}</p>
                     <div className="flex justify-between items-center text-[10px] text-slate-400 font-medium">
-                      <span>Submitted by {f.user.firstName} {f.user.lastName}</span>
+                      <span>Submitted by {f.user?.firstName} {f.user?.lastName}</span>
                       <span>{new Date(f.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>

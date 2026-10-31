@@ -8,5 +8,6 @@ import { OrganizationsModule } from '../organizations/organizations.module';
   imports: [OrganizationsModule],
   controllers: [PrescriptionsController],
   providers: [PrescriptionsService, PdfService],
+  exports: [PrescriptionsService],
 })
 export class PrescriptionsModule {}

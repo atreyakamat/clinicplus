@@ -1,127 +1,186 @@
-import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Download, Pencil, XCircle, CheckCircle2 } from 'lucide-react';
+import { Button, PageHeader } from '@clinicplus/ui';
 import { api } from '../../app/lib/api';
-import { Button, Card } from '@clinicplus/ui';
-import { Printer, ArrowLeft, Download, Mail } from 'lucide-react';
+import { HasPermission } from '../../app/components/HasPermission';
+import {
+  ageFrom,
+  drName,
+  ErrorBox,
+  Field,
+  fmtDate,
+  fmtDateTime,
+  fullName,
+  getData,
+  Loading,
+  Modal,
+  Section,
+  StatusPill,
+  textareaCls,
+} from '../patients/shared';
+import { PrescriptionEditor } from './PrescriptionEditor';
 
 export const PrescriptionDetailPage = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [actionError, setActionError] = useState<unknown>(null);
 
-  const { data: rx, isLoading } = useQuery({
+  const { data: rx, isLoading, error } = useQuery({
     queryKey: ['prescription', id],
-    queryFn: () => api.get(`/prescriptions/${id}`),
+    queryFn: () => getData(`/prescriptions/${id}`),
   });
 
-  if (isLoading) return <div className="p-6 text-center">Loading prescription...</div>;
-  if (!rx) return <div className="p-6 text-red-500">Prescription not found.</div>;
-
-  const handlePrint = () => {
-    window.print();
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['prescription', id] });
+    qc.invalidateQueries({ queryKey: ['prescriptions'] });
   };
 
+  const act = async (fn: () => Promise<any>) => {
+    setActionError(null);
+    try {
+      await fn();
+      refresh();
+      return true;
+    } catch (e) {
+      setActionError(e);
+      return false;
+    }
+  };
+
+  if (isLoading) return <Loading />;
+  if (error || !rx) return <ErrorBox error={error ?? 'Prescription not found'} />;
+
+  const age = ageFrom(rx.patient?.dateOfBirth);
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between no-print">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft size={16} />
+    <div className="mx-auto max-w-4xl space-y-4">
+      <Link to="/prescriptions" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
+        <ArrowLeft size={16} /> Prescriptions
+      </Link>
+      <PageHeader title={`Prescription · ${fmtDate(rx.issuedAt)}`} description={`Issued by ${drName(rx.doctor)}`} />
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusPill status={rx.status} />
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1"
+            onClick={() => act(() => api.download(`/prescriptions/${rx.id}/download`, `prescription-${rx.id.slice(0, 8)}.pdf`))}
+          >
+            <Download size={14} /> PDF
           </Button>
-          <h1 className="text-2xl font-bold">View Prescription</h1>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <Mail size={16} /> Email to Patient
-          </Button>
-          <Button className="gap-2 bg-[#1FA971]" onClick={handlePrint}>
-            <Printer size={16} /> Print Prescription
-          </Button>
+          {rx.canEdit && (
+            <HasPermission permission="prescriptions.update">
+              <Button variant="outline" size="sm" className="gap-1" onClick={() => setEditing(true)}>
+                <Pencil size={14} /> Edit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={() => act(() => api.post(`/prescriptions/${rx.id}/complete`))}
+              >
+                <CheckCircle2 size={14} /> Mark course completed
+              </Button>
+              <Button variant="danger" size="sm" className="gap-1" onClick={() => setCancelOpen(true)}>
+                <XCircle size={14} /> Cancel
+              </Button>
+            </HasPermission>
+          )}
         </div>
       </div>
+      <ErrorBox error={actionError} />
 
-      <Card className="max-w-4xl mx-auto p-0 overflow-hidden print:shadow-none print:border-none shadow-lg">
-        {/* Prescription Header */}
-        <div className="p-8 bg-[#1FA971] text-white flex justify-between items-start">
-          <div>
-            <h2 className="text-3xl font-bold">ClinicOS</h2>
-            <p className="opacity-90">Advanced Healthcare Operating System</p>
-          </div>
-          <div className="text-right">
-            <h3 className="font-bold text-lg">Dr. {rx.doctor.firstName} {rx.doctor.lastName}</h3>
-            <p className="text-sm opacity-90">Medical Practitioner</p>
-            <p className="text-xs mt-2 opacity-75">Reg No: RX-2026-0042</p>
-          </div>
+      {rx.status === 'CANCELLED' && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          Cancelled {fmtDateTime(rx.cancelledAt)} — {rx.cancelReason}
         </div>
+      )}
 
-        <div className="p-10 space-y-10 min-h-[800px]">
-          {/* Patient Info */}
-          <div className="grid grid-cols-2 gap-8 pb-8 border-b border-slate-100">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Patient Details</p>
-              <h4 className="text-xl font-bold text-slate-900">{rx.patient.firstName} {rx.patient.lastName}</h4>
-              <p className="text-slate-600 text-sm">{rx.patient.gender} • {new Date().getFullYear() - (rx.patient.dateOfBirth ? new Date(rx.patient.dateOfBirth).getFullYear() : 30)} Years</p>
-              <p className="text-slate-600 text-sm mt-1">{rx.patient.phone}</p>
+      <Section title="Patient">
+        <Link to={`/patients/${rx.patient?.id}`} className="font-medium text-[#1FA971] hover:underline">
+          {fullName(rx.patient)}
+        </Link>
+        <p className="text-sm text-slate-500">
+          {rx.patient?.patientCode} · {rx.patient?.gender ?? '—'}
+          {age !== null && ` · ${age} yrs`} · {rx.patient?.phone ?? ''}
+        </p>
+        {rx.consultation && (
+          <Link to={`/consultations/${rx.consultation.id}`} className="mt-1 inline-block text-xs text-[#1FA971] hover:underline">
+            From consultation on {fmtDate(rx.consultation.consultationDate)}
+          </Link>
+        )}
+      </Section>
+
+      <Section title="Medicines">
+        {editing ? (
+          <PrescriptionEditor
+            existing={{ id: rx.id, patientId: rx.patientId, notes: rx.notes, items: rx.items }}
+            onSaved={() => {
+              setEditing(false);
+              refresh();
+            }}
+            onCancel={() => setEditing(false)}
+          />
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="text-xs uppercase text-slate-500">
+                  <tr>
+                    <th className="py-2 pr-3">Medicine</th>
+                    <th className="py-2 pr-3">Dose</th>
+                    <th className="py-2 pr-3">Frequency</th>
+                    <th className="py-2 pr-3">Duration</th>
+                    <th className="py-2">Instructions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {rx.items.map((i: any) => (
+                    <tr key={i.id}>
+                      <td className="py-2 pr-3 font-medium">{i.medicineName}</td>
+                      <td className="py-2 pr-3">{i.dosage || '—'}</td>
+                      <td className="py-2 pr-3">{i.frequency || '—'}</td>
+                      <td className="py-2 pr-3">{i.duration || '—'}</td>
+                      <td className="py-2">{i.instructions || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div className="text-right">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Prescription Info</p>
-              <p className="text-slate-900 font-medium">Date: {new Date(rx.issuedAt).toLocaleDateString()}</p>
-              <p className="text-slate-500 text-sm">ID: RX-{rx.id.split('-')[0].toUpperCase()}</p>
+            {rx.notes && <p className="mt-3 text-sm text-slate-700">Advice: {rx.notes}</p>}
+          </>
+        )}
+      </Section>
+
+      {cancelOpen && (
+        <Modal title="Cancel prescription" onClose={() => setCancelOpen(false)}>
+          <div className="space-y-3">
+            <Field label="Reason (required)">
+              <textarea className={textareaCls} rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
+            </Field>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setCancelOpen(false)}>
+                Keep
+              </Button>
+              <Button
+                variant="danger"
+                disabled={reason.trim().length < 3}
+                onClick={async () => {
+                  if (await act(() => api.post(`/prescriptions/${rx.id}/cancel`, { reason: reason.trim() }))) setCancelOpen(false);
+                }}
+              >
+                Cancel prescription
+              </Button>
             </div>
           </div>
-
-          {/* Rx Section */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-4">
-               <span className="text-4xl font-serif text-[#1FA971] font-bold">℞</span>
-               <div className="h-px bg-slate-100 flex-1"></div>
-            </div>
-
-            <div className="space-y-8">
-              {rx.items.map((item: any, idx: number) => (
-                <div key={item.id} className="flex gap-4">
-                  <span className="text-slate-300 font-medium">{idx + 1}.</span>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-baseline mb-1">
-                      <h5 className="text-lg font-bold text-slate-900">{item.medicineName}</h5>
-                      <span className="text-slate-700 font-medium">{item.duration}</span>
-                    </div>
-                    <div className="flex gap-6 text-sm text-slate-600">
-                      <span className="bg-slate-100 px-2 py-0.5 rounded font-medium">Dosage: {item.dosage}</span>
-                      <span className="bg-slate-100 px-2 py-0.5 rounded font-medium">Freq: {item.frequency}</span>
-                    </div>
-                    {item.instructions && (
-                      <p className="text-sm text-slate-500 italic mt-2 italic">Note: {item.instructions}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Footer Footer */}
-          <div className="pt-20 mt-auto flex justify-between items-end">
-            <div className="text-xs text-slate-400">
-              <p>Clinic Address: 123 Healthcare Way, Medical District</p>
-              <p>Contact: +1 (555) 123-4567 • www.clinicos.com</p>
-            </div>
-            <div className="text-center">
-              <div className="h-1 bg-slate-900 w-48 mb-2"></div>
-              <p className="text-xs font-bold uppercase">Doctor's Signature</p>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        @media print {
-          body * { visibility: hidden; }
-          .print, .print * { visibility: visible; }
-          .no-print { display: none !important; }
-          .print { position: absolute; left: 0; top: 0; width: 100%; margin: 0; }
-          main { background: white !important; padding: 0 !important; }
-        }
-      `}} />
+        </Modal>
+      )}
     </div>
   );
 };

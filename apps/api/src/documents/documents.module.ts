@@ -4,8 +4,9 @@ import { DocumentsService } from './documents.service';
 import { SecurityModule } from '../security/security.module';
 
 @Module({
+  imports: [SecurityModule],
   controllers: [DocumentsController],
   providers: [DocumentsService],
-  imports: [SecurityModule],
+  exports: [DocumentsService],
 })
 export class DocumentsModule {}

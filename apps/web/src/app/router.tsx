@@ -37,16 +37,36 @@ import { InvoiceDetailPage } from '../pages/billing/InvoiceDetailPage';
 import { FeedbackPage } from '../pages/reviews/FeedbackPage';
 
 import { OnboardingWizard } from '../pages/onboarding';
-import { QADashboard } from '../pages/analytics/QADashboard';
 import { BrandingSettings } from '../pages/settings/BrandingSettings';
 import { StaffManagement } from '../pages/settings/StaffManagement';
 import { PilotAdminPanel } from '../pages/admin';
+import { BranchesSettings } from '../pages/settings/BranchesSettings';
+import { ClinicSetup } from '../pages/settings/ClinicSetup';
+import { SecuritySettings } from '../pages/settings/SecuritySettings';
+import { RolesSettings } from '../pages/settings/RolesSettings';
+import { DoctorsPage } from '../pages/doctors';
+import { DoctorProfilePage } from '../pages/doctors/DoctorProfilePage';
+import { ReportsPage } from '../pages/reports';
+import { ForgotPasswordPage } from '../pages/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from '../pages/auth/ResetPasswordPage';
+import { AcceptInvitePage } from '../pages/auth/AcceptInvitePage';
+import { ReviewSubmitPage } from '../pages/public/ReviewSubmitPage';
+import { PaymentResultPage } from '../pages/public/PaymentResultPage';
+import { PatientPortal } from '../pages/portal';
+import { SubscriptionSettings } from '../pages/settings/SubscriptionSettings';
 
 export const router = createBrowserRouter([
   {
     path: '/auth/login',
     element: <AuthPage />,
   },
+  // Public (no login): password recovery, staff invites, patient review links, payment return.
+  { path: '/auth/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/auth/reset-password', element: <ResetPasswordPage /> },
+  { path: '/invite/:token', element: <AcceptInvitePage /> },
+  { path: '/r/:token', element: <ReviewSubmitPage /> },
+  { path: '/pay/result', element: <PaymentResultPage /> },
+  { path: '/portal/*', element: <PatientPortal /> },
   {
     path: '/onboarding',
     element: <ProtectedRoute><OnboardingWizard /></ProtectedRoute>,
@@ -80,11 +100,18 @@ export const router = createBrowserRouter([
       { path: 'communication/*', element: <CommunicationPage /> },
       { path: 'reviews/feedback', element: <FeedbackPage /> },
       { path: 'reviews/*', element: <ReviewsPage /> },
-      { path: 'analytics/qa', element: <QADashboard /> },
       { path: 'analytics/*', element: <AnalyticsPage /> },
+      { path: 'reports/*', element: <ReportsPage /> },
+      { path: 'doctors', element: <DoctorsPage /> },
+      { path: 'doctors/:id', element: <DoctorProfilePage /> },
       { path: 'tasks/*', element: <TasksPage /> },
+      { path: 'settings/subscription', element: <SubscriptionSettings /> },
       { path: 'settings/branding', element: <BrandingSettings /> },
       { path: 'settings/staff', element: <StaffManagement /> },
+      { path: 'settings/branches', element: <BranchesSettings /> },
+      { path: 'settings/clinic', element: <ClinicSetup /> },
+      { path: 'settings/security', element: <SecuritySettings /> },
+      { path: 'settings/roles', element: <RolesSettings /> },
       { path: 'settings/*', element: <SettingsPage /> },
     ],
   },

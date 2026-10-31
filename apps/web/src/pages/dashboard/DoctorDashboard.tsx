@@ -1,120 +1,49 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../../app/lib/api';
-import { StatCard, Card, PageHeader, Button } from '@clinicplus/ui';
-import { Users, Calendar, TrendingUp, Clock, CheckSquare, MessageSquare, ArrowRight } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Link } from 'react-router-dom';
+import { PageHeader } from '@clinicplus/ui';
+import { useAuthStore } from '../../app/store/auth.store';
+import { ErrorBox, errorMessage, formatMoney, getData, useBillingConfig } from '../billing/shared';
+import { Bars, ChartCard, Kpi, pctText } from '../analytics/charts';
+import { AppointmentBoard } from './widgets';
 
+/** The doctor's own day and last-30-day practice numbers (GET /analytics/doctor/me). */
 export const DoctorDashboard = () => {
-  const { data: dashboard, isLoading } = useQuery({
-    queryKey: ['doctor-dashboard'],
-    queryFn: () => api.get('/analytics/dashboard/doctor'),
-  });
-
-  if (isLoading) return <div className="p-6">Loading dashboard data...</div>;
+  const user = useAuthStore((s) => s.user);
+  const { currency } = useBillingConfig();
+  const q = useQuery<any>({ queryKey: ['analytics', 'doctor', 'me', 'dash'], queryFn: () => getData('/analytics/doctor/me'), refetchInterval: 60_000 });
+  const d = q.data;
 
   return (
     <div className="space-y-6">
-      <PageHeader 
-        title="Doctor Intelligence Dashboard" 
-        description="Daily insights into your clinical performance and patient load."
-      >
-        <div className="flex gap-2">
-           <Button variant="outline" size="sm">Last 7 Days</Button>
-           <Button className="bg-[#1FA971]" size="sm">Export Report</Button>
-        </div>
-      </PageHeader>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard 
-          label="Appointments Today" 
-          value={dashboard?.stats.todayAppointments.toString() || '0'} 
-          change="+2 from yesterday" 
-        />
-        <StatCard 
-          label="Total Patients" 
-          value={dashboard?.stats.totalPatients.toString() || '0'} 
-          change="+12% this month" 
-        />
-        <StatCard 
-          label="Total Revenue" 
-          value={`$${parseFloat(dashboard?.stats.totalRevenue).toFixed(2)}`} 
-          change="+5% from last month" 
-        />
-        <StatCard 
-          label="Retention Rate" 
-          value="84%" 
-          change="+2% improvement" 
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 p-6">
-          <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
-            <TrendingUp size={18} className="text-[#1FA971]" />
-            Appointment Trends (7 Days)
-          </h3>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dashboard?.chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-                <Tooltip 
-                  cursor={{fill: '#f8fafc'}}
-                  contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}}
-                />
-                <Bar dataKey="appointments" fill="#1FA971" radius={[4, 4, 0, 0]} barSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
+      <PageHeader
+        title={`Dr. ${user?.lastName ?? user?.firstName ?? ''}`.trim()}
+        description="Your day and your practice over the last 30 days."
+        actions={<Link to="/analytics" className="text-sm font-medium text-[#1FA971]">Full analytics →</Link>}
+      />
+      {q.isLoading && <div className="h-24 animate-pulse rounded-xl bg-slate-100" />}
+      {q.error && <ErrorBox message={errorMessage(q.error)} />}
+      {d && (
+        <>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <Kpi label="Today" value={String(d.today.total)} hint={`${d.today.completed} seen · ${d.today.upcoming + d.today.inClinic} remaining`} />
+            <Kpi label="Patients (30d)" value={String(d.patients.patientsSeen)} hint={`${d.patients.new} new · ${d.patients.returning} returning`} />
+            <Kpi label="No-show rate" value={pctText(d.appointments.noShowRate)} hint={`${d.appointments.noShow} of ${d.appointments.completed + d.appointments.noShow}`} />
+            <Kpi label="Follow-up compliance" value={pctText(d.followUps.complianceRate)} hint={`${d.followUps.completed} of ${d.followUps.due} due`} />
+            {d.revenue && <Kpi label="Billed (30d)" value={formatMoney(d.revenue.billed, currency)} hint={`${formatMoney(d.revenue.collected, currency)} collected`} />}
+            <Kpi label="Consultations (30d)" value={String(d.consultationsCompleted)} />
+            <Kpi label="Avg queue wait" value={d.queue.avgWaitMinutes === null ? '—' : `${d.queue.avgWaitMinutes} min`} />
           </div>
-        </Card>
-
-        <div className="lg:col-span-1 space-y-6">
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-               <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                 <CheckSquare size={18} className="text-blue-500" />
-                 Pending Tasks
-               </h3>
-               <Link to="/tasks" className="text-xs text-[#1FA971] font-bold">View all</Link>
+          <div className="grid gap-6 lg:grid-cols-3">
+            <AppointmentBoard list={d.today.appointments} showDoctor={false} title="My appointments today" />
+            <div className="lg:col-span-2">
+              <ChartCard title="Appointments per day">
+                <Bars data={d.daily} xKey="date" stacked series={[{ key: 'completed', label: 'Completed' }, { key: 'noShow', label: 'No-show' }]} />
+              </ChartCard>
             </div>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                 <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-[#1FA971]" />
-                 <div className="flex-1">
-                   <p className="text-sm font-medium text-slate-900">Review Lab Report #42</p>
-                   <p className="text-[10px] text-slate-400 font-bold uppercase">Urgent</p>
-                 </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                 <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-[#1FA971]" />
-                 <div className="flex-1">
-                   <p className="text-sm font-medium text-slate-900">Follow up with Mrs. Smith</p>
-                   <p className="text-[10px] text-slate-400 font-bold uppercase">Pending</p>
-                 </div>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <MessageSquare size={18} className="text-orange-500" />
-              Patient Feedbacks
-            </h3>
-            <div className="space-y-4">
-               <div className="p-3 border border-slate-100 rounded-xl">
-                  <div className="flex gap-1 text-yellow-400 mb-1">
-                     {Array.from({length: 5}).map((_, i) => <span key={i} className="text-xs font-bold">★</span>)}
-                  </div>
-                  <p className="text-xs text-slate-600 line-clamp-2">"Dr. Jenkins was extremely thorough and explained everything clearly..."</p>
-                  <p className="text-[10px] text-slate-400 mt-2 font-medium">- John D.</p>
-               </div>
-            </div>
-          </Card>
-        </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

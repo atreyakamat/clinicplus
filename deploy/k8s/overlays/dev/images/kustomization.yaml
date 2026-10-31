@@ -1,0 +1,15 @@
+# Image tags for the dev overlay (shared by the app and migrate kustomizations).
+# Uses the images CI publishes from main. For locally built images instead:
+#   docker build -f apps/api/Dockerfile -t clinicplus-api:local .
+#   docker build -f apps/web/Dockerfile -t clinicplus-web:local .
+#   kind load docker-image clinicplus-api:local clinicplus-web:local   (or minikube image load)
+# and set newName: clinicplus-api / clinicplus-web, newTag: local below.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+images:
+  - name: clinicplus-api
+    newName: ghcr.io/atreyakamat/clinicplus-api
+    newTag: latest
+  - name: clinicplus-web
+    newName: ghcr.io/atreyakamat/clinicplus-web
+    newTag: latest

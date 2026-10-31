@@ -1,0 +1,17 @@
+# -----------------------------------------------------------------------------
+# Local-only overrides: expose Postgres and the API on the loopback interface for
+# debugging / running Prisma Studio or pnpm dev against the containers.
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+# Never use this file on a server reachable from the internet.
+# -----------------------------------------------------------------------------
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${POSTGRES_PUBLISH_PORT:-5432}:5432"
+    networks: [backend, frontend]   # published ports need a non-internal network
+
+  api:
+    ports:
+      - "127.0.0.1:${API_PUBLISH_PORT:-3000}:3000"
+    environment:
+      LOG_LEVEL: debug

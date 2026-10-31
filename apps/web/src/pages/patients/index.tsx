@@ -1,140 +1,243 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, Edit2, ChevronRight } from 'lucide-react';
-import { Button, Input, PageHeader } from '@clinicplus/ui';
+import React, { useEffect, useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Plus, Search, ChevronRight, Download, Upload } from 'lucide-react';
+import { Button, PageHeader } from '@clinicplus/ui';
 import { api } from '../../app/lib/api';
-import { Link } from 'react-router-dom';
+import { HasPermission } from '../../app/components/HasPermission';
+import { ImportPatients } from './ImportPatients';
+import { Empty, ErrorBox, fmtDate, getData, getPage, inputCls, Loading, Pager, qs, StatusPill, useDebounced } from './shared';
 
-interface Patient {
+interface PatientRow {
   id: string;
-  patientCode: string;
+  patientCode?: string;
   firstName: string;
   lastName: string;
   email?: string;
   phone?: string;
   gender?: string;
   bloodGroup?: string;
+  dateOfBirth?: string;
+  status: string;
   createdAt: string;
+  tags?: { id: string; tagName: string; tagColor?: string }[];
 }
 
-export const PatientsPage = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+const GENDERS = ['', 'MALE', 'FEMALE', 'OTHER'];
+const BLOOD = ['', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
-  const { data: patients, isLoading, error } = useQuery<Patient[]>({
-    queryKey: ['patients'],
-    queryFn: () => api.get('/patients'),
+export const PatientsPage = () => {
+  const [params, setParams] = useSearchParams();
+  const [search, setSearch] = useState(params.get('q') ?? '');
+  const q = useDebounced(search, 300);
+  const page = Number(params.get('page') || 1);
+  const gender = params.get('gender') ?? '';
+  const bloodGroup = params.get('bloodGroup') ?? '';
+  const tag = params.get('tag') ?? '';
+  const status = params.get('status') ?? '';
+  const sort = params.get('sort') ?? 'createdAt:desc';
+  const [sortBy, sortDir] = sort.split(':');
+  const [exportError, setExportError] = useState<unknown>(null);
+
+  const set = (patch: Record<string, string>) => {
+    const next = new URLSearchParams(params);
+    for (const [k, v] of Object.entries(patch)) (v ? next.set(k, v) : next.delete(k));
+    if (!('page' in patch)) next.delete('page');
+    setParams(next, { replace: true });
+  };
+
+  // The import workflow renders in place (no dedicated route) via ?import=1.
+  const importing = params.get('import') === '1';
+  const openImport = () => {
+    const next = new URLSearchParams(params);
+    next.set('import', '1');
+    setParams(next);
+  };
+  const closeImport = () => {
+    const next = new URLSearchParams(params);
+    next.delete('import');
+    setParams(next, { replace: true });
+  };
+
+  useEffect(() => {
+    if ((params.get('q') ?? '') !== q) set({ q });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
+
+  const filters = { q, gender, bloodGroup, tag, status, sortBy, sortDir };
+  const { data, isLoading, error, isFetching } = useQuery({
+    queryKey: ['patients', filters, page],
+    queryFn: () => getPage<PatientRow>(`/patients${qs({ ...filters, page, limit: 25 })}`),
+    placeholderData: keepPreviousData,
+  });
+  const { data: tags } = useQuery({
+    queryKey: ['patient-tags'],
+    queryFn: () => getData<{ tagName: string; count: number }[]>('/patients/tags'),
   });
 
-  const filteredPatients = patients?.filter(p => 
-    `${p.firstName} ${p.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.phone?.includes(searchTerm)
-  );
+  const exportCsv = async () => {
+    setExportError(null);
+    try {
+      await api.download(`/patients/export/csv${qs({ q, gender, bloodGroup, tag, status })}`, 'patients.csv');
+    } catch (e) {
+      setExportError(e);
+    }
+  };
+
+  if (importing) {
+    return <ImportPatients onBack={closeImport} />;
+  }
 
   return (
-    <div className="space-y-6">
-      <PageHeader 
-        title="Patients" 
-        description="Manage your clinic's patient records and history."
-      >
-        <Link to="/patients/new">
-          <Button className="flex items-center gap-2">
-            <Plus size={16} />
-            New Patient
+    <div className="space-y-4">
+      <PageHeader title="Patients" description="Search, filter and manage patient records." />
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <HasPermission permission="patients.import">
+          <Button variant="outline" size="sm" className="gap-2" onClick={openImport}>
+            <Upload size={16} /> Import CSV
           </Button>
-        </Link>
-      </PageHeader>
+        </HasPermission>
+        <HasPermission permission="patients.export">
+          <Button variant="outline" size="sm" className="gap-2" onClick={exportCsv}>
+            <Download size={16} /> Export CSV
+          </Button>
+        </HasPermission>
+        <HasPermission permission="patients.create">
+          <Link to="/patients/new">
+            <Button size="sm" className="gap-2">
+              <Plus size={16} /> New patient
+            </Button>
+          </Link>
+        </HasPermission>
+      </div>
+      <ErrorBox error={exportError} />
 
-      <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+      <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-6">
+        <div className="relative md:col-span-2">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <input
-            type="text"
-            placeholder="Search patients by name, email, or phone..."
-            className="w-full pl-10 pr-4 h-10 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-[#1FA971] focus:ring-1 focus:ring-[#1FA971]"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            className={`${inputCls} pl-9`}
+            placeholder="Name, phone, email or patient ID"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
+        </div>
+        <select className={inputCls} value={gender} onChange={(e) => set({ gender: e.target.value })} aria-label="Gender">
+          {GENDERS.map((g) => (
+            <option key={g} value={g}>
+              {g || 'Any gender'}
+            </option>
+          ))}
+        </select>
+        <select className={inputCls} value={bloodGroup} onChange={(e) => set({ bloodGroup: e.target.value })} aria-label="Blood group">
+          {BLOOD.map((b) => (
+            <option key={b} value={b}>
+              {b || 'Any blood group'}
+            </option>
+          ))}
+        </select>
+        <select className={inputCls} value={tag} onChange={(e) => set({ tag: e.target.value })} aria-label="Tag">
+          <option value="">Any tag</option>
+          {tags?.map((t) => (
+            <option key={t.tagName} value={t.tagName}>
+              {t.tagName} ({t.count})
+            </option>
+          ))}
+        </select>
+        <div className="flex gap-2">
+          <select className={inputCls} value={status} onChange={(e) => set({ status: e.target.value })} aria-label="Status">
+            <option value="">Current</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+            <option value="ARCHIVED">Archived</option>
+          </select>
+          <select className={inputCls} value={sort} onChange={(e) => set({ sort: e.target.value })} aria-label="Sort">
+            <option value="createdAt:desc">Newest</option>
+            <option value="createdAt:asc">Oldest</option>
+            <option value="name:asc">Name A–Z</option>
+            <option value="name:desc">Name Z–A</option>
+            <option value="patientCode:asc">Patient ID</option>
+          </select>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />
-          ))}
-        </div>
+        <Loading label="Loading patients…" />
       ) : error ? (
-        <div className="p-8 text-center text-red-500 bg-red-50 rounded-xl">
-          Failed to load patients. Please try again.
-        </div>
-      ) : !filteredPatients?.length ? (
-        <div className="p-12 text-center bg-white rounded-xl border border-slate-200 shadow-sm">
-          <h3 className="text-lg font-medium text-slate-900 mb-2">No patients found</h3>
-          <p className="text-slate-500 mb-6">Get started by creating your first patient record.</p>
-          <Link to="/patients/new">
-            <Button>Create Patient</Button>
-          </Link>
-        </div>
+        <ErrorBox error={error} />
+      ) : !data?.items.length ? (
+        <Empty title="No patients found" hint={q ? 'Try a different search or clear filters.' : 'Register your first patient to get started.'}>
+          <HasPermission permission="patients.create">
+            <Link to="/patients/new">
+              <Button size="sm">Register patient</Button>
+            </Link>
+          </HasPermission>
+        </Empty>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-4">Patient Info</th>
-                <th className="px-6 py-4">Contact</th>
-                <th className="px-6 py-4">Details</th>
-                <th className="px-6 py-4">Added</th>
-                <th className="px-6 py-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredPatients.map((patient) => (
-                <tr key={patient.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-[#1FA971]/10 flex items-center justify-center text-[#1FA971] font-semibold">
-                        {patient.firstName[0]}{patient.lastName[0]}
-                      </div>
-                      <div>
-                        <p className="font-medium text-slate-900">{patient.firstName} {patient.lastName}</p>
-                        <p className="text-xs text-slate-500">ID: {patient.patientCode || 'N/A'}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-slate-900">{patient.phone || 'N/A'}</p>
-                    <p className="text-xs text-slate-500">{patient.email || 'N/A'}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      {patient.gender && (
-                        <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs">
-                          {patient.gender}
-                        </span>
-                      )}
-                      {patient.bloodGroup && (
-                        <span className="px-2 py-1 bg-red-50 text-red-600 rounded text-xs">
-                          {patient.bloodGroup}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-slate-500">
-                    {new Date(patient.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <Link to={`/patients/${patient.id}`}>
-                      <Button variant="outline" size="sm" className="gap-1">
-                        View
-                        <ChevronRight size={14} />
-                      </Button>
-                    </Link>
-                  </td>
+        <div className={`overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ${isFetching ? 'opacity-70' : ''}`}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="px-4 py-3">Patient</th>
+                  <th className="hidden px-4 py-3 md:table-cell">Contact</th>
+                  <th className="hidden px-4 py-3 lg:table-cell">Details</th>
+                  <th className="hidden px-4 py-3 sm:table-cell">Registered</th>
+                  <th className="px-4 py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {data.items.map((p) => (
+                  <tr key={p.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <Link to={`/patients/${p.id}`} className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1FA971]/10 font-semibold text-[#1FA971]">
+                          {p.firstName[0]}
+                          {p.lastName[0]}
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-900">
+                            {p.firstName} {p.lastName}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {p.patientCode} {p.status !== 'ACTIVE' && <StatusPill status={p.status} />}
+                          </p>
+                        </div>
+                      </Link>
+                    </td>
+                    <td className="hidden px-4 py-3 md:table-cell">
+                      <p>{p.phone || '—'}</p>
+                      <p className="text-xs text-slate-500">{p.email || ''}</p>
+                    </td>
+                    <td className="hidden px-4 py-3 lg:table-cell">
+                      <div className="flex flex-wrap gap-1">
+                        {p.gender && <span className="rounded bg-slate-100 px-2 py-0.5 text-xs">{p.gender}</span>}
+                        {p.bloodGroup && <span className="rounded bg-red-50 px-2 py-0.5 text-xs text-red-600">{p.bloodGroup}</span>}
+                        {p.tags?.map((t) => (
+                          <span
+                            key={t.id}
+                            className="rounded px-2 py-0.5 text-xs text-white"
+                            style={{ backgroundColor: t.tagColor || '#64748b' }}
+                          >
+                            {t.tagName}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="hidden px-4 py-3 text-slate-500 sm:table-cell">{fmtDate(p.createdAt)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Link to={`/patients/${p.id}`} className="inline-flex items-center text-[#1FA971]" aria-label="Open profile">
+                        <ChevronRight size={18} />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="border-t border-slate-100 p-3">
+            <Pager meta={data.meta} onPage={(p) => set({ page: String(p) })} />
+          </div>
         </div>
       )}
     </div>

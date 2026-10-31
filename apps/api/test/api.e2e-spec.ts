@@ -1,221 +1,118 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+/**
+ * API contract: response envelope, error envelope, validation, pagination meta
+ * and authentication requirements, exercised with real logins (no forged JWTs).
+ */
+import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { AllExceptionsFilter } from './../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
+import { auth, createTenant, createTestApp, Tenant } from './helpers/app';
 
-describe('API Endpoint Testing (E2E) — Phase 13', () => {
+describe('API contract (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let jwtService: JwtService;
-  let org: any;
-  let branch: any;
-  let user: any;
-  let token: string;
+  let t: Tenant;
+  const http = () => request(app.getHttpServer());
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = mod.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
-    );
-    app.useGlobalFilters(new AllExceptionsFilter());
-    jwtService = app.get(JwtService);
-    prisma = app.get(PrismaService);
-    await app.init();
-
-    org = await prisma.organization.create({
-      data: { name: 'API Test', slug: `api-${Date.now()}` },
-    });
-    branch = await prisma.branch.create({
-      data: { name: 'API Branch', organizationId: org.id },
-    });
-    user = await prisma.user.create({
-      data: {
-        email: `api-${Date.now()}@t.com`,
-        passwordHash: 'h',
-        firstName: 'API',
-        lastName: 'Test',
-        organizationId: org.id,
-        branchId: branch.id,
-      },
-    });
-    token = jwtService.sign({
-      sub: user.id,
-      email: user.email,
-      organizationId: org.id,
-      branchId: branch.id,
-      roles: ['Organization Owner'],
-      permissions: ['*'],
-    });
+    ({ app, prisma } = await createTestApp());
+    t = await createTenant(app, prisma, 'ApiContract', { roles: ['Organization Owner', 'Receptionist'] });
   });
 
   afterAll(async () => {
-    try {
-      const tablenames =
-        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames
-        .map(({ tablename }) => tablename)
-        .filter((name) => name !== '_prisma_migrations')
-        .map((name) => `"public"."${name}"`)
-        .join(', ');
-      if (tables.length > 0) {
-        await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
-      }
-    } catch (e) {
-      console.error(e);
-    }
     await app.close();
   });
 
-  describe('Health Check', () => {
-    it('GET /health should return 200', async () => {
-      const res = await request(app.getHttpServer()).get('/health');
-      expect(res.status).toBeDefined();
+  describe('authentication', () => {
+    it.each([
+      ['get', '/api/v1/patients'],
+      ['get', '/api/v1/users'],
+      ['get', '/api/v1/roles'],
+      ['get', '/api/v1/audit-logs'],
+      ['get', '/api/v1/organizations/current'],
+      ['get', '/api/v1/auth/profile'],
+      ['post', '/api/v1/roles'],
+      ['post', '/api/v1/staff-invitations/invite'],
+    ])('%s %s requires a token (401)', async (method, url) => {
+      const res = await (http() as any)[method](url);
+      expect(res.status).toBe(401);
     });
 
-    it('GET /api/v1/auth/register should be accessible', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
-        .send({
-          email: `health-${Date.now()}@t.com`,
-          password: 'Pass123!',
-          firstName: 'H',
-          lastName: 'C',
-          clinicName: 'HC',
-          clinicSlug: `hc-${Date.now()}`,
-        });
-      expect(res.status).toBeDefined();
-    });
-  });
-
-  describe('Authentication Verification', () => {
-    it('GET /api/v1/auth/profile without token returns 401', async () => {
-      const res = await request(app.getHttpServer()).get(
-        '/api/v1/auth/profile',
-      );
-      expect(res.status).toBeDefined();
-    });
-
-    it('GET /api/v1/auth/profile with token returns 200', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/auth/profile')
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBeDefined();
-    });
-  });
-
-  describe('Response Shape Validation', () => {
-    it('should return data object in response body', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/patients')
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBeDefined();
-      const body = res.body;
-      expect(body.data !== undefined || Array.isArray(body)).toBe(true);
-    });
-
-    it('should return error with statusCode on 404', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/patients/00000000-0000-0000-0000-000000000000')
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBeDefined();
-      if (res.status === 404) {
-        expect(res.body.statusCode).toBe(404);
-        expect(res.body.message).toBeDefined();
-      }
-    });
-  });
-
-  describe('Validation Errors', () => {
-    it('should return 400 for invalid patient data', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/patients')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ invalidField: true });
-      expect(res.status).toBeDefined();
-    });
-
-    it('should return 400 for invalid appointment data', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/appointments')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ invalid: true });
-      expect(res.status).toBeDefined();
-    });
-  });
-
-  describe('Pagination', () => {
-    it('should accept page and limit parameters', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/patients?page=1&limit=10')
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBeDefined();
-    });
-
-    it('should handle negative page gracefully', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/patients?page=-1')
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBeDefined();
-    });
-  });
-
-  describe('HTTP Methods', () => {
-    it('should return 405 or 404 for unsupported methods', async () => {
-      const res = await request(app.getHttpServer())
-        .put('/api/v1/patients')
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBeDefined();
-    });
-
-    it('should reject POST on GET-only endpoints', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/health')
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBeDefined();
-    });
-  });
-
-  describe('Content-Type Headers', () => {
-    it('should return application/json for API endpoints', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/patients')
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.headers['content-type']).toMatch(/json/);
-    });
-  });
-
-  describe('Endpoint Availability', () => {
-    const endpoints = [
-      ['GET', '/api/v1/patients'],
-      ['GET', '/api/v1/appointments'],
-      ['GET', '/api/v1/consultations'],
-      ['GET', '/api/v1/prescriptions'],
-      ['GET', '/api/v1/invoices'],
-      ['GET', '/api/v1/tasks'],
-      ['GET', '/api/v1/queues/live'],
-      ['GET', '/api/v1/messages'],
-      ['GET', '/api/v1/follow-ups'],
-      ['GET', '/api/v1/timeline'],
-      ['GET', '/api/v1/feedback'],
-      ['GET', '/api/v1/analytics/dashboard/doctor'],
-    ] as const;
-
-    for (const [method, url] of endpoints) {
-      it(`${method} ${url} returns 200 or 401`, async () => {
-        const req = request(app.getHttpServer())[
-          method.toLowerCase() as 'get' | 'post'
-        ](url);
-        if (method === 'GET') {
-          const res = await req.set('Authorization', `Bearer ${token}`);
-          expect(res.status).toBeDefined();
-        }
+    it('GET /api/v1/auth/profile returns the DB-derived principal', async () => {
+      const res = await http().get('/api/v1/auth/profile').set(auth(t.owner)).expect(200);
+      expect(res.body.data).toMatchObject({
+        id: t.owner.id,
+        organizationId: t.org.id,
+        branchId: t.branch.id,
+        homeBranchId: t.branch.id,
+        orgWide: true,
       });
-    }
+      expect(res.body.data.permissions).toContain('users.invite');
+    });
+  });
+
+  describe('envelopes', () => {
+    it('wraps successful responses as { data, meta }', async () => {
+      const res = await http().get('/api/v1/roles').set(auth(t.owner)).expect(200);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.meta).toHaveProperty('timestamp');
+      expect(res.headers['content-type']).toMatch(/application\/json/);
+    });
+
+    it('returns a uniform error envelope for 404 and never leaks internals', async () => {
+      const res = await http().get('/api/v1/roles/00000000-0000-4000-8000-000000000000').set(auth(t.owner)).expect(404);
+      expect(res.body).toMatchObject({ statusCode: 404, message: 'Role not found' });
+      expect(JSON.stringify(res.body)).not.toMatch(/prisma|stack|at \w+ \(/i);
+    });
+
+    it('rejects malformed ids with 400 instead of a database error', async () => {
+      const res = await http().get('/api/v1/users/not-a-uuid').set(auth(t.owner));
+      expect(res.status).toBe(400);
+    });
+
+    it('never returns password hashes', async () => {
+      const res = await http().get('/api/v1/users?status=ALL').set(auth(t.owner)).expect(200);
+      expect(JSON.stringify(res.body)).not.toMatch(/passwordHash|refreshTokenHash/);
+    });
+  });
+
+  describe('validation', () => {
+    it('returns 400 with an errors list for invalid bodies', async () => {
+      const res = await http().post('/api/v1/roles').set(auth(t.owner)).send({ name: '', permissions: 'all' });
+      expect(res.status).toBe(400);
+      expect(Array.isArray(res.body.errors)).toBe(true);
+    });
+
+    it('strips unknown fields (whitelist)', async () => {
+      // The whitelist must strip subscriptionPlan: you cannot change your plan via
+      // the org profile endpoint (that is subscription.manage only). Assert against
+      // the pre-PATCH value so this holds regardless of the harness default plan.
+      const before = await prisma.organization.findUniqueOrThrow({ where: { id: t.org.id } });
+      const target = before.subscriptionPlan === 'STARTER' ? 'ENTERPRISE' : 'STARTER';
+      const res = await http().patch('/api/v1/organizations/current').set(auth(t.owner)).send({ footerText: 'ok', subscriptionPlan: target });
+      expect(res.status).toBe(200);
+      const org = await prisma.organization.findUniqueOrThrow({ where: { id: t.org.id } });
+      expect(org.subscriptionPlan).toBe(before.subscriptionPlan);
+    });
+  });
+
+  describe('pagination', () => {
+    it('returns total/page/limit meta for paginated lists', async () => {
+      const res = await http().get('/api/v1/audit-logs?page=1&limit=2').set(auth(t.owner)).expect(200);
+      expect(res.body.data.length).toBeLessThanOrEqual(2);
+      expect(res.body.meta).toMatchObject({ page: 1, limit: 2 });
+      expect(typeof res.body.meta.total).toBe('number');
+    });
+
+    it('rejects invalid page parameters', async () => {
+      expect((await http().get('/api/v1/audit-logs?page=-1').set(auth(t.owner))).status).toBe(400);
+      expect((await http().get('/api/v1/audit-logs?limit=10000').set(auth(t.owner))).status).toBe(400);
+    });
+  });
+
+  describe('routing', () => {
+    it('returns 404 for unknown routes and unsupported methods', async () => {
+      expect((await http().get('/api/v1/does-not-exist').set(auth(t.owner))).status).toBe(404);
+      expect((await http().put('/api/v1/audit-logs').set(auth(t.owner))).status).toBe(404);
+    });
   });
 });

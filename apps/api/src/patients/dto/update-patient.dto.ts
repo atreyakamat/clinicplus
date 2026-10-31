@@ -1,50 +1,20 @@
-import { IsEmail, IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { PatientDemographicsDto } from './create-patient.dto';
 
-export class UpdatePatientDto {
-  @IsString()
+/**
+ * Editable patient fields. organizationId / branchId / status / patientCode and
+ * audit columns are intentionally absent (whitelist strips them).
+ */
+export class UpdatePatientDto extends PatientDemographicsDto {
   @IsOptional()
-  patientCode?: string;
-
   @IsString()
-  @IsOptional()
+  @MinLength(1)
+  @MaxLength(100)
   firstName?: string;
 
-  @IsString()
   @IsOptional()
-  middleName?: string;
-
   @IsString()
-  @IsOptional()
+  @MinLength(1)
+  @MaxLength(100)
   lastName?: string;
-
-  @IsString()
-  @IsOptional()
-  gender?: string;
-
-  @IsOptional()
-  dateOfBirth?: Date;
-
-  @IsString()
-  @IsOptional()
-  phone?: string;
-
-  @IsEmail()
-  @IsOptional()
-  email?: string;
-
-  @IsString()
-  @IsOptional()
-  bloodGroup?: string;
-
-  @IsString()
-  @IsOptional()
-  maritalStatus?: string;
-
-  @IsString()
-  @IsOptional()
-  occupation?: string;
-
-  @IsString()
-  @IsOptional()
-  abhaNumber?: string;
 }

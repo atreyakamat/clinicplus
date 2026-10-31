@@ -1,0 +1,44 @@
+# Read-only access for on-call / support engineers in the clinicplus namespace:
+# see pods, logs, events and workload status. NO secrets, NO exec/attach/port-forward,
+# NO writes. Bind your on-call group (OIDC group name) below.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: clinicplus-support
+  namespace: clinicplus
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "events", "services", "endpoints", "configmaps", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "statefulsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: clinicplus-support
+  namespace: clinicplus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: clinicplus-support
+subjects:
+  - kind: Group
+    name: clinicplus-oncall # CHANGE to your IdP group
+    apiGroup: rbac.authorization.k8s.io

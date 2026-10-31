@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ConfigService } from '@nestjs/config';
 import { TaskSchedulerService } from './tasks/task-scheduler.service';
 import { BackupSchedulerService } from './backup/backup-scheduler.service';
 
@@ -12,6 +13,7 @@ describe('AppController', () => {
       controllers: [AppController],
       providers: [
         AppService,
+        { provide: ConfigService, useValue: { get: jest.fn() } },
         {
           provide: TaskSchedulerService,
           useValue: { start: jest.fn(), stop: jest.fn() },
@@ -27,8 +29,8 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('returns the API banner', () => {
+      expect(appController.getHello()).toBe('ClinicPlus API');
     });
   });
 });

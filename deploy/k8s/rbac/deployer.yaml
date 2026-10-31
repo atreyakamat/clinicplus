@@ -1,0 +1,66 @@
+# Least-privilege identity for CI/CD deployments into the clinicplus namespace.
+# - Namespaced Role only (no ClusterRole): cannot touch other namespaces, nodes, CRDs, RBAC.
+# - Cannot read Secrets (the app Secret is managed by External Secrets / an admin; pods
+#   reference it by name, which needs no permission for the deployer).
+# - Cannot exec into or port-forward to pods.
+# - Can (re)create the migration Job and watch it / read its logs.
+# The Namespace itself and these RBAC objects are applied once by a cluster admin.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: clinicplus-deployer
+  namespace: clinicplus
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: clinicplus-deployer
+  namespace: clinicplus
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["services", "configmaps", "persistentvolumeclaims", "serviceaccounts"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    # delete: the fixed-name migration Job is replaced on every release.
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  # Observe rollouts and the migration Job (kubectl rollout status / wait / logs).
+  - apiGroups: [""]
+    resources: ["pods", "events"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: clinicplus-deployer
+  namespace: clinicplus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: clinicplus-deployer
+subjects:
+  - kind: ServiceAccount
+    name: clinicplus-deployer
+    namespace: clinicplus

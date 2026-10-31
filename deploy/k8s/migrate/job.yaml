@@ -1,0 +1,66 @@
+# Database migration Job: `prisma migrate deploy` from the API image (applies pending
+# migrations only; never resets data). Run it BEFORE rolling out a new API version:
+#   kubectl -n clinicplus delete job clinicplus-migrate --ignore-not-found
+#   kubectl apply -k deploy/k8s/overlays/<env>/migrate
+#   kubectl -n clinicplus wait --for=condition=complete job/clinicplus-migrate --timeout=15m
+# (deploy/k8s/deploy.sh does exactly this.) The fixed name guarantees only one migration
+# runs at a time; Prisma additionally takes a Postgres advisory lock.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: clinicplus-migrate
+  labels:
+    app.kubernetes.io/name: clinicplus-migrate
+    app.kubernetes.io/component: migrate
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 900
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: clinicplus-migrate
+        app.kubernetes.io/component: migrate
+        clinicplus.io/db-client: "true"
+    spec:
+      serviceAccountName: clinicplus-app
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: clinicplus-api # set per overlay via the images component
+          imagePullPolicy: IfNotPresent
+          command: ["migrate"]
+          # Only DATABASE_URL is needed (from the Secret). The ConfigMap is deliberately not
+          # referenced: its name carries a content hash that only the app overlay knows.
+          envFrom:
+            - secretRef:
+                name: clinicplus-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 128Mi

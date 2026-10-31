@@ -1,17 +1,30 @@
 {
   "name": "clinicplus",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
+  "description": "ClinicPlus (ClinicOS) - multi-tenant clinic management platform",
   "scripts": {
-    "test": "npm run test -w apps/api",
-    "dev": "npm run dev -w apps/web",
-    "dev:api": "npm run start:dev -w apps/api",
-    "build": "npm run build -w apps/web && npm run build -w apps/api",
-    "lint": "npm run lint -w apps/web && npm run lint -w apps/api"
+    "dev": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api start:dev",
+    "build": "pnpm --filter api build && pnpm --filter web build",
+    "typecheck": "pnpm --filter api typecheck && pnpm --filter web typecheck",
+    "lint": "pnpm --filter api lint:check && pnpm --filter web lint",
+    "format:check": "pnpm --filter api format:check",
+    "test": "pnpm --filter api test",
+    "test:e2e": "pnpm --filter api test:e2e",
+    "db:migrate": "pnpm --filter api prisma:deploy",
+    "db:seed": "pnpm --filter api seed",
+    "db:seed:demo": "pnpm --filter api seed:demo",
+    "quality": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f --tail=200 api web",
+    "docker:migrate": "docker compose run --rm migrate",
+    "docker:seed:demo": "docker compose --profile demo run --rm seed",
+    "k8s:render": "kubectl kustomize deploy/k8s/overlays/production",
+    "k8s:deploy:dev": "sh deploy/k8s/deploy.sh dev",
+    "k8s:deploy:staging": "sh deploy/k8s/deploy.sh staging",
+    "k8s:deploy:production": "sh deploy/k8s/deploy.sh production"
   },
   "repository": {
     "type": "git",
@@ -28,5 +41,9 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "packageManager": "pnpm@10.34.7",
+  "engines": {
+    "node": ">=22"
+  }
 }

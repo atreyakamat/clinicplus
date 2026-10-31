@@ -11,7 +11,7 @@ export class PermissionsController {
   constructor(private readonly permissionsService: PermissionsService) {}
 
   @Get()
-  @Permissions('permissions:read')
+  @Permissions('permissions.view')
   findAll(@Request() req) {
     return this.permissionsService.findAll(req.user.organizationId);
   }

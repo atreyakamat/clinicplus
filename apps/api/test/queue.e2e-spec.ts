@@ -1,212 +1,143 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { AllExceptionsFilter } from './../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
+import { Tenant, auth, createPatient, createTenant, createTestApp, futureSlot } from './helpers/app';
 
-describe('Queue Management (E2E) — Phase 7', () => {
+describe('Queue management (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let jwtService: JwtService;
-  let org: any;
-  let branch: any;
-  let doctor: any;
+  let A: Tenant;
+  let B: Tenant;
   let patient: any;
-  let token: string;
-  let apptId: string;
+  const http = () => request(app.getHttpServer());
+
+  let slotIdx = 0;
+  const book = async () => {
+    const res = await http()
+      .post('/api/v1/appointments')
+      .set(auth(A.receptionist))
+      .send({ patientId: patient.id, doctorId: A.doctor.id, ...futureSlot(2, 9, 15, 15 * slotIdx++) });
+    if (res.status !== 201) throw new Error(`booking failed ${res.status} ${JSON.stringify(res.body)}`);
+    return res.body.data;
+  };
+  const checkIn = (appointmentId: string, extra: Record<string, unknown> = {}) =>
+    http().post('/api/v1/queues/check-in').set(auth(A.receptionist)).send({ appointmentId, ...extra });
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = mod.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
-    app.useGlobalFilters(new AllExceptionsFilter());
-    jwtService = app.get(JwtService);
-    prisma = app.get(PrismaService);
-    await app.init();
-
-    org = await prisma.organization.create({
-      data: { name: 'Queue Test', slug: `queue-${Date.now()}` },
-    });
-    branch = await prisma.branch.create({
-      data: { name: 'Queue Branch', organizationId: org.id },
-    });
-    doctor = await prisma.user.create({
-      data: {
-        email: `dr-q-${Date.now()}@t.com`,
-        passwordHash: 'h',
-        firstName: 'DrQ',
-        lastName: 'Test',
-        organizationId: org.id,
-        branchId: branch.id,
-      },
-    });
-    patient = await prisma.patient.create({
-      data: {
-        firstName: 'Queue',
-        lastName: 'Pat',
-        phone: '5550500001',
-        organizationId: org.id,
-        branchId: branch.id,
-      },
-    });
-    apptId = (
-      await prisma.appointment.create({
-        data: {
-          patientId: patient.id,
-          doctorId: doctor.id,
-          organizationId: org.id,
-          branchId: branch.id,
-          scheduledStart: new Date(),
-          scheduledEnd: new Date(Date.now() + 3600000),
-        },
-      })
-    ).id;
-
-    await prisma.queue.create({
-      data: { name: 'Test Queue', branchId: branch.id, organizationId: org.id },
-    });
-
-    token = jwtService.sign({
-      sub: doctor.id,
-      email: doctor.email,
-      organizationId: org.id,
-      branchId: branch.id,
-      roles: ['Organization Owner'],
-      permissions: ['*'],
-    });
+    ({ app, prisma } = await createTestApp());
+    A = await createTenant(app, prisma, 'Queue A');
+    B = await createTenant(app, prisma, 'Queue B', { roles: ['Organization Owner', 'Receptionist', 'Accountant'] });
+    patient = await createPatient(app, A.receptionist, { firstName: 'Ravi', lastName: 'Kumar' });
   });
 
   afterAll(async () => {
-    try {
-      const tablenames =
-        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames
-        .map(({ tablename }) => tablename)
-        .filter((name) => name !== '_prisma_migrations')
-        .map((name) => `"public"."${name}"`)
-        .join(', ');
-      if (tables.length > 0) {
-        await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
-      }
-    } catch (e) {
-      console.error(e);
-    }
     await app.close();
   });
 
-  describe('Check-In (Token Generation)', () => {
-    it('should check in an appointment and create queue entry', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/queues/check-in')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ appointmentId: apptId });
-      expect(res.status).toBeDefined();
-    });
-
-    it('should reject check-in with invalid appointment', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/queues/check-in')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ appointmentId: '00000000-0000-0000-0000-000000000000' });
-      expect(res.status).toBeDefined();
-    });
+  it('issues sequential daily tokens and marks the appointment CHECKED_IN', async () => {
+    const a1 = await book();
+    const a2 = await book();
+    const r1 = await checkIn(a1.id);
+    const r2 = await checkIn(a2.id);
+    expect(r1.status).toBe(201);
+    expect(r2.body.data.tokenNumber).toBe(r1.body.data.tokenNumber + 1);
+    expect(r1.body.data.priorityLevel).toBe('NORMAL');
+    const appt = await prisma.appointment.findUnique({ where: { id: a1.id } });
+    expect(appt?.status).toBe('CHECKED_IN');
+    expect((await checkIn(a1.id)).status).toBe(409);
   });
 
-  describe('Live Queue Display', () => {
-    it('should return live queue for branch', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/queues/live')
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBeDefined();
-    });
+  it('rejects invalid / foreign appointment ids', async () => {
+    expect((await checkIn('not-a-uuid')).status).toBe(400);
+    expect((await checkIn('00000000-0000-4000-8000-000000000000')).status).toBe(404);
+    const a = await book();
+    const foreign = await http().post('/api/v1/queues/check-in').set(auth(B.receptionist)).send({ appointmentId: a.id });
+    expect(foreign.status).toBe(404);
   });
 
-  describe('Queue Entry Status', () => {
-    let entryId: string;
-    beforeEach(async () => {
-      const q = await prisma.queue.findFirst({
-        where: { organizationId: org.id },
-      });
-      if (!q) return;
-      const entry = await prisma.queueEntry.create({
-        data: {
-          queueId: q.id,
-          appointmentId: apptId,
-          organizationId: org.id,
-          branchId: branch.id,
-          tokenNumber: 1,
-        },
-      });
-      entryId = entry.id;
-    });
+  it('orders emergencies first, supports room assignment, call-next and reorder', async () => {
+    const normal = await book();
+    const emergency = await book();
+    await checkIn(normal.id);
+    const em = await checkIn(emergency.id, { priority: 'EMERGENCY', room: 'ER-1' });
+    expect(em.body.data.priorityLevel).toBe('EMERGENCY');
 
-    it('should update queue entry status to CALLED', async () => {
-      if (!entryId) return;
-      const res = await request(app.getHttpServer())
-        .patch(`/api/v1/queues/entries/${entryId}/status`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({ status: 'CALLED' });
-      expect(res.status).toBeDefined();
-    });
+    const live = await http().get('/api/v1/queues/live').set(auth(A.nurse));
+    expect(live.status).toBe(200);
+    expect(live.body.data.entries[0].id).toBe(em.body.data.id);
+    expect(live.body.data.entries[0].room).toBe('ER-1');
 
-    it('should update queue entry status to IN_PROGRESS', async () => {
-      if (!entryId) return;
-      await request(app.getHttpServer())
-        .patch(`/api/v1/queues/entries/${entryId}/status`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({ status: 'IN_PROGRESS' });
-      const updated = await prisma.queueEntry.findUnique({
-        where: { id: entryId },
-      });
-      if (updated) expect(updated.status).toBe('IN_PROGRESS');
-    });
+    // reorder normal-priority waiting entries: reverse their order
+    const waitingNormal = live.body.data.entries.filter((e: any) => e.status === 'WAITING' && e.priorityLevel === 'NORMAL');
+    const reversed = waitingNormal.map((e: any) => e.id).reverse();
+    const re = await http().put('/api/v1/queues/reorder').set(auth(A.receptionist)).send({ entryIds: [em.body.data.id, ...reversed] });
+    expect(re.status).toBe(200);
+    const order = re.body.data.entries.filter((e: any) => e.status === 'WAITING').map((e: any) => e.id);
+    expect(order).toEqual([em.body.data.id, ...reversed]);
 
-    it('should update queue entry status to COMPLETED', async () => {
-      if (!entryId) return;
-      const res = await request(app.getHttpServer())
-        .patch(`/api/v1/queues/entries/${entryId}/status`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({ status: 'COMPLETED' });
-      await prisma.queueEntry
-        .delete({ where: { id: entryId } })
-        .catch(() => {});
-    });
+    // call-next takes the emergency
+    const next = await http().post('/api/v1/queues/call-next').set(auth(A.doctor)).send({ room: 'Room 2' });
+    expect(next.status).toBe(200);
+    expect(next.body.data.id).toBe(em.body.data.id);
+    expect(next.body.data.status).toBe('CALLED');
+    expect(next.body.data.room).toBe('Room 2');
+
+    // priority change on an entry
+    const bump = await http().patch(`/api/v1/queues/entries/${reversed[reversed.length - 1]}`).set(auth(A.nurse)).send({ priority: 'HIGH', room: 'Room 3' });
+    expect(bump.status).toBe(200);
+    expect(bump.body.data.priorityLevel).toBe('HIGH');
+    const live2 = await http().get('/api/v1/queues/live').set(auth(A.nurse));
+    const firstWaiting = live2.body.data.entries.find((e: any) => e.status === 'WAITING');
+    expect(firstWaiting.id).toBe(reversed[reversed.length - 1]);
   });
 
-  describe('Queue Order', () => {
-    it('should assign sequential token numbers', async () => {
-      const q = await prisma.queue.findFirst({
-        where: { organizationId: org.id },
-      });
-      if (!q) return;
-      const p2 = await prisma.patient.create({
-        data: {
-          firstName: 'Queue2',
-          lastName: 'Pat',
-          phone: '5550500002',
-          organizationId: org.id,
-          branchId: branch.id,
-        },
-      });
-      const a2 = await prisma.appointment.create({
-        data: {
-          patientId: p2.id,
-          doctorId: doctor.id,
-          organizationId: org.id,
-          branchId: branch.id,
-          scheduledStart: new Date(),
-          scheduledEnd: new Date(Date.now() + 3600000),
-        },
-      });
+  it('enforces entry status transitions and syncs the appointment', async () => {
+    const a = await book();
+    const entry = (await checkIn(a.id)).body.data;
+    const setStatus = (status: string, who = A.nurse) => http().patch(`/api/v1/queues/entries/${entry.id}/status`).set(auth(who)).send({ status });
+    expect((await setStatus('COMPLETED')).status).toBe(409);
+    expect((await setStatus('BOGUS')).status).toBe(400);
+    expect((await setStatus('CALLED')).body.data.calledTime).toBeTruthy();
+    expect((await setStatus('IN_PROGRESS')).status).toBe(200);
+    expect((await prisma.appointment.findUnique({ where: { id: a.id } }))?.status).toBe('IN_PROGRESS');
+    const done = await setStatus('COMPLETED');
+    expect(done.body.data.completedTime).toBeTruthy();
+    expect((await prisma.appointment.findUnique({ where: { id: a.id } }))?.status).toBe('COMPLETED');
+    expect((await setStatus('WAITING')).status).toBe(409);
+  });
 
-      await request(app.getHttpServer())
-        .post('/api/v1/queues/check-in')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ appointmentId: a2.id });
-    });
+  it('cross-tenant: cannot update another org\'s queue entry', async () => {
+    const a = await book();
+    const entry = (await checkIn(a.id)).body.data;
+    const res = await http().patch(`/api/v1/queues/entries/${entry.id}/status`).set(auth(B.receptionist)).send({ status: 'CANCELLED' });
+    expect(res.status).toBe(404);
+    expect((await http().patch(`/api/v1/queues/entries/${entry.id}`).set(auth(B.receptionist)).send({ room: 'x' })).status).toBe(404);
+    expect((await prisma.queueEntry.findUnique({ where: { id: entry.id } }))?.status).toBe('WAITING');
+    const otherLive = await http().get('/api/v1/queues/live').set(auth(B.owner));
+    expect(otherLive.body.data.entries).toHaveLength(0);
+  });
+
+  it('walk-in creates an appointment and a token', async () => {
+    const res = await http().post('/api/v1/queues/walk-in').set(auth(A.receptionist)).send({ patientId: patient.id, doctorId: A.doctor.id, priority: 'EMERGENCY' });
+    expect(res.status).toBe(201);
+    const appt = await prisma.appointment.findUnique({ where: { id: res.body.data.appointmentId } });
+    expect(appt).toMatchObject({ status: 'CHECKED_IN', appointmentSource: 'WALK_IN', organizationId: A.org.id });
+    // nurse has queues.update but not appointments.create
+    expect((await http().post('/api/v1/queues/walk-in').set(auth(A.nurse)).send({ patientId: patient.id, doctorId: A.doctor.id })).status).toBe(403);
+  });
+
+  it('display endpoint exposes only token, room and abbreviated names', async () => {
+    const res = await http().get('/api/v1/queues/display').set(auth(A.receptionist));
+    expect(res.status).toBe(200);
+    const all = [...res.body.data.nowServing, ...res.body.data.waiting];
+    expect(all.length).toBeGreaterThan(0);
+    expect(all[0].patient).toBe('Ravi K.');
+    expect(JSON.stringify(res.body.data)).not.toContain('Kumar');
+    expect(JSON.stringify(res.body.data)).not.toContain(patient.phone);
+  });
+
+  it('RBAC: accountant cannot view or update the queue', async () => {
+    expect((await http().get('/api/v1/queues/live').set(auth(B.accountant))).status).toBe(403);
+    expect((await http().post('/api/v1/queues/call-next').set(auth(B.accountant)).send({})).status).toBe(403);
   });
 });

@@ -1,0 +1,64 @@
+# Extra allow rules for the in-cluster Postgres and MinIO of the dev overlay.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-allow-db-clients
+  labels:
+    clinicplus.io/phase: pre
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: clinicplus-postgres
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              clinicplus.io/db-client: "true"
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: minio-allow-s3-clients
+  labels:
+    clinicplus.io/phase: pre
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: clinicplus-minio
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: ["clinicplus-api", "clinicplus-backup", "clinicplus-minio-init"]
+      ports:
+        - protocol: TCP
+          port: 9000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: s3-clients-allow-minio
+  labels:
+    clinicplus.io/phase: pre
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values: ["clinicplus-api", "clinicplus-backup", "clinicplus-minio-init"]
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: clinicplus-minio
+      ports:
+        - protocol: TCP
+          port: 9000

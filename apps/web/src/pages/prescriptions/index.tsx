@@ -1,57 +1,80 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Badge, Button, Card, PageHeader } from '@clinicplus/ui';
-import { api } from '../../app/lib/api';
+import { Plus, ChevronRight } from 'lucide-react';
+import { Button, PageHeader } from '@clinicplus/ui';
+import { HasPermission } from '../../app/components/HasPermission';
+import { drName, Empty, ErrorBox, fmtDate, fullName, getPage, inputCls, Loading, Pager, qs, StatusPill } from '../patients/shared';
 
 export const PrescriptionsPage = () => {
-  const { data: prescriptions, isLoading } = useQuery<any[]>({
-    queryKey: ['prescriptions'],
-    queryFn: () => api.get('/prescriptions'),
+  const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['prescriptions', { status, page }],
+    queryFn: () => getPage<any>(`/prescriptions${qs({ status, page, limit: 25 })}`),
+    placeholderData: keepPreviousData,
   });
 
-  if (isLoading) {
-    return <div className="p-6 text-slate-500">Loading prescriptions...</div>;
-  }
-
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Prescriptions"
-        description="Track recently issued prescriptions and jump into the full medication detail."
-      />
-
-      <div className="space-y-4">
-        {!prescriptions?.length ? (
-          <Card className="p-10 text-center text-slate-500">
-            No prescriptions have been generated yet.
-          </Card>
-        ) : (
-          prescriptions.map((prescription) => (
-            <Card key={prescription.id} className="p-6">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <div className="text-lg font-semibold text-slate-900">
-                    {prescription.patient?.firstName} {prescription.patient?.lastName}
-                  </div>
-                  <div className="mt-1 text-sm text-slate-500">
-                    Dr. {prescription.doctor?.lastName} • {new Date(prescription.issuedAt).toLocaleDateString()}
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {prescription.items?.slice(0, 3).map((item: any) => (
-                      <Badge key={item.id} variant="outline">{item.medicineName}</Badge>
-                    ))}
-                    {prescription.items?.length > 3 && <Badge variant="outline">+{prescription.items.length - 3} more</Badge>}
-                  </div>
-                </div>
-                <Link to={`/prescriptions/${prescription.id}`}>
-                  <Button variant="outline" size="sm">View Prescription</Button>
-                </Link>
-              </div>
-            </Card>
-          ))
-        )}
+    <div className="space-y-4">
+      <PageHeader title="Prescriptions" description="Issued prescriptions for this branch." />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <select
+          className={`${inputCls} w-48`}
+          value={status}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            setPage(1);
+          }}
+          aria-label="Status"
+        >
+          <option value="">All statuses</option>
+          <option value="ACTIVE">Active</option>
+          <option value="COMPLETED">Completed</option>
+          <option value="CANCELLED">Cancelled</option>
+        </select>
+        <HasPermission permission="prescriptions.create">
+          <Link to="/prescriptions/new">
+            <Button size="sm" className="gap-1">
+              <Plus size={16} /> New prescription
+            </Button>
+          </Link>
+        </HasPermission>
       </div>
+      {isLoading ? (
+        <Loading />
+      ) : error ? (
+        <ErrorBox error={error} />
+      ) : !data?.items.length ? (
+        <Empty title="No prescriptions" />
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <ul className="divide-y divide-slate-100">
+            {data.items.map((rx: any) => (
+              <li key={rx.id}>
+                <Link to={`/prescriptions/${rx.id}`} className="flex items-center justify-between gap-3 p-3 hover:bg-slate-50">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-900">
+                      {fullName(rx.patient)} <span className="text-xs text-slate-500">{rx.patient?.patientCode}</span>
+                    </p>
+                    <p className="truncate text-sm text-slate-500">{rx.items.map((i: any) => i.medicineName).join(', ')}</p>
+                    <p className="text-xs text-slate-400">
+                      {fmtDate(rx.issuedAt)} · {drName(rx.doctor)}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <StatusPill status={rx.status} />
+                    <ChevronRight size={16} className="text-slate-400" />
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="border-t border-slate-100 p-3">
+            <Pager meta={data.meta} onPage={setPage} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

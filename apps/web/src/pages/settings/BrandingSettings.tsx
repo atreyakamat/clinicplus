@@ -1,27 +1,32 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Palette, Image as ImageIcon, Layout, Save, Upload, FileText } from 'lucide-react';
 import { Button, Card, Input, PageHeader } from '@clinicplus/ui';
-import { api } from '../../app/lib/api';
+import { api, apiErrorMessage, unwrap } from '../../app/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../app/store/auth.store';
 
 export const BrandingSettings = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const letterheadInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: org, isLoading } = useQuery({
-    queryKey: ['my-organization'],
-    queryFn: () => api.get(`/organizations/${user?.organizationId}`),
+  const { data: org, isLoading, error } = useQuery({
+    queryKey: ['organization', 'current'],
+    queryFn: async () => unwrap<any>(await api.get('/organizations/current')),
+    enabled: !!user,
   });
 
   const mutation = useMutation({
-    mutationFn: (data: any) => api.patch(`/organizations/${user?.organizationId}`, data),
+    // Branding-only endpoint (settings.branding); the clinic name lives in Organization profile.
+    mutationFn: ({ name: _name, ...data }: any) => api.patch('/organizations/current/branding', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-organization'] });
-    }
+      setNotice({ ok: true, text: 'Branding saved.' });
+      queryClient.invalidateQueries({ queryKey: ['organization'] });
+    },
+    onError: (err) => setNotice({ ok: false, text: apiErrorMessage(err) }),
   });
 
   const { register, handleSubmit, setValue, watch } = useForm({
@@ -41,6 +46,10 @@ export const BrandingSettings = () => {
 
   const handleFileChange = (field: 'logoUrl' | 'letterheadUrl') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (file && file.size > 500 * 1024) {
+      setNotice({ ok: false, text: 'Images must be smaller than 500 KB.' });
+      return;
+    }
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -50,9 +59,13 @@ export const BrandingSettings = () => {
     }
   };
 
-  const onSubmit = (data: any) => mutation.mutate(data);
+  const onSubmit = (data: any) => {
+    setNotice(null);
+    mutation.mutate(data);
+  };
 
-  if (isLoading) return <div className="p-6">Loading settings...</div>;
+  if (isLoading) return <div className="p-6 text-sm text-slate-500">Loading settings...</div>;
+  if (error) return <div className="p-6 text-sm text-red-600">{apiErrorMessage(error)}</div>;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -70,9 +83,9 @@ export const BrandingSettings = () => {
             </h3>
             
             <div className="space-y-4">
-              <Input label="Clinic Name" {...register('name')} />
+              <Input label="Clinic Name" value={org?.name ?? ''} readOnly disabled helperText="Change the name under Settings > Organization profile" />
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">Primary Color</label>
                   <div className="flex gap-2">
@@ -166,8 +179,11 @@ export const BrandingSettings = () => {
           </div>
         </Card>
 
+        {notice && (
+          <div className={`rounded-md p-3 text-sm ${notice.ok ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-700'}`}>{notice.text}</div>
+        )}
         <div className="flex justify-end gap-3">
-          <Button variant="outline" type="button" onClick={() => queryClient.invalidateQueries({ queryKey: ['my-organization'] })}>Reset Changes</Button>
+          <Button variant="outline" type="button" onClick={() => queryClient.invalidateQueries({ queryKey: ['organization'] })}>Reset Changes</Button>
           <Button type="submit" className="gap-2" disabled={mutation.isPending}>
             <Save size={16} /> {mutation.isPending ? 'Saving...' : 'Save Branding'}
           </Button>

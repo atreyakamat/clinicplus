@@ -1,407 +1,237 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+/**
+ * Tenant isolation through the real API.
+ *  - Organization A vs organization B: cross-tenant ids are 404 (never 403/200), lists and
+ *    searches never leak the other tenant's rows, writes against foreign ids change nothing.
+ *  - Two branches of the same organization: branch-level staff are pinned to their branch;
+ *    org-wide users (owner) can switch with X-Branch-Id.
+ */
+import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { AllExceptionsFilter } from './../src/common/filters/all-exceptions.filter';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
+import { auth, createPatient, createTenant, createTestApp, futureSlot, Tenant, TenantUser, uniq } from './helpers/app';
 
-describe('Multi-Tenancy Isolation (E2E) — Phase 3', () => {
+const PDF = Buffer.from('%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << >>\n%%EOF\n');
+
+describe('Multi-tenant & multi-branch isolation (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let jwtService: JwtService;
+  let A: Tenant;
+  let B: Tenant;
+  const http = () => request(app.getHttpServer());
+  const get = (u: TenantUser, url: string) => http().get(url).set(auth(u));
+  const ids = (res: any) => (res.body.data as any[]).map((r) => r.id);
 
-  // Org A
-  let orgA: any;
-  let branchA1: any;
-  let branchA2: any;
-  let userA: any;
-  let tokenA: string;
-  let patientA: any;
-  let appointmentA: any;
-  let invoiceA: any;
-  let consultationA: any;
-  let prescriptionA: any;
-  let taskA: any;
-  let documentA: any;
-  let followUpA: any;
-  let queueA: any;
-
-  // Org B
-  let orgB: any;
-  let branchB1: any;
-  let userB: any;
-  let tokenB: string;
+  // Tenant A records
+  const a: Record<string, any> = {};
   let patientB: any;
 
-  // Org C (read-only)
-  let orgC: any;
-  let branchC1: any;
-  let userC: any;
-  let tokenC: string;
-
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    ({ app, prisma } = await createTestApp());
+    A = await createTenant(app, prisma, 'IsoA');
+    B = await createTenant(app, prisma, 'IsoB');
 
-    app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
-    app.useGlobalFilters(new AllExceptionsFilter());
-    jwtService = app.get<JwtService>(JwtService);
-    prisma = app.get<PrismaService>(PrismaService);
-    await app.init();
+    const marker = uniq('IsoMarker');
+    a.marker = marker;
+    a.patient = await createPatient(app, A.receptionist, { firstName: marker });
+    patientB = await createPatient(app, B.receptionist, { firstName: 'Bee' });
 
-    // ===== ORG A =====
-    orgA = await prisma.organization.create({
-      data: { name: 'Tenant A Medical', slug: `ten-a-${Date.now()}` },
-    });
-    branchA1 = await prisma.branch.create({
-      data: { name: 'Branch A1', organizationId: orgA.id },
-    });
-    branchA2 = await prisma.branch.create({
-      data: { name: 'Branch A2', organizationId: orgA.id },
-    });
-    userA = await prisma.user.create({
-      data: {
-        email: `ten-a-${Date.now()}@test.com`,
-        passwordHash: 'hash',
-        firstName: 'UserA',
-        lastName: 'Test',
-        organizationId: orgA.id,
-        branchId: branchA1.id,
-      },
-    });
-    tokenA = jwtService.sign({
-      sub: userA.id,
-      email: userA.email,
-      organizationId: orgA.id,
-      branchId: branchA1.id,
-      roles: ['Organization Owner'],
-      permissions: ['*'],
-    });
+    const appt = await http()
+      .post('/api/v1/appointments')
+      .set(auth(A.receptionist))
+      .send({ patientId: a.patient.id, doctorId: A.doctor.id, ...futureSlot(2, 11) });
+    expect(appt.status).toBe(201);
+    a.appointment = appt.body.data;
 
-    patientA = await prisma.patient.create({
-      data: {
-        firstName: 'PatA',
-        lastName: 'One',
-        organizationId: orgA.id,
-        branchId: branchA1.id,
-      },
-    });
-    appointmentA = await prisma.appointment.create({
-      data: {
-        patientId: patientA.id,
-        doctorId: userA.id,
-        organizationId: orgA.id,
-        branchId: branchA1.id,
-        scheduledStart: new Date(),
-        scheduledEnd: new Date(Date.now() + 3600000),
-      },
-    });
-    invoiceA = await prisma.invoice.create({
-      data: {
-        patientId: patientA.id,
-        organizationId: orgA.id,
-        branchId: branchA1.id,
-        invoiceNumber: `TENA-${Date.now()}`,
-        total: 200,
-      },
-    });
-    consultationA = await prisma.consultation.create({
-      data: {
-        patientId: patientA.id,
-        doctorId: userA.id,
-        organizationId: orgA.id,
-        branchId: branchA1.id,
-        chiefComplaint: 'Test',
-      },
-    });
-    prescriptionA = await prisma.prescription.create({
-      data: {
-        patientId: patientA.id,
-        doctorId: userA.id,
-        organizationId: orgA.id,
-        branchId: branchA1.id,
-      },
-    });
-    taskA = await prisma.task.create({
-      data: {
-        title: 'OrgA Task',
-        organizationId: orgA.id,
-        branchId: branchA1.id,
-      },
-    });
-    followUpA = await prisma.followUp.create({
-      data: {
-        patientId: patientA.id,
-        doctorId: userA.id,
-        organizationId: orgA.id,
-        branchId: branchA1.id,
-        scheduledDate: new Date(Date.now() + 86400000),
-      },
-    });
-    queueA = await prisma.queue.create({
-      data: { name: 'Queue A', branchId: branchA1.id, organizationId: orgA.id },
-    });
+    const c = await http().post('/api/v1/consultations').set(auth(A.doctor)).send({ patientId: a.patient.id, chiefComplaint: 'Headache' });
+    expect(c.status).toBe(201);
+    a.consultation = c.body.data;
 
-    // ===== ORG B =====
-    orgB = await prisma.organization.create({
-      data: { name: 'Tenant B Health', slug: `ten-b-${Date.now()}` },
-    });
-    branchB1 = await prisma.branch.create({
-      data: { name: 'Branch B1', organizationId: orgB.id },
-    });
-    userB = await prisma.user.create({
-      data: {
-        email: `ten-b-${Date.now()}@test.com`,
-        passwordHash: 'hash',
-        firstName: 'UserB',
-        lastName: 'Test',
-        organizationId: orgB.id,
-        branchId: branchB1.id,
-      },
-    });
-    tokenB = jwtService.sign({
-      sub: userB.id,
-      email: userB.email,
-      organizationId: orgB.id,
-      branchId: branchB1.id,
-      roles: ['Organization Owner'],
-      permissions: ['*'],
-    });
+    const rx = await http()
+      .post('/api/v1/prescriptions')
+      .set(auth(A.doctor))
+      .send({ patientId: a.patient.id, consultationId: a.consultation.id, items: [{ medicineName: 'Ibuprofen 400mg', frequency: 'BD' }] });
+    expect(rx.status).toBe(201);
+    a.prescription = rx.body.data;
 
-    patientB = await prisma.patient.create({
-      data: {
-        firstName: 'PatB',
-        lastName: 'One',
-        organizationId: orgB.id,
-        branchId: branchB1.id,
-      },
-    });
+    const inv = await http()
+      .post('/api/v1/invoices')
+      .set(auth(A.receptionist))
+      .send({ patientId: a.patient.id, items: [{ itemName: 'Consultation', quantity: 1, unitPrice: 300 }], issue: true });
+    expect(inv.status).toBe(201);
+    a.invoice = inv.body.data;
 
-    // ===== ORG C =====
-    orgC = await prisma.organization.create({
-      data: { name: 'Tenant C Wellness', slug: `ten-c-${Date.now()}` },
-    });
-    branchC1 = await prisma.branch.create({
-      data: { name: 'Branch C1', organizationId: orgC.id },
-    });
-    userC = await prisma.user.create({
-      data: {
-        email: `ten-c-${Date.now()}@test.com`,
-        passwordHash: 'hash',
-        firstName: 'UserC',
-        lastName: 'Test',
-        organizationId: orgC.id,
-        branchId: branchC1.id,
-      },
-    });
-    tokenC = jwtService.sign({
-      sub: userC.id,
-      email: userC.email,
-      organizationId: orgC.id,
-      branchId: branchC1.id,
-      roles: ['Organization Owner'],
-      permissions: ['*'],
-    });
+    const doc = await http()
+      .post('/api/v1/documents/upload')
+      .set(auth(A.receptionist))
+      .attach('file', PDF, 'report.pdf')
+      .field('patientId', a.patient.id)
+      .field('documentType', 'OTHER')
+      .field('title', 'Report');
+    expect(doc.status).toBe(201);
+    a.document = doc.body.data;
+
+    const fu = await http()
+      .post('/api/v1/follow-ups')
+      .set(auth(A.doctor))
+      .send({ patientId: a.patient.id, scheduledDate: new Date(Date.now() + 5 * 86_400_000).toISOString() });
+    expect(fu.status).toBe(201);
+    a.followUp = fu.body.data;
   });
 
   afterAll(async () => {
-    try {
-      const tablenames =
-        await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`;
-      const tables = tablenames
-        .map(({ tablename }) => tablename)
-        .filter((name) => name !== '_prisma_migrations')
-        .map((name) => `"public"."${name}"`)
-        .join(', ');
-      if (tables.length > 0) {
-        await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
-      }
-    } catch (e) {
-      console.error(e);
-    }
     await app.close();
   });
 
-  // ===== CROSS-TENANT READS =====
-  describe('Cross-Tenant Read Isolation', () => {
-    it('Org B cannot read Org A patient', async () => {
-      const res = await request(app.getHttpServer())
-        .get(`/api/v1/patients/${patientA.id}`)
-        .set('Authorization', `Bearer ${tokenB}`);
-      expect(res.status).toBeDefined();
+  describe('organization A vs organization B', () => {
+    it('own records are readable by the owning tenant', async () => {
+      expect((await get(A.receptionist, `/api/v1/patients/${a.patient.id}`)).status).toBe(200);
+      expect((await get(A.receptionist, `/api/v1/appointments/${a.appointment.id}`)).status).toBe(200);
+      expect((await get(A.doctor, `/api/v1/consultations/${a.consultation.id}`)).status).toBe(200);
+      expect((await get(A.doctor, `/api/v1/prescriptions/${a.prescription.id}`)).status).toBe(200);
+      expect((await get(A.accountant, `/api/v1/invoices/${a.invoice.id}`)).status).toBe(200);
+      expect((await get(A.doctor, `/api/v1/documents/${a.document.id}`)).status).toBe(200);
+      expect((await get(A.doctor, `/api/v1/follow-ups/${a.followUp.id}`)).status).toBe(200);
     });
 
-    it('Org B cannot read Org A appointment', async () => {
-      const res = await request(app.getHttpServer())
-        .get(`/api/v1/appointments/${appointmentA.id}`)
-        .set('Authorization', `Bearer ${tokenB}`);
-      expect(res.status).toBeDefined();
-    });
-
-    it('Org B cannot read Org A invoice', async () => {
-      const res = await request(app.getHttpServer())
-        .get(`/api/v1/invoices/${invoiceA.id}`)
-        .set('Authorization', `Bearer ${tokenB}`);
-      expect(res.status).toBeDefined();
-    });
-
-    it('Org B cannot read Org A consultation', async () => {
-      const res = await request(app.getHttpServer())
-        .get(`/api/v1/consultations/${consultationA.id}`)
-        .set('Authorization', `Bearer ${tokenB}`);
-      expect(res.status).toBeDefined();
-    });
-
-    it('Org B cannot read Org A prescription', async () => {
-      const res = await request(app.getHttpServer())
-        .get(`/api/v1/prescriptions/${prescriptionA.id}`)
-        .set('Authorization', `Bearer ${tokenB}`);
-      expect(res.status).toBeDefined();
-    });
-
-    it('Org B cannot read Org A task', async () => {
-      const res = await request(app.getHttpServer())
-        .get(`/api/v1/tasks/${taskA.id}`)
-        .set('Authorization', `Bearer ${tokenB}`);
-      expect(res.status).toBeDefined();
-    });
-
-    it('Org B cannot read Org A follow-up', async () => {
-      const res = await request(app.getHttpServer())
-        .get(`/api/v1/follow-ups/?patientId=${patientA.id}`)
-        .set('Authorization', `Bearer ${tokenB}`);
-      const body = res.body.data || res.body;
-      const items = Array.isArray(body) ? body : [];
-      const ids = items.map((i: any) => i.id);
-      expect(ids).not.toContain(followUpA.id);
-    });
-
-    it('Org C cannot read Org A patient (third-party isolation)', async () => {
-      const res = await request(app.getHttpServer())
-        .get(`/api/v1/patients/${patientA.id}`)
-        .set('Authorization', `Bearer ${tokenC}`);
-      expect(res.status).toBeDefined();
-    });
-  });
-
-  // ===== CROSS-TENANT UPDATES =====
-  describe('Cross-Tenant Update Isolation', () => {
-    it('Org B cannot update Org A patient', async () => {
-      const res = await request(app.getHttpServer())
-        .patch(`/api/v1/patients/${patientA.id}`)
-        .set('Authorization', `Bearer ${tokenB}`)
-        .send({ firstName: 'Hacked' });
-      expect(res.status).toBeDefined();
-
-      const verify = await prisma.patient.findUnique({
-        where: { id: patientA.id },
-      });
-      expect(verify?.firstName).not.toBe('Hacked');
-    });
-
-    it('Org B cannot update Org A appointment', async () => {
-      const res = await request(app.getHttpServer())
-        .patch(`/api/v1/appointments/${appointmentA.id}`)
-        .set('Authorization', `Bearer ${tokenB}`)
-        .send({ status: 'CANCELLED' });
-      expect(res.status).toBeDefined();
-
-      const verify = await prisma.appointment.findUnique({
-        where: { id: appointmentA.id },
-      });
-      expect(verify?.status).not.toBe('CANCELLED');
-    });
-  });
-
-  // ===== CROSS-TENANT DELETES =====
-  describe('Cross-Tenant Delete Isolation', () => {
-    it('Org B cannot delete Org A patient', async () => {
-      const res = await request(app.getHttpServer())
-        .delete(`/api/v1/patients/${patientA.id}`)
-        .set('Authorization', `Bearer ${tokenB}`);
-      expect(res.status).toBeDefined();
-
-      const verify = await prisma.patient.findUnique({
-        where: { id: patientA.id },
-      });
-      expect(verify?.status).not.toBe('INACTIVE');
-    });
-  });
-
-  // ===== CROSS-TENANT SEARCH =====
-  describe('Cross-Tenant Search Isolation', () => {
-    it('Org B search should not return Org A patients', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/patients/search?q=PatA')
-        .set('Authorization', `Bearer ${tokenB}`);
-      const body = res.body.data || res.body;
-      if (Array.isArray(body)) {
-        const ids = body.map((p: any) => p.id);
-        expect(ids).not.toContain(patientA.id);
+    it('cross-tenant reads by id return 404 (even for the other org owner)', async () => {
+      const cases: Array<[TenantUser, string]> = [
+        [B.receptionist, `/api/v1/patients/${a.patient.id}`],
+        [B.owner, `/api/v1/patients/${a.patient.id}`],
+        [B.owner, `/api/v1/patients/${a.patient.id}/summary`],
+        [B.receptionist, `/api/v1/appointments/${a.appointment.id}`],
+        [B.doctor, `/api/v1/consultations/${a.consultation.id}`],
+        [B.doctor, `/api/v1/consultations/${a.consultation.id}/workspace`],
+        [B.doctor, `/api/v1/prescriptions/${a.prescription.id}`],
+        [B.accountant, `/api/v1/invoices/${a.invoice.id}`],
+        [B.doctor, `/api/v1/documents/${a.document.id}`],
+        [B.doctor, `/api/v1/documents/${a.document.id}/download`],
+        [B.doctor, `/api/v1/follow-ups/${a.followUp.id}`],
+        [B.doctor, `/api/v1/timeline?patientId=${a.patient.id}`],
+      ];
+      for (const [user, url] of cases) {
+        const res = await get(user, url);
+        expect({ url, status: res.status }).toEqual({ url, status: 404 });
       }
     });
 
-    it('Org B patient list should not contain Org A patients', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/patients')
-        .set('Authorization', `Bearer ${tokenB}`);
-      const body = res.body.data || res.body;
-      if (Array.isArray(body)) {
-        const ids = body.map((p: any) => p.id);
-        expect(ids).not.toContain(patientA.id);
+    it('cross-tenant writes return 404 and change nothing', async () => {
+      const upd = await http().patch(`/api/v1/patients/${a.patient.id}`).set(auth(B.owner)).send({ firstName: 'Hacked' });
+      expect(upd.status).toBe(404);
+      const del = await http().delete(`/api/v1/patients/${a.patient.id}`).set(auth(B.owner)).send({});
+      expect(del.status).toBe(404);
+      const cancel = await http().post(`/api/v1/appointments/${a.appointment.id}/cancel`).set(auth(B.receptionist)).send({ reason: 'x' });
+      expect(cancel.status).toBe(404);
+      const pay = await http().post(`/api/v1/invoices/${a.invoice.id}/payments`).set(auth(B.receptionist)).send({ amount: 1, paymentMethod: 'CASH' });
+      expect(pay.status).toBe(404);
+      const rxCancel = await http().post(`/api/v1/prescriptions/${a.prescription.id}/cancel`).set(auth(B.doctor)).send({ reason: 'Not needed' });
+      expect(rxCancel.status).toBe(404);
+      const docDel = await http().delete(`/api/v1/documents/${a.document.id}`).set(auth(B.owner));
+      expect(docDel.status).toBe(404);
+
+      const p = await prisma.patient.findUnique({ where: { id: a.patient.id } });
+      expect(p!.firstName).toBe(a.marker);
+      expect(p!.deletedAt).toBeNull();
+      expect((await prisma.appointment.findUnique({ where: { id: a.appointment.id } }))!.status).not.toBe('CANCELLED');
+      expect((await prisma.prescription.findUnique({ where: { id: a.prescription.id } }))!.status).toBe('ACTIVE');
+      expect(await prisma.payment.count({ where: { invoiceId: a.invoice.id } })).toBe(0);
+    });
+
+    it('cannot reference another tenant’s patient when creating records', async () => {
+      const appt = await http()
+        .post('/api/v1/appointments')
+        .set(auth(B.receptionist))
+        .send({ patientId: a.patient.id, doctorId: B.doctor.id, ...futureSlot(3, 10) });
+      expect(appt.status).toBe(404);
+      expect((await http().post('/api/v1/consultations').set(auth(B.doctor)).send({ patientId: a.patient.id })).status).toBe(404);
+      const inv = await http()
+        .post('/api/v1/invoices')
+        .set(auth(B.receptionist))
+        .send({ patientId: a.patient.id, items: [{ itemName: 'X', quantity: 1, unitPrice: 1 }] });
+      expect(inv.status).toBe(404);
+    });
+
+    it('lists and searches never include the other tenant’s rows', async () => {
+      const lists: Array<[TenantUser, string, string]> = [
+        [B.owner, '/api/v1/patients?limit=200', a.patient.id],
+        [B.receptionist, '/api/v1/appointments?limit=200', a.appointment.id],
+        [B.doctor, '/api/v1/consultations?limit=200', a.consultation.id],
+        [B.doctor, '/api/v1/prescriptions?limit=200', a.prescription.id],
+        [B.accountant, '/api/v1/invoices?limit=200', a.invoice.id],
+        [B.doctor, '/api/v1/documents?limit=200', a.document.id],
+        [B.doctor, '/api/v1/follow-ups?limit=200', a.followUp.id],
+      ];
+      for (const [user, url, foreignId] of lists) {
+        const res = await get(user, url);
+        expect({ url, status: res.status }).toEqual({ url, status: 200 });
+        expect(ids(res)).not.toContain(foreignId);
       }
+      // Sanity: tenant B does see its own patient.
+      expect(ids(await get(B.owner, '/api/v1/patients?limit=200'))).toContain(patientB.id);
+
+      const search = await get(B.receptionist, `/api/v1/patients/search?q=${encodeURIComponent(a.marker)}`);
+      expect(search.status).toBe(200);
+      expect(JSON.stringify(search.body.data)).not.toContain(a.patient.id);
+      const ownSearch = await get(A.receptionist, `/api/v1/patients/search?q=${encodeURIComponent(a.marker)}`);
+      expect(JSON.stringify(ownSearch.body.data)).toContain(a.patient.id);
+    });
+
+    it('X-Branch-Id cannot point into another organization', async () => {
+      expect((await get(B.owner, '/api/v1/patients').set('X-Branch-Id', A.branch.id)).status).toBe(403);
     });
   });
 
-  // ===== SAME-ORG INTRA-BRANCH ACCESS =====
-  describe('Same-Organization Cross-Branch Access', () => {
-    it('User in Branch A1 should see patients in Branch A2', async () => {
-      const patientA2 = await prisma.patient.create({
-        data: {
-          firstName: 'PatA2',
-          lastName: 'Two',
-          organizationId: orgA.id,
-          branchId: branchA2.id,
-        },
-      });
-      const res = await request(app.getHttpServer())
-        .get(`/api/v1/patients/${patientA2.id}`)
-        .set('Authorization', `Bearer ${tokenA}`);
-      expect(res.status).toBeDefined();
+  describe('two branches in the same organization', () => {
+    let branch2: any;
+    let patient2: any;
 
-      await prisma.patient.delete({ where: { id: patientA2.id } });
-    });
-  });
+    beforeAll(async () => {
+      const res = await http().post('/api/v1/branches').set(auth(A.owner)).send({ name: uniq('Second Branch'), city: 'Mumbai', timezone: 'Asia/Kolkata' });
+      expect(res.status).toBe(201);
+      branch2 = res.body.data;
+      expect(branch2.organizationId).toBe(A.org.id);
 
-  // ===== TENANT-SPECIFIC DATA ACCURACY =====
-  describe('Tenant-Specific Data Integrity', () => {
-    it('Org A can access its own patient', async () => {
-      const res = await request(app.getHttpServer())
-        .get(`/api/v1/patients/${patientA.id}`)
-        .set('Authorization', `Bearer ${tokenA}`);
-      expect(res.status).toBeDefined();
+      // Owner switches into branch 2 and registers a patient there.
+      const p = await http()
+        .post('/api/v1/patients')
+        .set(auth(A.owner))
+        .set('X-Branch-Id', branch2.id)
+        .send({ firstName: 'BranchTwo', lastName: uniq('P'), gender: 'MALE', phone: `97${Math.floor(10000000 + Math.random() * 89999999)}` });
+      expect(p.status).toBe(201);
+      patient2 = p.body.data;
+      expect(patient2.branchId).toBe(branch2.id);
     });
 
-    it('Org B can access its own patient', async () => {
-      const res = await request(app.getHttpServer())
-        .get(`/api/v1/patients/${patientB.id}`)
-        .set('Authorization', `Bearer ${tokenB}`);
-      expect(res.status).toBeDefined();
+    it('branch staff cannot create branches', async () => {
+      expect((await http().post('/api/v1/branches').set(auth(A.receptionist)).send({ name: uniq('Nope') })).status).toBe(403);
+      expect((await http().post('/api/v1/branches').set(auth(A.manager)).send({ name: uniq('Nope') })).status).toBe(403);
     });
 
-    it('Org A and Org B patients have different organizationIds', async () => {
-      const pa = await prisma.patient.findUnique({
-        where: { id: patientA.id },
-      });
-      const pb = await prisma.patient.findUnique({
-        where: { id: patientB.id },
-      });
-      expect(pa?.organizationId).toBe(orgA.id);
-      expect(pb?.organizationId).toBe(orgB.id);
-      expect(pa?.organizationId).not.toBe(pb?.organizationId);
+    it('branch-level receptionist cannot see the other branch’s patients', async () => {
+      expect((await get(A.receptionist, `/api/v1/patients/${patient2.id}`)).status).toBe(404);
+      const list = await get(A.receptionist, '/api/v1/patients?limit=200');
+      expect(ids(list)).not.toContain(patient2.id);
+      expect(ids(list)).toContain(a.patient.id);
+    });
+
+    it('branch-level receptionist gets 403 when sending X-Branch-Id of the other branch', async () => {
+      expect((await get(A.receptionist, '/api/v1/patients').set('X-Branch-Id', branch2.id)).status).toBe(403);
+      expect((await get(A.receptionist, `/api/v1/patients/${patient2.id}`).set('X-Branch-Id', branch2.id)).status).toBe(403);
+      // Sending your own branch is a no-op.
+      expect((await get(A.receptionist, '/api/v1/patients').set('X-Branch-Id', A.branch.id)).status).toBe(200);
+    });
+
+    it('owner switches branches with X-Branch-Id', async () => {
+      const inB2 = await get(A.owner, '/api/v1/patients?limit=200').set('X-Branch-Id', branch2.id);
+      expect(inB2.status).toBe(200);
+      expect(ids(inB2)).toContain(patient2.id);
+      expect(ids(inB2)).not.toContain(a.patient.id);
+
+      const home = await get(A.owner, '/api/v1/patients?limit=200');
+      expect(ids(home)).toContain(a.patient.id);
+      expect(ids(home)).not.toContain(patient2.id);
+
+      expect((await get(A.owner, `/api/v1/patients/${patient2.id}`).set('X-Branch-Id', branch2.id)).status).toBe(200);
+      expect((await get(A.owner, '/api/v1/patients').set('X-Branch-Id', 'not-a-uuid')).status).toBe(403);
     });
   });
 });
